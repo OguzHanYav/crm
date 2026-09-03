@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import type { Deal, DealStage } from "../types";
 import StageColumn from "./StageColumn";
 import { updateDealStage } from "../actions";
@@ -15,9 +15,18 @@ export default function DealsBoard({
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
   const [, startTransition] = useTransition();
 
+  // WICHTIG: Wenn page.tsx nach revalidatePath()/router.refresh() neue
+  // Server-Daten liefert, ändern sich initialDeals als Prop. useState allein
+  // würde das ignorieren (nur beim ersten Mount ausgewertet) – daher hier
+  // explizit synchronisieren.
+  useEffect(() => {
+    setDeals(initialDeals);
+  }, [initialDeals]);
+
   async function moveDeal(dealId: string, newStageId: string) {
     const previousDeals = deals;
 
+    // Optimistisches Update für sofortiges Feedback beim Drag & Drop
     setDeals((current) =>
       current.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d))
     );
@@ -25,6 +34,7 @@ export default function DealsBoard({
     startTransition(async () => {
       const result = await updateDealStage(dealId, newStageId);
       if (!result.success) {
+        // Rollback bei Fehler
         setDeals(previousDeals);
       }
     });

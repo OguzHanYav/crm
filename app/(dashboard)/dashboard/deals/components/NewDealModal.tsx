@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useActionState, useEffect } from "react";
+import { useState, useActionState, useEffect, useTransition } from "react";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 import { createDeal, type CreateDealState } from "../actions";
 import type { Pipeline, DealStage, Contact, TeamMember } from "../types";
 
-const initialState: CreateDealState = { success: false };
+// Gehört ins Client Component statt in die "use server"-Datei,
+// da dort nur async Funktionen exportiert werden dürfen.
+const initialCreateDealState: CreateDealState = { success: false };
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -35,11 +38,18 @@ export default function NewDealModal({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState(defaultPipelineId);
-  const [state, formAction] = useActionState(createDeal, initialState);
+  const [state, formAction] = useActionState(createDeal, initialCreateDealState);
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
 
   useEffect(() => {
-    if (state.success) setIsOpen(false);
-  }, [state.success]);
+    if (state.success) {
+      startRefresh(() => {
+        router.refresh();
+      });
+      setIsOpen(false);
+    }
+  }, [state.success, router]);
 
   const availableStages = stages.filter((s) => s.pipeline_id === selectedPipeline);
 
@@ -67,9 +77,9 @@ export default function NewDealModal({
 
             <form action={formAction} className="flex flex-col gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Titel</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Name</label>
                 <input
-                  name="title"
+                  name="name"
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="z. B. Erstgespräch Müller GmbH"
@@ -154,7 +164,7 @@ export default function NewDealModal({
                 </select>
               </div>
 
-              {state.message && (
+              {state.message && !state.success && (
                 <p className="text-xs text-red-600">{state.message}</p>
               )}
 
@@ -169,6 +179,12 @@ export default function NewDealModal({
                 <SubmitButton />
               </div>
             </form>
+
+            {isRefreshing && (
+              <p className="mt-2 text-center text-xs text-gray-400">
+                Board wird aktualisiert...
+              </p>
+            )}
           </div>
         </div>
       )}
