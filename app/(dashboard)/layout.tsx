@@ -1,13 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import SignOutButton from './sign-out-button'
-
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/deals', label: 'Deals' },
-  { href: '/dashboard/kontakte', label: 'Kontakte' },
-  { href: '/dashboard/anrufe', label: 'Anrufe' },
-]
+import ClientNav from './ClientNav'
+import Topbar from './Topbar'
 
 export default async function DashboardLayout({
   children,
@@ -28,40 +22,29 @@ export default async function DashboardLayout({
     .single()
 
   return (
-    <div className="flex min-h-screen">
-      <aside className="flex w-60 flex-col justify-between bg-ink text-white">
-        <div>
-          <div className="px-6 py-5 text-sm font-semibold tracking-tight">
-            Yavuz CRM
+    <div className="flex min-h-screen bg-background">
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-[72px] flex-col items-center justify-between border-r border-border bg-card py-4">
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">
+            Y
           </div>
-          <nav className="mt-4 space-y-0.5 px-2">
-            {navItems.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="block rounded-md px-4 py-2 text-sm text-white/70 transition-colors hover:bg-white/5 hover:text-white"
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+          <ClientNav />
         </div>
-        <div className="border-t border-white/10 px-6 py-4 text-xs text-white/40">
-          {profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
+
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+          title={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
+        >
+          {profile?.role === 'admin' ? 'AD' : 'MA'}
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-line bg-surface px-6">
-          <div className="text-sm text-muted">Übersicht</div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-ink">
-              {profile?.full_name || profile?.email || user.email}
-            </span>
-            <SignOutButton />
-          </div>
-        </header>
-        <main className="flex-1 bg-bg p-6">{children}</main>
+      <div className="flex flex-1 flex-col pl-[72px]">
+        <Topbar
+          displayName={profile?.full_name || profile?.email || user.email || ''}
+          role={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
+        />
+        <main className="flex-1 bg-background p-6">{children}</main>
       </div>
     </div>
   )
