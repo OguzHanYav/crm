@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0A0B0F;
+  --foreground: #EDEEF2;
+
+  --card: #121319;
+  --card-foreground: #EDEEF2;
+
+  --popover: #15161D;
+  --popover-foreground: #EDEEF2;
+
+  --muted: #1A1C24;
+  --muted-foreground: #8B8FA3;
+
+  --border: #FFFFFF14;
+  --border-strong: #FFFFFF22;
+  --input: #FFFFFF0F;
+  --ring: #6D6AFF66;
+
+  --accent: #6D6AFF;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: #6D6AFF1F;
+  --accent-glow: #6D6AFF40;
+
+  --success: #22C55E;
+  --success-soft: #22C55E1F;
+  --warning: #F59E0B;
+  --warning-soft: #F59E0B1F;
+  --danger: #EF4444;
+  --danger-soft: #EF44441F;
+  --info: #38BDF8;
+  --info-soft: #38BDF81F;
+
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 24px -8px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 0 1px var(--accent-glow), 0 8px 24px -8px var(--accent-glow);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  --font-sans: var(--font-inter);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-feature-settings: "cv11", "ss01", "tnum";
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+/* Slim, elegant scrollbars for the dashboard shell */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Utilities: soft glow + consistent focus ring for interactive surfaces */
+.ring-focus {
+  outline: none;
+}
+.ring-focus:focus-visible {
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.glow-hover {
+  transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+.glow-hover:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-glow);
+}
+
+.card-surface {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
