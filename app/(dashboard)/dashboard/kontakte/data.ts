@@ -77,7 +77,13 @@ export async function getContactById(
     return null;
   }
 
-  return data as unknown as ContactWithRelations;
+  // Stelle sicher, dass assigned_profile ein Objekt ist (nicht Array)
+  const result = data as any;
+  if (result.assigned_profile && Array.isArray(result.assigned_profile)) {
+    result.assigned_profile = result.assigned_profile[0] || null;
+  }
+
+  return result as unknown as ContactWithRelations;
 }
 
 export async function getContactNotes(contactId: string): Promise<Note[]> {
@@ -109,12 +115,12 @@ export async function getContactCallLogs(contactId: string): Promise<CallLog[]> 
     .from("call_logs")
     .select(
       `
-      id, contact_id, user_id, call_type, call_result, call_date, call_time, notes, created_at,
+      id, contact_id, user_id, call_type, interest_expressed, called_at, notes, created_at,
       author:profiles!call_logs_user_id_fkey ( id, first_name, last_name )
       `
     )
     .eq("contact_id", contactId)
-    .order("call_date", { ascending: false });
+    .order("called_at", { ascending: false });
 
   if (error) {
     console.error("getContactCallLogs error:", error.message);
@@ -131,7 +137,7 @@ export async function getContactDeals(contactId: string): Promise<ContactDeal[]>
     .from("deals")
     .select(
       `
-      id, title, value, currency, stage_id, pipeline_id,
+      id, name, value, stage_id, pipeline_id,
       stage:deal_stages!deals_stage_id_fkey ( name, color ),
       pipeline:pipelines ( name )
       `
@@ -161,7 +167,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   return data ?? [];
 }
 
-export async function getPipelines(): Promise<{ id: string; name: string; description?: string | null }[]> {
+export async function getPipelines() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pipelines")
@@ -175,7 +181,7 @@ export async function getPipelines(): Promise<{ id: string; name: string; descri
   return data ?? [];
 }
 
-export async function getStagesByPipeline(pipelineId: string): Promise<{ id: string; pipeline_id: string; name: string; position: number; color?: string }[]> {
+export async function getStagesByPipeline(pipelineId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("deal_stages")
@@ -190,7 +196,7 @@ export async function getStagesByPipeline(pipelineId: string): Promise<{ id: str
   return data ?? [];
 }
 
-export async function getContactStageHistory(contactId: string): Promise<any[]> {
+export async function getContactStageHistory(contactId: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase

@@ -18,6 +18,9 @@ export type Contact = {
   last_name: string;
   email: string;
   phone: string | null;
+  company: string | null;
+  website?: string | null;
+  last_contacted_at?: string | null;
 };
 
 export type TeamMember = {

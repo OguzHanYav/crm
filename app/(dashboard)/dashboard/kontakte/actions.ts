@@ -108,7 +108,12 @@ export async function getContactById(contactId: string) {
     return null;
   }
 
-  return data;
+  const result = data as any;
+  if (result.assigned_profile && Array.isArray(result.assigned_profile)) {
+    result.assigned_profile = result.assigned_profile[0] || null;
+  }
+
+  return result;
 }
 
 export async function getContactNotes(contactId: string) {
@@ -130,7 +135,12 @@ export async function getContactNotes(contactId: string) {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((item: any) => {
+    if (item.author && Array.isArray(item.author)) {
+      item.author = item.author[0] || null;
+    }
+    return item;
+  });
 }
 
 export async function getContactCallLogs(contactId: string) {
@@ -152,7 +162,12 @@ export async function getContactCallLogs(contactId: string) {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((item: any) => {
+    if (item.author && Array.isArray(item.author)) {
+      item.author = item.author[0] || null;
+    }
+    return item;
+  });
 }
 
 export async function getContactDeals(contactId: string) {
@@ -175,7 +190,15 @@ export async function getContactDeals(contactId: string) {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((item: any) => {
+    if (item.stage && Array.isArray(item.stage)) {
+      item.stage = item.stage[0] || null;
+    }
+    if (item.pipeline && Array.isArray(item.pipeline)) {
+      item.pipeline = item.pipeline[0] || null;
+    }
+    return item;
+  });
 }
 
 export async function getPipelines() {
@@ -213,7 +236,15 @@ export async function getContactStageHistory(contactId: string) {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((item: any) => {
+    if (item.from_stage && Array.isArray(item.from_stage)) {
+      item.from_stage = item.from_stage[0] || null;
+    }
+    if (item.to_stage && Array.isArray(item.to_stage)) {
+      item.to_stage = item.to_stage[0] || null;
+    }
+    return item;
+  });
 }
 
 // ==================== SERVER ACTIONS (CRUD) ====================
@@ -347,13 +378,18 @@ export async function addNoteToContact(
     return { success: false, message: error.message };
   }
 
+  const result = data as any;
+  if (result.author && Array.isArray(result.author)) {
+    result.author = result.author[0] || null;
+  }
+
   await supabase
     .from("contacts")
     .update({ last_contacted_at: new Date().toISOString() })
     .eq("id", contactId);
 
   revalidatePath(`/dashboard/kontakte/${contactId}`);
-  return { success: true, data: data as unknown as Note };
+  return { success: true, data: result as Note };
 }
 
 export async function logCall(
@@ -397,6 +433,11 @@ export async function logCall(
     return { success: false, message: error.message };
   }
 
+  const result = data as any;
+  if (result.author && Array.isArray(result.author)) {
+    result.author = result.author[0] || null;
+  }
+
   await supabase
     .from("contacts")
     .update({ last_contacted_at: called_at })
@@ -404,7 +445,7 @@ export async function logCall(
 
   revalidatePath("/dashboard/kontakte");
   revalidatePath("/dashboard/deals");
-  return { success: true, data: data as unknown as CallLog };
+  return { success: true, data: result as CallLog };
 }
 
 export async function updateContactDetails(
@@ -459,8 +500,8 @@ export async function updateContactDetails(
 export async function getContactDetailPayload(contactId: string) {
   const supabase = await createClient();
 
-  const contact = await getContactById(contactId);
-  if (!contact) {
+  const contactResult = await getContactById(contactId);
+  if (!contactResult) {
     return { success: false, message: "Kontakt nicht gefunden." };
   }
 
@@ -473,7 +514,7 @@ export async function getContactDetailPayload(contactId: string) {
 
   return {
     success: true,
-    data: { contact, notes, callLogs, deals, stageHistory },
+    data: { contact: contactResult, notes, callLogs, deals, stageHistory },
   };
 }
 

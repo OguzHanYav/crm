@@ -10,19 +10,9 @@ function formatDateDE(dateString: string) {
   }).format(new Date(dateString));
 }
 
-// Call-Typen für die Anzeige
 const CALL_TYPE_LABELS: Record<string, string> = {
-  setting_call: "Setting Call",
-  closing_call: "Closing Call",
-  follow_up_call: "Follow-up",
-};
-
-const CALL_RESULT_LABELS: Record<string, string> = {
-  gatekeeper_reached: "Gatekeeper erreicht",
-  interested: "Interessiert",
-  appointment_booked: "Termin vereinbart",
-  no_interest: "Kein Interesse",
-  no_answer: "Nicht erreicht",
+  opening_call: "Opening-Call",
+  follow_up_call: "Follow-Up",
 };
 
 export default function CallHistoryList({ callLogs }: { callLogs: CallLog[] }) {
@@ -38,24 +28,20 @@ export default function CallHistoryList({ callLogs }: { callLogs: CallLog[] }) {
             <p className="font-medium text-gray-800">
               {call.author ? `${call.author.first_name} ${call.author.last_name}` : "Unbekannt"}
             </p>
-            <span className="text-xs text-gray-400">
-              {call.call_date} {call.call_time}
-            </span>
+            <span className="text-xs text-gray-400">{formatDateDE(call.called_at)}</span>
           </div>
           <div className="mt-1 flex flex-wrap gap-2">
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
               {CALL_TYPE_LABELS[call.call_type] || call.call_type}
             </span>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
-              {CALL_RESULT_LABELS[call.call_result] || call.call_result}
-            </span>
+            {call.interest_expressed !== null && (
+              <span className={`rounded-full px-2 py-0.5 text-xs ${call.interest_expressed ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                Interesse: {call.interest_expressed ? "Ja" : "Nein"}
+              </span>
+            )}
           </div>
-          {call.notes && (
-            <p className="mt-1 text-gray-600">{call.notes}</p>
-          )}
-          <p className="mt-1 text-xs text-gray-400">
-            {formatDateDE(call.created_at)}
-          </p>
+          {call.notes && <p className="mt-1 text-gray-600">{call.notes}</p>}
+          <p className="mt-1 text-xs text-gray-400">{formatDateDE(call.created_at)}</p>
         </li>
       ))}
     </ul>

@@ -37,35 +37,31 @@ export async function getDealsByPipeline(
 ): Promise<Deal[]> {
   const supabase = await createClient();
 
- const { data, error } = await supabase
-  .from("deals")
-  .select(
-    `
-    id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
-    contact:contacts ( id, first_name, last_name, email, phone, company, website, last_contacted_at ),
-    assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
-    `
-  )
-  .eq("pipeline_id", pipelineId)
-  .order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("deals")
+    .select(
+      `
+      id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
+      contact:contacts ( id, first_name, last_name, email, phone, company, website, last_contacted_at ),
+      assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
+      `
+    )
+    .eq("pipeline_id", pipelineId)
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("getDealsByPipeline error:", error.message);
     return [];
   }
 
-  // Transformiere die Daten, um stage_id statt deal_stage_id zu verwenden
-  return (data ?? []).map((deal: any) => ({
-    ...deal,
-    stage_id: deal.deal_stage_id,  // ← Wichtig!
-  })) as unknown as Deal[];
+  return (data ?? []) as unknown as Deal[];
 }
 
 export async function getContacts(): Promise<Contact[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("contacts")
-    .select("id, first_name, last_name, email, phone")
+    .select("id, first_name, last_name, email, phone, company")
     .order("last_name", { ascending: true });
 
   if (error) {
@@ -79,8 +75,8 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, role")
-    .order("full_name", { ascending: true });
+    .select("id, first_name, last_name, role")
+    .order("first_name", { ascending: true });
 
   if (error) {
     console.error("getTeamMembers error:", error.message);

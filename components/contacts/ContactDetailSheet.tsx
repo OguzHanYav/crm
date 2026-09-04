@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { getContactDetailPayload, getContactSheetBootstrap, addNoteToContact, logCall } from "@/app/(dashboard)/dashboard/kontakte/actions";
 import { updateDealStage } from "@/app/(dashboard)/dashboard/deals/actions";
-import type { ContactDetailPayload, ContactSheetBootstrap, CallType } from "@/app/(dashboard)/dashboard/kontakte/types";
+import type { ContactDetailPayload, ContactSheetBootstrap } from "@/app/(dashboard)/dashboard/kontakte/types";
 import LinkDealModal from "@/app/(dashboard)/dashboard/kontakte/components/LinkDealModal";
 
 type Tab = "info" | "activity" | "notes";

@@ -44,12 +44,13 @@ export default function DealsView({
     return deals.filter((deal) => {
       if (deal.stage_id !== activeStageId) return false;
       if (!term) return true;
+      const contact = deal.contact;
       const haystack = [
         deal.name,
-        deal.contact?.first_name,
-        deal.contact?.last_name,
-        deal.contact?.email,
-        deal.contact?.company,
+        contact?.first_name,
+        contact?.last_name,
+        contact?.email,
+        contact?.company,
       ]
         .filter(Boolean)
         .join(" ")

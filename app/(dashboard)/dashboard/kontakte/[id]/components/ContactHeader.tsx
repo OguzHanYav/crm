@@ -66,6 +66,7 @@ export default function ContactHeader({
         <ContactFormModal
           mode="edit"
           contact={contact}
+          teamMembers={teamMembers}
           onClose={() => setEditOpen(false)}
           controlledOpen
         />

@@ -30,7 +30,7 @@ export type Note = {
   author: { id: string; first_name: string; last_name: string } | null;
 };
 
-export type CallType = "Opening-Call" | "Follow-Up";
+export type CallType = "opening_call" | "follow_up_call";
 
 export type CallLog = {
   id: string;
@@ -71,7 +71,7 @@ export type ContactDetailPayload = {
   notes: Note[];
   callLogs: CallLog[];
   deals: ContactDeal[];
-  stageHistory: any[]; // StageHistoryEntry aus deals/types
+  stageHistory: any[];
 };
 
 export const CONTACT_STATUSES: ContactStatus[] = [

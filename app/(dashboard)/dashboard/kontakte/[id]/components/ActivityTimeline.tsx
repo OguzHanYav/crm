@@ -12,9 +12,8 @@ type TimelineItem =
       id: string;
       created_at: string;
       call_type: string;
-      call_result: string;
-      call_date: string;
-      call_time: string;
+      interest_expressed: boolean | null;
+      called_at: string;
       notes: string | null;
       author: CallLog["author"];
     };
@@ -29,19 +28,9 @@ function formatDateDE(dateString: string) {
   }).format(new Date(dateString));
 }
 
-// Call-Typen für die Anzeige
 const CALL_TYPE_LABELS: Record<string, string> = {
-  setting_call: "Setting Call",
-  closing_call: "Closing Call",
-  follow_up_call: "Follow-up",
-};
-
-const CALL_RESULT_LABELS: Record<string, string> = {
-  gatekeeper_reached: "Gatekeeper erreicht",
-  interested: "Interessiert",
-  appointment_booked: "Termin vereinbart",
-  no_interest: "Kein Interesse",
-  no_answer: "Nicht erreicht",
+  opening_call: "Opening-Call",
+  follow_up_call: "Follow-Up",
 };
 
 export default function ActivityTimeline({
@@ -70,9 +59,8 @@ export default function ActivityTimeline({
       id: c.id,
       created_at: c.created_at,
       call_type: c.call_type,
-      call_result: c.call_result,
-      call_date: c.call_date,
-      call_time: c.call_time,
+      interest_expressed: c.interest_expressed,
+      called_at: c.called_at,
       notes: c.notes,
       author: c.author,
     })),
@@ -126,17 +114,14 @@ export default function ActivityTimeline({
                       <span className="font-medium">
                         {CALL_TYPE_LABELS[item.call_type] || item.call_type}
                       </span>
-                      {" · "}
-                      <span className="text-gray-600">
-                        {CALL_RESULT_LABELS[item.call_result] || item.call_result}
-                      </span>
+                      {item.interest_expressed !== null && (
+                        <span className="ml-2 text-gray-600">
+                          Interesse: {item.interest_expressed ? "✅ Ja" : "❌ Nein"}
+                        </span>
+                      )}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {item.call_date} {item.call_time}
-                    </p>
-                    {item.notes && (
-                      <p className="mt-1 text-gray-600">{item.notes}</p>
-                    )}
+                    <p className="text-xs text-gray-500">{formatDateDE(item.called_at)}</p>
+                    {item.notes && <p className="mt-1 text-gray-600">{item.notes}</p>}
                   </>
                 ) : (
                   <p className="text-gray-800">{item.content}</p>

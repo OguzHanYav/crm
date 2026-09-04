@@ -74,68 +74,71 @@ export default function DealsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {deals.map((deal) => (
-            <tr
-              key={deal.id}
-              onClick={() => onRowClick(deal)}
-              className="cursor-pointer transition-colors hover:bg-amber-50/60"
-            >
-              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selected.has(deal.id)}
-                  onChange={() => toggleOne(deal.id)}
-                  className="h-4 w-4 rounded border-gray-300 accent-blue-600"
-                />
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-semibold text-gray-900">{deal.name}</span>
-              </td>
-              <td className="px-4 py-3">
-                {deal.contact ? (
-                  <span className="inline-flex items-center gap-1.5 text-gray-600">
-                    <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                    </svg>
-                    {deal.contact.first_name} {deal.contact.last_name}
-                  </span>
-                ) : (
-                  <span className="text-gray-400">Kein Ansprechpartner</span>
-                )}
-              </td>
-              <td className="px-4 py-3 text-gray-500">{formatDateDE(deal.created_at)}</td>
-              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                {deal.contact?.phone ? (
-                  <a href={`tel:${deal.contact.phone}`} className="text-sky-500 hover:underline">
-                    {deal.contact.phone}
-                  </a>
-                ) : (
-                  <span className="text-gray-300">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                {deal.contact?.email ? (
-                  <span className="text-gray-500">{deal.contact.email}</span>
-                ) : (
-                  <span className="text-gray-300">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3 text-gray-600">{deal.contact?.company ?? "—"}</td>
-              <td className="px-4 py-3">
-                {deal.contact?.website ? (
-                  <span className="text-blue-400">{deal.contact.website}</span>
-                ) : (
-                  <span className="text-gray-300">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3 text-gray-500">
-                {deal.contact?.last_contacted_at ? formatDateDE(deal.contact.last_contacted_at) : "—"}
-              </td>
-              <td className="px-4 py-3 text-right font-semibold text-gray-800">
-                {formatEuro(deal.value)}
-              </td>
-            </tr>
-          ))}
+          {deals.map((deal) => {
+            const contact = deal.contact;
+            return (
+              <tr
+                key={deal.id}
+                onClick={() => onRowClick(deal)}
+                className="cursor-pointer transition-colors hover:bg-amber-50/60"
+              >
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(deal.id)}
+                    onChange={() => toggleOne(deal.id)}
+                    className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+                  />
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-semibold text-gray-900">{deal.name}</span>
+                </td>
+                <td className="px-4 py-3">
+                  {contact ? (
+                    <span className="inline-flex items-center gap-1.5 text-gray-600">
+                      <svg className="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                      </svg>
+                      {contact.first_name} {contact.last_name}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">Kein Ansprechpartner</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-gray-500">{formatDateDE(deal.created_at)}</td>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  {contact?.phone ? (
+                    <a href={`tel:${contact.phone}`} className="text-sky-500 hover:underline">
+                      {contact.phone}
+                    </a>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {contact?.email ? (
+                    <span className="text-gray-500">{contact.email}</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-gray-600">{contact?.company ?? "—"}</td>
+                <td className="px-4 py-3">
+                  {contact?.website ? (
+                    <span className="text-blue-400">{contact.website}</span>
+                  ) : (
+                    <span className="text-gray-300">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-gray-500">
+                  {contact?.last_contacted_at ? formatDateDE(contact.last_contacted_at) : "—"}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold text-gray-800">
+                  {formatEuro(deal.value)}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
