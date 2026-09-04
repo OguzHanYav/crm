@@ -80,3 +80,15 @@ export const CONTACT_STATUSES: ContactStatus[] = [
   "Kunde",
   "Verloren",
 ];
+
+export type DealStatusFilter = "offen" | "gewonnen" | "verloren";
+
+export type ContactFilters = {
+  q?: string;
+  status?: ContactStatus;
+  company?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  dealStatus?: DealStatusFilter;
+  eventCategory?: CallType;
+};

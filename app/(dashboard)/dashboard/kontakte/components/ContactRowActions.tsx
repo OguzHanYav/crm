@@ -32,20 +32,20 @@ export default function ContactRowActions({
     <div className="relative inline-block text-left" ref={menuRef}>
       <button
         onClick={() => setMenuOpen((v) => !v)}
-        className="rounded p-1.5 text-gray-500 hover:bg-gray-100"
+        className="ring-focus rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
         aria-label="Aktionen"
       >
         ⋮
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 z-10 mt-1 w-40 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-border bg-popover py-1 shadow-card">
           <button
             onClick={() => {
               setEditOpen(true);
               setMenuOpen(false);
             }}
-            className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            className="block w-full px-4 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/60"
           >
             Bearbeiten
           </button>
@@ -55,7 +55,7 @@ export default function ContactRowActions({
           ) : (
             <span
               title="Nur Admins dürfen Kontakte löschen"
-              className="block cursor-not-allowed px-4 py-2 text-left text-sm text-gray-300"
+              className="block cursor-not-allowed px-4 py-2 text-left text-sm text-muted-foreground/50"
             >
               Löschen
             </span>

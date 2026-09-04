@@ -6,21 +6,99 @@ import type {
   CallLog,
   ContactDeal,
   TeamMember,
+  ContactFilters,
+  DealStatusFilter,
+  CallType,
 } from "./types";
 
-export async function getContacts(searchQuery?: string): Promise<Contact[]> {
+async function getContactIdsByDealStatus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  dealStatus: DealStatusFilter
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("deals")
+    .select("contact_id, stage:deal_stages!deals_stage_id_fkey ( name )");
+
+  if (error || !data) {
+    console.error("getContactIdsByDealStatus error:", error?.message);
+    return [];
+  }
+
+  const filtered = data.filter((row: any) => {
+    const stageRaw = Array.isArray(row.stage) ? row.stage[0] : row.stage;
+    const stageName = (stageRaw?.name ?? "").toLowerCase();
+    const isWon = stageName.includes("gewonnen") || stageName.includes("won");
+    const isLost = stageName.includes("verloren") || stageName.includes("lost");
+    if (dealStatus === "gewonnen") return isWon;
+    if (dealStatus === "verloren") return isLost;
+    return !isWon && !isLost;
+  });
+
+  return [...new Set(filtered.map((row: any) => row.contact_id).filter(Boolean))];
+}
+
+async function getContactIdsByEventCategory(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventCategory: CallType
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("call_logs")
+    .select("contact_id")
+    .eq("call_type", eventCategory);
+
+  if (error || !data) {
+    console.error("getContactIdsByEventCategory error:", error?.message);
+    return [];
+  }
+
+  return [...new Set(data.map((row: any) => row.contact_id).filter(Boolean))];
+}
+
+export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
   const supabase = await createClient();
+
+  // Backwards-compat: alter Aufruf mit reinem Such-String
+  const normalized: ContactFilters =
+    typeof filters === "string" ? { q: filters } : filters ?? {};
 
   let query = supabase
     .from("contacts")
     .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
     .order("created_at", { ascending: false });
 
-  if (searchQuery && searchQuery.trim().length > 0) {
-    const term = searchQuery.trim();
+  if (normalized.q && normalized.q.trim().length > 0) {
+    const term = normalized.q.trim();
     query = query.or(
       `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`
     );
+  }
+
+  if (normalized.status) {
+    query = query.eq("status", normalized.status);
+  }
+
+  if (normalized.company && normalized.company.trim().length > 0) {
+    query = query.ilike("company", `%${normalized.company.trim()}%`);
+  }
+
+  if (normalized.dateFrom) {
+    query = query.gte("created_at", normalized.dateFrom);
+  }
+
+  if (normalized.dateTo) {
+    query = query.lte("created_at", `${normalized.dateTo}T23:59:59.999`);
+  }
+
+  if (normalized.dealStatus) {
+    const ids = await getContactIdsByDealStatus(supabase, normalized.dealStatus);
+    if (ids.length === 0) return [];
+    query = query.in("id", ids);
+  }
+
+  if (normalized.eventCategory) {
+    const ids = await getContactIdsByEventCategory(supabase, normalized.eventCategory);
+    if (ids.length === 0) return [];
+    query = query.in("id", ids);
   }
 
   const { data, error } = await query;
@@ -31,6 +109,22 @@ export async function getContacts(searchQuery?: string): Promise<Contact[]> {
   }
 
   return (data ?? []) as Contact[];
+}
+
+export async function getContactCompanies(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("contacts")
+    .select("company")
+    .not("company", "is", null)
+    .order("company", { ascending: true });
+
+  if (error || !data) {
+    console.error("getContactCompanies error:", error?.message);
+    return [];
+  }
+
+  return [...new Set(data.map((row: any) => row.company).filter(Boolean))];
 }
 
 export async function getCurrentUserRole(): Promise<string | null> {
@@ -77,7 +171,6 @@ export async function getContactById(
     return null;
   }
 
-  // Stelle sicher, dass assigned_profile ein Objekt ist (nicht Array)
   const result = data as any;
   if (result.assigned_profile && Array.isArray(result.assigned_profile)) {
     result.assigned_profile = result.assigned_profile[0] || null;
