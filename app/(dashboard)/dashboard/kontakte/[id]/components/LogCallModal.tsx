@@ -4,6 +4,20 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { logCall } from "../../actions";
 
+const CALL_TYPES = [
+  { value: "setting_call", label: "Setting Call" },
+  { value: "closing_call", label: "Closing Call" },
+  { value: "follow_up_call", label: "Follow-up" },
+];
+
+const CALL_RESULTS = [
+  { value: "gatekeeper_reached", label: "Gatekeeper erreicht" },
+  { value: "interested", label: "Interessiert" },
+  { value: "appointment_booked", label: "Termin vereinbart" },
+  { value: "no_interest", label: "Kein Interesse" },
+  { value: "no_answer", label: "Nicht erreicht" },
+];
+
 export default function LogCallModal({
   contactId,
   onClose,
@@ -36,28 +50,68 @@ export default function LogCallModal({
 
         <form action={handleSubmit} className="flex flex-col gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Zusammenfassung
-            </label>
-            <textarea
-              name="summary"
-              rows={3}
+            <label className="mb-1 block text-xs font-medium text-gray-600">Anruf-Typ</label>
+            <select
+              name="call_type"
               required
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              {CALL_TYPES.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Ergebnis</label>
+            <select
+              name="call_result"
+              required
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              {CALL_RESULTS.map((result) => (
+                <option key={result.value} value={result.value}>
+                  {result.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Datum</label>
+              <input
+                name="call_date"
+                type="date"
+                required
+                defaultValue={new Date().toISOString().split("T")[0]}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Uhrzeit</label>
+              <input
+                name="call_time"
+                type="time"
+                required
+                defaultValue={new Date().toTimeString().slice(0, 5)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Notizen</label>
+            <textarea
+              name="notes"
+              rows={3}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               placeholder="Worüber wurde gesprochen?"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
-              Dauer (Minuten)
-            </label>
-            <input
-              name="duration_minutes"
-              type="number"
-              min="0"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
+
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"

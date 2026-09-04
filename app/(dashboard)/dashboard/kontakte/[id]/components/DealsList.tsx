@@ -29,10 +29,10 @@ export default function DealsList({ deals }: { deals: ContactDeal[] }) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {deal.stage?.color_code && (
+              {deal.stage?.color && (
                 <span
                   className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: deal.stage.color_code }}
+                  style={{ backgroundColor: deal.stage.color }}
                 />
               )}
               <span className="font-semibold text-indigo-600">{formatEuro(deal.value)}</span>

@@ -51,8 +51,8 @@ export default async function ContactDetailPage({
       <ContactHeader
         contact={contact}
         teamMembers={teamMembers}
-        pipelines={pipelines}
-        stages={stages}
+        pipelines={pipelines as any}
+        stages={stages as any}
         defaultPipelineId={defaultPipeline?.id}
         defaultStageId={defaultStage?.id}
       />

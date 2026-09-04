@@ -109,12 +109,12 @@ export async function getContactCallLogs(contactId: string): Promise<CallLog[]> 
     .from("call_logs")
     .select(
       `
-      id, contact_id, author_id, duration_minutes, summary, created_at,
-      author:profiles!call_logs_author_id_fkey ( id, first_name, last_name )
+      id, contact_id, user_id, call_type, call_result, call_date, call_time, notes, created_at,
+      author:profiles!call_logs_user_id_fkey ( id, first_name, last_name )
       `
     )
     .eq("contact_id", contactId)
-    .order("created_at", { ascending: false });
+    .order("call_date", { ascending: false });
 
   if (error) {
     console.error("getContactCallLogs error:", error.message);
@@ -132,7 +132,7 @@ export async function getContactDeals(contactId: string): Promise<ContactDeal[]>
     .select(
       `
       id, title, value, currency, stage_id, pipeline_id,
-      stage:deal_stages ( name, color_code ),
+      stage:deal_stages!deals_stage_id_fkey ( name, color ),
       pipeline:pipelines ( name )
       `
     )
@@ -161,11 +161,11 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   return data ?? [];
 }
 
-export async function getPipelines() {
+export async function getPipelines(): Promise<{ id: string; name: string; description?: string | null }[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pipelines")
-    .select("id, name")
+    .select("id, name, description")
     .order("name", { ascending: true });
 
   if (error) {
@@ -175,11 +175,11 @@ export async function getPipelines() {
   return data ?? [];
 }
 
-export async function getStagesByPipeline(pipelineId: string) {
+export async function getStagesByPipeline(pipelineId: string): Promise<{ id: string; pipeline_id: string; name: string; position: number; color?: string }[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("deal_stages")
-    .select("id, pipeline_id, name, position")
+    .select("id, pipeline_id, name, position, color")
     .eq("pipeline_id", pipelineId)
     .order("position", { ascending: true });
 

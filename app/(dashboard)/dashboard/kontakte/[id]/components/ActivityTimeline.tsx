@@ -11,8 +11,11 @@ type TimelineItem =
       type: "call";
       id: string;
       created_at: string;
-      summary: string;
-      duration_minutes: number | null;
+      call_type: string;
+      call_result: string;
+      call_date: string;
+      call_time: string;
+      notes: string | null;
       author: CallLog["author"];
     };
 
@@ -25,6 +28,21 @@ function formatDateDE(dateString: string) {
     minute: "2-digit",
   }).format(new Date(dateString));
 }
+
+// Call-Typen für die Anzeige
+const CALL_TYPE_LABELS: Record<string, string> = {
+  setting_call: "Setting Call",
+  closing_call: "Closing Call",
+  follow_up_call: "Follow-up",
+};
+
+const CALL_RESULT_LABELS: Record<string, string> = {
+  gatekeeper_reached: "Gatekeeper erreicht",
+  interested: "Interessiert",
+  appointment_booked: "Termin vereinbart",
+  no_interest: "Kein Interesse",
+  no_answer: "Nicht erreicht",
+};
 
 export default function ActivityTimeline({
   contactId,
@@ -51,8 +69,11 @@ export default function ActivityTimeline({
       type: "call" as const,
       id: c.id,
       created_at: c.created_at,
-      summary: c.summary,
-      duration_minutes: c.duration_minutes,
+      call_type: c.call_type,
+      call_result: c.call_result,
+      call_date: c.call_date,
+      call_time: c.call_time,
+      notes: c.notes,
       author: c.author,
     })),
   ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -99,15 +120,28 @@ export default function ActivityTimeline({
             <li key={`${item.type}-${item.id}`} className="flex gap-3 text-sm">
               <span className="mt-0.5 shrink-0">{item.type === "call" ? "📞" : "📝"}</span>
               <div className="min-w-0">
-                <p className="text-gray-800">
-                  {item.type === "call" ? item.summary : item.content}
-                  {item.type === "call" && item.duration_minutes != null && (
-                    <span className="ml-1 text-xs text-gray-400">
-                      ({item.duration_minutes} Min.)
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-400">
+                {item.type === "call" ? (
+                  <>
+                    <p className="text-gray-800">
+                      <span className="font-medium">
+                        {CALL_TYPE_LABELS[item.call_type] || item.call_type}
+                      </span>
+                      {" · "}
+                      <span className="text-gray-600">
+                        {CALL_RESULT_LABELS[item.call_result] || item.call_result}
+                      </span>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {item.call_date} {item.call_time}
+                    </p>
+                    {item.notes && (
+                      <p className="mt-1 text-gray-600">{item.notes}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-gray-800">{item.content}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-400">
                   {item.author ? `${item.author.first_name} ${item.author.last_name} · ` : ""}
                   {formatDateDE(item.created_at)}
                 </p>

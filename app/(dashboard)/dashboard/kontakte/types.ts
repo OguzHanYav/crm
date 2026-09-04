@@ -27,17 +27,20 @@ export type Note = {
   author_id: string | null;
   content: string;
   created_at: string;
-  author: { first_name: string; last_name: string } | null;
+  author: { id: string; first_name: string; last_name: string } | null;
 };
 
 export type CallLog = {
   id: string;
   contact_id: string;
-  author_id: string | null;
-  duration_minutes: number | null;
-  summary: string;
+  user_id: string | null;
+  call_type: string;  // z.B. 'setting_call', 'closing_call', 'follow_up_call'
+  call_result: string;  // z.B. 'gatekeeper_reached', 'appointment_booked', etc.
+  call_date: string;
+  call_time: string;
+  notes: string | null;
   created_at: string;
-  author: { first_name: string; last_name: string } | null;
+  author: { id: string; first_name: string; last_name: string } | null;
 };
 
 export type ContactDeal = {
@@ -47,7 +50,7 @@ export type ContactDeal = {
   currency: string;
   stage_id: string;
   pipeline_id: string;
-  stage: { name: string; color_code: string } | null;
+  stage: { name: string; color: string } | null;
   pipeline: { name: string } | null;
 };
 

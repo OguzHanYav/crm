@@ -169,15 +169,14 @@ export async function logCall(
 ): Promise<ActionResult<CallLog>> {
   const supabase = await createClient();
 
-  const summary = (formData.get("summary") as string)?.trim();
-  const durationRaw = formData.get("duration_minutes") as string;
-  const duration = durationRaw ? Number(durationRaw) : null;
+  const call_type = formData.get("call_type") as string;
+  const call_result = formData.get("call_result") as string;
+  const call_date = formData.get("call_date") as string;
+  const call_time = formData.get("call_time") as string;
+  const notes = (formData.get("notes") as string)?.trim() || null;
 
-  if (!summary) {
-    return { success: false, message: "Bitte eine Zusammenfassung angeben." };
-  }
-  if (duration !== null && (Number.isNaN(duration) || duration < 0)) {
-    return { success: false, message: "Ungültige Dauer." };
+  if (!call_type || !call_result || !call_date || !call_time) {
+    return { success: false, message: "Bitte alle Pflichtfelder ausfüllen." };
   }
 
   const {
@@ -188,12 +187,15 @@ export async function logCall(
     .from("call_logs")
     .insert({
       contact_id: contactId,
-      author_id: user?.id ?? null,
-      summary,
-      duration_minutes: duration,
+      user_id: user?.id ?? null,
+      call_type,
+      call_result,
+      call_date,
+      call_time,
+      notes,
     })
     .select(
-      `id, contact_id, author_id, duration_minutes, summary, created_at, author:profiles!call_logs_author_id_fkey ( id, first_name, last_name )`
+      `id, contact_id, user_id, call_type, call_result, call_date, call_time, notes, created_at, author:profiles!call_logs_user_id_fkey ( id, first_name, last_name )`
     )
     .single();
 
