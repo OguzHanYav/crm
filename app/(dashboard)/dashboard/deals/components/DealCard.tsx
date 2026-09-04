@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { Deal, DealStage } from "../types";
 
 function formatEuro(value: number) {
@@ -11,33 +10,29 @@ function formatEuro(value: number) {
   }).format(value);
 }
 
+function formatDateDE(dateString: string) {
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }).format(
+    new Date(dateString)
+  );
+}
+
 function initials(firstName?: string, lastName?: string) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
 }
 
 export default function DealCard({
   deal,
+  stageColor,
   allStages,
   onStageChange,
+  onOpen,
 }: {
   deal: Deal;
+  stageColor: string;
   allStages: DealStage[];
   onStageChange: (newStageId: string) => void;
+  onOpen: () => void;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  function openSheet(e: React.MouseEvent) {
-    // Verhindert Öffnen wenn auf Dropdown geklickt wird
-    if ((e.target as HTMLElement).closest("select")) return;
-    
-    if (!deal.contact_id) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("contactId", deal.contact_id);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
-
   return (
     <div
       draggable
@@ -45,44 +40,55 @@ export default function DealCard({
         e.dataTransfer.setData("dealId", deal.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      onClick={openSheet}
-      className="cursor-pointer rounded-md border border-gray-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest("select")) return;
+        onOpen();
+      }}
+      className="group relative cursor-pointer overflow-hidden rounded-lg border border-border/40 bg-card p-3 shadow-soft transition-all hover:border-border-strong hover:shadow-card active:cursor-grabbing"
     >
-      <p className="text-sm font-medium text-gray-900">{deal.name}</p>
+      <span
+        className="absolute inset-y-0 left-0 w-[3px]"
+        style={{ backgroundColor: stageColor }}
+      />
 
-      {deal.contact && (
-        <p className="mt-1 text-xs text-gray-500">
-          {deal.contact.first_name} {deal.contact.last_name}
-        </p>
-      )}
+      <div className="pl-1.5">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium leading-tight text-foreground">{deal.name}</p>
+          {deal.assigned_profile && (
+            <div
+              title={`${deal.assigned_profile.first_name} ${deal.assigned_profile.last_name}`}
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent"
+            >
+              {initials(deal.assigned_profile.first_name, deal.assigned_profile.last_name)}
+            </div>
+          )}
+        </div>
 
-      <div className="mt-2 flex items-center justify-between">
-        <span className="text-sm font-semibold text-indigo-600">
-          {formatEuro(deal.value ?? 0)}
-        </span>
-
-        {deal.assigned_profile && (
-          <div
-            title={`${deal.assigned_profile.first_name} ${deal.assigned_profile.last_name}`}
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700"
-          >
-            {initials(deal.assigned_profile.first_name, deal.assigned_profile.last_name)}
-          </div>
+        {deal.contact && (
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {deal.contact.first_name} {deal.contact.last_name}
+            {deal.contact.company ? ` · ${deal.contact.company}` : ""}
+          </p>
         )}
-      </div>
 
-      <select
-        value={deal.stage_id}
-        onChange={(e) => onStageChange(e.target.value)}
-        onClick={(e) => e.stopPropagation()}
-        className="mt-2 w-full rounded border border-gray-200 bg-gray-50 px-1.5 py-1 text-xs text-gray-600"
-      >
-        {allStages.map((stage) => (
-          <option key={stage.id} value={stage.id}>
-            {stage.name}
-          </option>
-        ))}
-      </select>
+        <div className="mt-2.5 flex items-center justify-between">
+          <span className="text-sm font-semibold text-accent">{formatEuro(deal.value ?? 0)}</span>
+          <span className="text-[11px] text-muted-foreground/70">{formatDateDE(deal.created_at)}</span>
+        </div>
+
+        <select
+          value={deal.stage_id}
+          onChange={(e) => onStageChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="ring-focus mt-2 w-full rounded-md border border-border bg-muted/40 px-1.5 py-1 text-[11px] text-muted-foreground"
+        >
+          {allStages.map((stage) => (
+            <option key={stage.id} value={stage.id}>
+              {stage.name}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 }

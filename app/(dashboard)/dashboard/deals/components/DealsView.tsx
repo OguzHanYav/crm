@@ -6,7 +6,7 @@ import type { Deal, DealStage, Pipeline, Contact, TeamMember } from "../types";
 import DealsHeader from "./DealsHeader";
 import DealsActionsBar from "./DealsActionsBar";
 import StageTabs from "./StageTabs";
-import DealsTable from "./DealsTable";
+import StageColumn from "./StageColumn";
 import NewDealModal from "./NewDealModal";
 
 export default function DealsView({
@@ -30,7 +30,6 @@ export default function DealsView({
 
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const activeStageId = searchParams.get("stage") ?? stages[0]?.id ?? "";
 
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -39,25 +38,18 @@ export default function DealsView({
     return counts;
   }, [deals, stages]);
 
-  const visibleDeals = useMemo(() => {
+  const filteredDeals = useMemo(() => {
     const term = search.trim().toLowerCase();
+    if (!term) return deals;
     return deals.filter((deal) => {
-      if (deal.stage_id !== activeStageId) return false;
-      if (!term) return true;
       const contact = deal.contact;
-      const haystack = [
-        deal.name,
-        contact?.first_name,
-        contact?.last_name,
-        contact?.email,
-        contact?.company,
-      ]
+      const haystack = [deal.name, contact?.first_name, contact?.last_name, contact?.company]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(term);
     });
-  }, [deals, activeStageId, search]);
+  }, [deals, search]);
 
   function updateParams(next: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -68,6 +60,12 @@ export default function DealsView({
     router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
+  async function moveDeal(dealId: string, newStageId: string) {
+    const { updateDealStage } = await import("../actions");
+    await updateDealStage(dealId, newStageId);
+    router.refresh();
+  }
+
   function openContact(deal: Deal) {
     if (!deal.contact_id) return;
     updateParams({ contactId: deal.contact_id });
@@ -76,7 +74,7 @@ export default function DealsView({
   const activePipeline = pipelines.find((p) => p.id === selectedPipelineId);
 
   return (
-    <div className="flex min-h-screen flex-col gap-4 bg-[#f8fafc] p-6">
+    <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
       <DealsHeader pipelineName={activePipeline?.name ?? ""} totalCount={deals.length} />
 
       <DealsActionsBar search={search} onSearchChange={setSearch} onCreateClick={() => setModalOpen(true)} />
@@ -84,11 +82,22 @@ export default function DealsView({
       <StageTabs
         stages={stages}
         counts={stageCounts}
-        activeStageId={activeStageId}
+        activeStageId={searchParams.get("stage") ?? stages[0]?.id ?? ""}
         onSelect={(stageId) => updateParams({ stage: stageId })}
       />
 
-      <DealsTable deals={visibleDeals} onRowClick={openContact} />
+      <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
+        {stages.map((stage) => (
+          <StageColumn
+            key={stage.id}
+            stage={stage}
+            deals={filteredDeals.filter((d) => d.stage_id === stage.id)}
+            allStages={stages}
+            onDropDeal={moveDeal}
+            onOpenDeal={openContact}
+          />
+        ))}
+      </div>
 
       {modalOpen && (
         <NewDealModal

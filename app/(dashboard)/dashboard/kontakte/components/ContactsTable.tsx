@@ -8,11 +8,7 @@ import ContactRowActions from "./ContactRowActions";
 import { Card } from "@/components/ui/Card";
 
 function formatDateDE(dateString: string) {
-  return new Intl.DateTimeFormat("de-DE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(new Date(dateString));
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(dateString));
 }
 
 function IconPhone() {
@@ -49,10 +45,10 @@ export default function ContactsTable({
         <thead className="bg-muted/30">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Name</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Telefon</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Firma</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Status</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Erstellt am</th>
+            <th className="w-16 px-4 py-3 text-center text-xs font-medium text-muted-foreground">Anruf</th>
             <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Aktionen</th>
           </tr>
         </thead>
@@ -63,40 +59,34 @@ export default function ContactsTable({
             params.set("contactId", contact.id);
 
             return (
-              <tr key={contact.id} className="group transition-colors hover:bg-muted/40">
+              <tr key={contact.id} className="group transition-colors duration-150 hover:bg-muted/40">
                 <td className="px-4 py-3">
-                  <Link
-                    href={`/dashboard/kontakte?${params.toString()}`}
-                    scroll={false}
-                    className="block"
-                  >
-                    <p className="font-medium text-foreground group-hover:text-accent group-hover:underline">
+                  <Link href={`/dashboard/kontakte?${params.toString()}`} scroll={false} className="block">
+                    <p className="font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline">
                       {contact.first_name} {contact.last_name}
                     </p>
                     <p className="text-xs text-muted-foreground">{contact.email}</p>
                   </Link>
-                </td>
-                <td className="px-4 py-3">
-                  {contact.phone ? (
-                    <a
-                      href={`tel:${contact.phone}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="ring-focus inline-flex items-center gap-1.5 rounded-md text-foreground/80 transition-colors hover:text-accent"
-                    >
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent">
-                        <IconPhone />
-                      </span>
-                      {contact.phone}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
                 </td>
                 <td className="px-4 py-3 text-foreground/90">{contact.company ?? "—"}</td>
                 <td className="px-4 py-3">
                   <StatusBadge status={contact.status} />
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">{formatDateDE(contact.created_at)}</td>
+                <td className="px-4 py-3 text-center">
+                  {contact.phone ? (
+                    
+                      href={`tel:${contact.phone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      title={contact.phone}
+                      className="ring-focus inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-accent transition-colors hover:brightness-110"
+                    >
+                      <IconPhone />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground/40">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right">
                   <ContactRowActions contact={contact} isAdmin={isAdmin} teamMembers={teamMembers} />
                 </td>
