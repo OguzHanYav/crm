@@ -1,3 +1,6 @@
+"use client";
+
+import Link from "next/link";
 import type { Contact } from "../types";
 import StatusBadge from "./StatusBadge";
 import ContactRowActions from "./ContactRowActions";
@@ -40,12 +43,17 @@ export default function ContactsTable({
         </thead>
         <tbody className="divide-y divide-gray-100">
           {contacts.map((contact) => (
-            <tr key={contact.id} className="hover:bg-gray-50">
+            <tr key={contact.id} className="group hover:bg-gray-50">
               <td className="px-4 py-3">
-                <p className="font-medium text-gray-900">
-                  {contact.first_name} {contact.last_name}
-                </p>
-                <p className="text-xs text-gray-500">{contact.email}</p>
+                <Link
+                  href={`/dashboard/kontakte/${contact.id}`}
+                  className="block"
+                >
+                  <p className="font-medium text-gray-900 group-hover:text-indigo-600 group-hover:underline">
+                    {contact.first_name} {contact.last_name}
+                  </p>
+                  <p className="text-xs text-gray-500">{contact.email}</p>
+                </Link>
               </td>
               <td className="px-4 py-3 text-gray-700">{contact.phone ?? "—"}</td>
               <td className="px-4 py-3 text-gray-700">{contact.company ?? "—"}</td>
