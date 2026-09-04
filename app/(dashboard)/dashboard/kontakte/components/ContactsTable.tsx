@@ -8,13 +8,20 @@ import ContactRowActions from "./ContactRowActions";
 import { Card } from "@/components/ui/Card";
 
 function formatDateDE(dateString: string) {
-  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(dateString));
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(dateString));
 }
 
 function IconPhone() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-3.5 w-3.5">
-      <path d="M5 4h3l1.5 4-2 1.5c1 2.5 2.5 4 5 5l1.5-2 4 1.5v3c0 1-1 1.5-2 1.5C9.5 18.5 5.5 14.5 4.5 8c-.1-1 .5-2 1.5-2z" strokeLinejoin="round" />
+      <path
+        d="M5 4h3l1.5 4-2 1.5c1 2.5 2.5 4 5 5l1.5-2 4 1.5v3c0 1-1 1.5-2 1.5C9.5 18.5 5.5 14.5 4.5 8c-.1-1 .5-2 1.5-2z"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -57,27 +64,32 @@ export default function ContactsTable({
             const params = new URLSearchParams(searchParams.toString());
             if (currentQuery) params.set("q", currentQuery);
             params.set("contactId", contact.id);
+            const contactHref = `/dashboard/kontakte?${params.toString()}`;
 
             return (
               <tr key={contact.id} className="group transition-colors duration-150 hover:bg-muted/40">
                 <td className="px-4 py-3">
-                  <Link href={`/dashboard/kontakte?${params.toString()}`} scroll={false} className="block">
+                  <Link href={contactHref} scroll={false} className="block">
                     <p className="font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline">
                       {contact.first_name} {contact.last_name}
                     </p>
                     <p className="text-xs text-muted-foreground">{contact.email}</p>
                   </Link>
                 </td>
+
                 <td className="px-4 py-3 text-foreground/90">{contact.company ?? "—"}</td>
+
                 <td className="px-4 py-3">
                   <StatusBadge status={contact.status} />
                 </td>
+
                 <td className="px-4 py-3 text-muted-foreground">{formatDateDE(contact.created_at)}</td>
+
                 <td className="px-4 py-3 text-center">
                   {contact.phone ? (
-                    
+                    <a
                       href={`tel:${contact.phone}`}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
                       title={contact.phone}
                       className="ring-focus inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-accent transition-colors hover:brightness-110"
                     >
@@ -87,6 +99,7 @@ export default function ContactsTable({
                     <span className="text-muted-foreground/40">—</span>
                   )}
                 </td>
+
                 <td className="px-4 py-3 text-right">
                   <ContactRowActions contact={contact} isAdmin={isAdmin} teamMembers={teamMembers} />
                 </td>
