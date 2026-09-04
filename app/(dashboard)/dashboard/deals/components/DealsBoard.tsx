@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { Deal, DealStage } from "../types";
 import StageColumn from "./StageColumn";
@@ -27,29 +27,35 @@ export default function DealsBoard({
     setDeals(initialDeals);
   }, [initialDeals]);
 
-  async function moveDeal(dealId: string, newStageId: string) {
-    const previousDeals = deals;
+  const moveDeal = useCallback(
+    (dealId: string, newStageId: string) => {
+      setDeals((current) => {
+        const previousDeals = current;
+        const next = current.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d));
 
-    // Optimistisches Update für sofortiges Feedback beim Drag & Drop
-    setDeals((current) =>
-      current.map((d) => (d.id === dealId ? { ...d, stage_id: newStageId } : d))
-    );
+        startTransition(async () => {
+          const result = await updateDealStage(dealId, newStageId);
+          if (!result.success) {
+            // Rollback bei Fehler
+            setDeals(previousDeals);
+          }
+        });
 
-    startTransition(async () => {
-      const result = await updateDealStage(dealId, newStageId);
-      if (!result.success) {
-        // Rollback bei Fehler
-        setDeals(previousDeals);
-      }
-    });
-  }
+        return next;
+      });
+    },
+    [startTransition]
+  );
 
-  function openDeal(deal: Deal) {
-    if (!deal.contact_id) return;
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("contactId", deal.contact_id);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
+  const openDeal = useCallback(
+    (deal: Deal) => {
+      if (!deal.contact_id) return;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("contactId", deal.contact_id);
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
   return (
     <div className="flex flex-1 gap-4 overflow-x-auto pb-4">

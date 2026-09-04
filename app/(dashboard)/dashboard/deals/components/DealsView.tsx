@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { Deal, DealStage, Pipeline, Contact, TeamMember } from "../types";
 import DealsHeader from "./DealsHeader";
@@ -8,6 +8,7 @@ import DealsActionsBar from "./DealsActionsBar";
 import StageTabs from "./StageTabs";
 import StageColumn from "./StageColumn";
 import NewDealModal from "./NewDealModal";
+import { updateDealStage } from "../actions";
 
 export default function DealsView({
   pipelines,
@@ -51,27 +52,34 @@ export default function DealsView({
     });
   }, [deals, search]);
 
-  function updateParams(next: Record<string, string | null>) {
-    const params = new URLSearchParams(searchParams.toString());
-    for (const [key, value] of Object.entries(next)) {
-      if (value === null) params.delete(key);
-      else params.set(key, value);
-    }
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
+  const updateParams = useCallback(
+    (next: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(next)) {
+        if (value === null) params.delete(key);
+        else params.set(key, value);
+      }
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
 
-  async function moveDeal(dealId: string, newStageId: string) {
-    const { updateDealStage } = await import("../actions");
+  const moveDeal = useCallback(async (dealId: string, newStageId: string) => {
     await updateDealStage(dealId, newStageId);
     router.refresh();
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function openContact(deal: Deal) {
-    if (!deal.contact_id) return;
-    updateParams({ contactId: deal.contact_id });
-  }
+  const openDeal = useCallback(
+    (deal: Deal) => {
+      if (!deal.contact_id) return;
+      updateParams({ contactId: deal.contact_id });
+    },
+    [updateParams]
+  );
 
   const activePipeline = pipelines.find((p) => p.id === selectedPipelineId);
+  const activeStageId = searchParams.get("stage") ?? stages[0]?.id ?? "";
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
@@ -82,7 +90,7 @@ export default function DealsView({
       <StageTabs
         stages={stages}
         counts={stageCounts}
-        activeStageId={searchParams.get("stage") ?? stages[0]?.id ?? ""}
+        activeStageId={activeStageId}
         onSelect={(stageId) => updateParams({ stage: stageId })}
       />
 
@@ -94,7 +102,7 @@ export default function DealsView({
             deals={filteredDeals.filter((d) => d.stage_id === stage.id)}
             allStages={stages}
             onDropDeal={moveDeal}
-            onOpenDeal={openContact}
+            onOpenDeal={openDeal}
           />
         ))}
       </div>

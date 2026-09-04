@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, memo } from "react";
 import type { Deal, DealStage } from "../types";
 import DealCard from "./DealCard";
 
@@ -29,7 +29,7 @@ function StageHeader({ stage, count, total }: { stage: DealStage; count: number;
   );
 }
 
-export default function StageColumn({
+function StageColumn({
   stage,
   deals,
   allStages,
@@ -45,19 +45,30 @@ export default function StageColumn({
   const [isDragOver, setIsDragOver] = useState(false);
   const stageTotal = deals.reduce((sum, d) => sum + (d.value ?? 0), 0);
 
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => {
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const dealId = e.dataTransfer.getData("dealId");
+      if (dealId) onDropDeal(dealId, stage.id);
+    },
+    [onDropDeal, stage.id]
+  );
+
   return (
     <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsDragOver(true);
-      }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setIsDragOver(false);
-        const dealId = e.dataTransfer.getData("dealId");
-        if (dealId) onDropDeal(dealId, stage.id);
-      }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className={`flex w-72 shrink-0 flex-col rounded-xl border bg-card/60 transition-colors ${
         isDragOver ? "border-accent/60 bg-accent-soft/40" : "border-border/60"
       }`}
@@ -71,8 +82,8 @@ export default function StageColumn({
             deal={deal}
             stageColor={stage.color}
             allStages={allStages}
-            onStageChange={(newStageId) => onDropDeal(deal.id, newStageId)}
-            onOpen={() => onOpenDeal(deal)}
+            onStageChange={onDropDeal}
+            onOpen={onOpenDeal}
           />
         ))}
         {deals.length === 0 && (
@@ -82,3 +93,5 @@ export default function StageColumn({
     </div>
   );
 }
+
+export default memo(StageColumn);

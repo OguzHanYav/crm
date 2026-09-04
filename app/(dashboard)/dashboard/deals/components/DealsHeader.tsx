@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function DealsHeader({
   pipelineName,
   totalCount,
@@ -12,7 +14,10 @@ export default function DealsHeader({
         <span className="text-sm text-gray-400">{totalCount} Datensätze</span>
       </div>
 
-      <button className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50">
+      <Link
+        href="/dashboard/settings"
+        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50"
+      >
         <svg
           className="h-4 w-4 text-gray-400"
           fill="none"
@@ -28,7 +33,7 @@ export default function DealsHeader({
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
         </svg>
         Pipeline-Einstellungen
-      </button>
+      </Link>
     </div>
   );
 }

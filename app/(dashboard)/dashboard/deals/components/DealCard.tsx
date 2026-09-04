@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import type { Deal, DealStage } from "../types";
 
 function formatEuro(value: number) {
@@ -20,7 +21,7 @@ function initials(firstName?: string, lastName?: string) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
 }
 
-export default function DealCard({
+function DealCard({
   deal,
   stageColor,
   allStages,
@@ -30,26 +31,40 @@ export default function DealCard({
   deal: Deal;
   stageColor: string;
   allStages: DealStage[];
-  onStageChange: (newStageId: string) => void;
-  onOpen: () => void;
+  onStageChange: (dealId: string, newStageId: string) => void;
+  onOpen: (deal: Deal) => void;
 }) {
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.dataTransfer.setData("dealId", deal.id);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    [deal.id]
+  );
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement).closest("select")) return;
+      onOpen(deal);
+    },
+    [onOpen, deal]
+  );
+
+  const handleStageChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      onStageChange(deal.id, e.target.value);
+    },
+    [onStageChange, deal.id]
+  );
+
   return (
     <div
       draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData("dealId", deal.id);
-        e.dataTransfer.effectAllowed = "move";
-      }}
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest("select")) return;
-        onOpen();
-      }}
+      onDragStart={handleDragStart}
+      onClick={handleClick}
       className="group relative cursor-pointer overflow-hidden rounded-lg border border-border/40 bg-card p-3 shadow-soft transition-all hover:border-border-strong hover:shadow-card active:cursor-grabbing"
     >
-      <span
-        className="absolute inset-y-0 left-0 w-[3px]"
-        style={{ backgroundColor: stageColor }}
-      />
+      <span className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: stageColor }} />
 
       <div className="pl-1.5">
         <div className="flex items-start justify-between gap-2">
@@ -78,7 +93,7 @@ export default function DealCard({
 
         <select
           value={deal.stage_id}
-          onChange={(e) => onStageChange(e.target.value)}
+          onChange={handleStageChange}
           onClick={(e) => e.stopPropagation()}
           className="ring-focus mt-2 w-full rounded-md border border-border bg-muted/40 px-1.5 py-1 text-[11px] text-muted-foreground"
         >
@@ -92,3 +107,13 @@ export default function DealCard({
     </div>
   );
 }
+
+function areEqual(prev: Readonly<{ deal: Deal; stageColor: string; allStages: DealStage[] }>, next: Readonly<{ deal: Deal; stageColor: string; allStages: DealStage[] }>) {
+  return (
+    prev.deal === next.deal &&
+    prev.stageColor === next.stageColor &&
+    prev.allStages === next.allStages
+  );
+}
+
+export default memo(DealCard, areEqual);
