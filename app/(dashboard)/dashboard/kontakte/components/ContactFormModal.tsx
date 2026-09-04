@@ -4,7 +4,7 @@ import { useState, useActionState, useEffect, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { createContact, updateContact, type ActionResult } from "../actions";
-import { CONTACT_STATUSES, type Contact } from "../types";
+import { CONTACT_STATUSES, type Contact, type TeamMember } from "../types";
 
 const initialState: ActionResult<Contact> = { success: false };
 
@@ -25,6 +25,7 @@ type Props =
   | {
       mode: "create";
       triggerLabel: string;
+      teamMembers: TeamMember[];
       contact?: undefined;
       onClose?: undefined;
       controlledOpen?: undefined;
@@ -32,13 +33,14 @@ type Props =
   | {
       mode: "edit";
       contact: Contact;
+      teamMembers: TeamMember[];
       onClose: () => void;
       controlledOpen: true;
       triggerLabel?: undefined;
     };
 
 export default function ContactFormModal(props: Props) {
-  const { mode, contact } = props;
+  const { mode, contact, teamMembers } = props;
   const [isOpen, setIsOpen] = useState(mode === "edit" ? true : false);
   const router = useRouter();
   const [, startRefresh] = useTransition();
@@ -83,15 +85,11 @@ export default function ContactFormModal(props: Props) {
             </div>
 
             <form action={formAction} className="flex flex-col gap-3">
-              {mode === "edit" && (
-                <input type="hidden" name="contact_id" value={contact.id} />
-              )}
+              {mode === "edit" && <input type="hidden" name="contact_id" value={contact.id} />}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">
-                    Vorname
-                  </label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Vorname</label>
                   <input
                     name="first_name"
                     required
@@ -100,9 +98,7 @@ export default function ContactFormModal(props: Props) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">
-                    Nachname
-                  </label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Nachname</label>
                   <input
                     name="last_name"
                     required
@@ -124,9 +120,7 @@ export default function ContactFormModal(props: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Telefonnummer
-                </label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Telefonnummer</label>
                 <input
                   name="phone"
                   defaultValue={contact?.phone ?? ""}
@@ -154,6 +148,24 @@ export default function ContactFormModal(props: Props) {
                   {CONTACT_STATUSES.map((status) => (
                     <option key={status} value={status}>
                       {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  Zugewiesener Sales Rep
+                </label>
+                <select
+                  name="assigned_to"
+                  defaultValue={contact?.assigned_to ?? ""}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">— nicht zugewiesen —</option>
+                  {teamMembers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.first_name} {m.last_name}
                     </option>
                   ))}
                 </select>

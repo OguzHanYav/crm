@@ -6,9 +6,7 @@ import { useRouter } from "next/navigation";
 import { createDeal, type CreateDealState } from "../actions";
 import type { Pipeline, DealStage, Contact, TeamMember } from "../types";
 
-// Gehört ins Client Component statt in die "use server"-Datei,
-// da dort nur async Funktionen exportiert werden dürfen.
-const initialCreateDealState: CreateDealState = { success: false };
+const initialState: CreateDealState = { success: false };
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -29,38 +27,50 @@ export default function NewDealModal({
   contacts,
   teamMembers,
   defaultPipelineId,
+  forceOpen,
+  onOpenChange,
 }: {
   pipelines: Pipeline[];
   stages: DealStage[];
   contacts: Contact[];
   teamMembers: TeamMember[];
   defaultPipelineId: string;
+  forceOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [selectedPipeline, setSelectedPipeline] = useState(defaultPipelineId);
-  const [state, formAction] = useActionState(createDeal, initialCreateDealState);
+  const [state, formAction] = useActionState(createDeal, initialState);
   const router = useRouter();
-  const [isRefreshing, startRefresh] = useTransition();
+  const [, startRefresh] = useTransition();
+
+  const isOpen = forceOpen ?? internalOpen;
+
+  function setIsOpen(open: boolean) {
+    if (onOpenChange) onOpenChange(open);
+    else setInternalOpen(open);
+  }
 
   useEffect(() => {
     if (state.success) {
-      startRefresh(() => {
-        router.refresh();
-      });
+      startRefresh(() => router.refresh());
       setIsOpen(false);
     }
-  }, [state.success, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success]);
 
   const availableStages = stages.filter((s) => s.pipeline_id === selectedPipeline);
 
   return (
     <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
-      >
-        + Neuer Deal
-      </button>
+      {forceOpen === undefined && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+        >
+          + Neuer Deal
+        </button>
+      )}
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -133,9 +143,7 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Wert (€)
-                </label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
                 <input
                   name="value"
                   type="number"
@@ -148,9 +156,7 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Zugewiesen an
-                </label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Zugewiesen an</label>
                 <select
                   name="assigned_to"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -158,7 +164,7 @@ export default function NewDealModal({
                   <option value="">— nicht zugewiesen —</option>
                   {teamMembers.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.full_name}
+                      {m.first_name} {m.last_name}
                     </option>
                   ))}
                 </select>
@@ -179,12 +185,6 @@ export default function NewDealModal({
                 <SubmitButton />
               </div>
             </form>
-
-            {isRefreshing && (
-              <p className="mt-2 text-center text-xs text-gray-400">
-                Board wird aktualisiert...
-              </p>
-            )}
           </div>
         </div>
       )}

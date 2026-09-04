@@ -22,20 +22,30 @@ export type Contact = {
 
 export type TeamMember = {
   id: string;
-  full_name: string;
+  first_name: string;
+  last_name: string;
   role: string;
 };
 
 export type Deal = {
   id: string;
-  title: string;
+  name: string;
   pipeline_id: string;
   stage_id: string;
   contact_id: string | null;
   assigned_to: string | null;
   value: number;
-  currency: string;
   created_at: string;
   contact: Contact | null;
   assigned_profile: TeamMember | null;
+};
+
+export type StageHistoryEntry = {
+  id: string;
+  deal_id: string;
+  from_stage_id: string | null;
+  to_stage_id: string | null;
+  changed_at: string;
+  from_stage: { name: string } | null;
+  to_stage: { name: string } | null;
 };

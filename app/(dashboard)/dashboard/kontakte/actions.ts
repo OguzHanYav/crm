@@ -12,18 +12,211 @@ export type ActionResult<T = undefined> = {
 
 const CONTACTS_PATH = "/dashboard/kontakte";
 
+// ==================== HELPER ====================
 function parseContactForm(formData: FormData) {
-  const first_name = (formData.get("first_name") as string)?.trim();
-  const last_name = (formData.get("last_name") as string)?.trim();
-  const email = (formData.get("email") as string)?.trim();
-  const phone = (formData.get("phone") as string)?.trim() || null;
-  const company = (formData.get("company") as string)?.trim() || null;
-  const status = formData.get("status") as ContactStatus;
-  const notes = (formData.get("notes") as string)?.trim() || null;
-
-  return { first_name, last_name, email, phone, company, status, notes };
+  return {
+    first_name: (formData.get("first_name") as string)?.trim(),
+    last_name: (formData.get("last_name") as string)?.trim(),
+    email: (formData.get("email") as string)?.trim(),
+    phone: (formData.get("phone") as string)?.trim() || null,
+    company: (formData.get("company") as string)?.trim() || null,
+    status: formData.get("status") as ContactStatus,
+    notes: (formData.get("notes") as string)?.trim() || null,
+    assigned_to: (formData.get("assigned_to") as string) || null,
+  };
 }
 
+// ==================== DATA FETCHER ====================
+export async function getContacts(searchQuery?: string): Promise<Contact[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("contacts")
+    .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
+    .order("created_at", { ascending: false });
+
+  if (searchQuery && searchQuery.trim().length > 0) {
+    const term = searchQuery.trim();
+    query = query.or(
+      `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`
+    );
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getContacts error:", error.message);
+    return [];
+  }
+
+  return (data ?? []) as Contact[];
+}
+
+export async function getCurrentUserRole(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("getCurrentUserRole error:", error.message);
+    return null;
+  }
+
+  return profile?.role ?? null;
+}
+
+export async function getTeamMembers() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name")
+    .order("first_name", { ascending: true });
+
+  if (error) {
+    console.error("getTeamMembers error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getContactById(contactId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .select(
+      `
+      id, first_name, last_name, email, phone, company, position, address, country,
+      status, notes, assigned_to, last_contacted_at, created_at,
+      assigned_profile:profiles!contacts_assigned_to_fkey ( id, first_name, last_name )
+      `
+    )
+    .eq("id", contactId)
+    .single();
+
+  if (error) {
+    console.error("getContactById error:", error.message);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getContactNotes(contactId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("notes")
+    .select(
+      `
+      id, contact_id, author_id, content, created_at,
+      author:profiles!notes_author_id_fkey ( id, first_name, last_name )
+      `
+    )
+    .eq("contact_id", contactId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getContactNotes error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getContactCallLogs(contactId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("call_logs")
+    .select(
+      `
+      id, contact_id, user_id, call_type, interest_expressed, called_at, notes, created_at,
+      author:profiles!call_logs_user_id_fkey ( id, first_name, last_name )
+      `
+    )
+    .eq("contact_id", contactId)
+    .order("called_at", { ascending: false });
+
+  if (error) {
+    console.error("getContactCallLogs error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getContactDeals(contactId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("deals")
+    .select(
+      `
+      id, name, value, stage_id, pipeline_id,
+      stage:deal_stages!deals_stage_id_fkey ( name, color ),
+      pipeline:pipelines ( name )
+      `
+    )
+    .eq("contact_id", contactId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getContactDeals error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+export async function getPipelines() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pipelines")
+    .select("id, name, description")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("getPipelines error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getContactStageHistory(contactId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("deal_stage_history")
+    .select(
+      `
+      id, deal_id, from_stage_id, to_stage_id, changed_at,
+      from_stage:deal_stages!deal_stage_history_from_stage_id_fkey ( name ),
+      to_stage:deal_stages!deal_stage_history_to_stage_id_fkey ( name ),
+      deals!inner ( contact_id )
+      `
+    )
+    .eq("deals.contact_id", contactId)
+    .order("changed_at", { ascending: false });
+
+  if (error) {
+    console.error("getContactStageHistory error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
+
+// ==================== SERVER ACTIONS (CRUD) ====================
 export async function createContact(
   _prevState: ActionResult<Contact>,
   formData: FormData
@@ -169,14 +362,15 @@ export async function logCall(
 ): Promise<ActionResult<CallLog>> {
   const supabase = await createClient();
 
-  const call_type = formData.get("call_type") as string;
-  const call_result = formData.get("call_result") as string;
-  const call_date = formData.get("call_date") as string;
-  const call_time = formData.get("call_time") as string;
-  const notes = (formData.get("notes") as string)?.trim() || null;
+  const summary = (formData.get("summary") as string)?.trim();
+  const call_type = (formData.get("call_type") as string) || "opening_call";
+  const interest_raw = formData.get("interest_expressed") as string;
+  const interest_expressed = interest_raw === "" ? null : interest_raw === "true";
+  const called_at_raw = formData.get("called_at") as string;
+  const called_at = called_at_raw ? new Date(called_at_raw).toISOString() : new Date().toISOString();
 
-  if (!call_type || !call_result || !call_date || !call_time) {
-    return { success: false, message: "Bitte alle Pflichtfelder ausfüllen." };
+  if (!summary) {
+    return { success: false, message: "Bitte eine Zusammenfassung angeben." };
   }
 
   const {
@@ -189,13 +383,12 @@ export async function logCall(
       contact_id: contactId,
       user_id: user?.id ?? null,
       call_type,
-      call_result,
-      call_date,
-      call_time,
-      notes,
+      interest_expressed,
+      called_at,
+      notes: summary,
     })
     .select(
-      `id, contact_id, user_id, call_type, call_result, call_date, call_time, notes, created_at, author:profiles!call_logs_user_id_fkey ( id, first_name, last_name )`
+      `id, contact_id, user_id, call_type, interest_expressed, called_at, notes, created_at, author:profiles!call_logs_user_id_fkey ( first_name, last_name )`
     )
     .single();
 
@@ -206,10 +399,11 @@ export async function logCall(
 
   await supabase
     .from("contacts")
-    .update({ last_contacted_at: new Date().toISOString() })
+    .update({ last_contacted_at: called_at })
     .eq("id", contactId);
 
-  revalidatePath(`/dashboard/kontakte/${contactId}`);
+  revalidatePath("/dashboard/kontakte");
+  revalidatePath("/dashboard/deals");
   return { success: true, data: data as unknown as CallLog };
 }
 
@@ -259,4 +453,48 @@ export async function updateContactDetails(
   revalidatePath(`/dashboard/kontakte/${contactId}`);
   revalidatePath("/dashboard/kontakte");
   return { success: true, data: data as unknown as Contact };
+}
+
+// ==================== SHEET DATA FETCHER ====================
+export async function getContactDetailPayload(contactId: string) {
+  const supabase = await createClient();
+
+  const contact = await getContactById(contactId);
+  if (!contact) {
+    return { success: false, message: "Kontakt nicht gefunden." };
+  }
+
+  const [notes, callLogs, deals, stageHistory] = await Promise.all([
+    getContactNotes(contactId),
+    getContactCallLogs(contactId),
+    getContactDeals(contactId),
+    getContactStageHistory(contactId),
+  ]);
+
+  return {
+    success: true,
+    data: { contact, notes, callLogs, deals, stageHistory },
+  };
+}
+
+export async function getContactSheetBootstrap() {
+  const [teamMembers, pipelines, stages] = await Promise.all([
+    getTeamMembers(),
+    getPipelines(),
+    (async () => {
+      const supabase = await createClient();
+      const { data, error } = await supabase
+        .from("deal_stages")
+        .select("id, pipeline_id, name, position, color")
+        .order("position", { ascending: true });
+
+      if (error) {
+        console.error("getAllStages error:", error.message);
+        return [];
+      }
+      return data ?? [];
+    })(),
+  ]);
+
+  return { success: true, data: { teamMembers, pipelines, stages } };
 }

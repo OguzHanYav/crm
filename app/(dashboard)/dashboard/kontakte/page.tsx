@@ -1,7 +1,8 @@
-import { getContacts, getCurrentUserRole } from "./data";
+import { getContacts, getCurrentUserRole, getTeamMembers } from "./data";
 import ContactsSearch from "./components/ContactsSearch";
 import ContactsTable from "./components/ContactsTable";
 import ContactFormModal from "./components/ContactFormModal";
+import ContactDetailSheet from "@/components/contacts/ContactDetailSheet";
 
 export default async function KontaktePage({
   searchParams,
@@ -10,9 +11,10 @@ export default async function KontaktePage({
 }) {
   const { q } = await searchParams;
 
-  const [contacts, role] = await Promise.all([
+  const [contacts, role, teamMembers] = await Promise.all([
     getContacts(q),
     getCurrentUserRole(),
+    getTeamMembers(),
   ]);
 
   const isAdmin = role === "admin";
@@ -29,11 +31,13 @@ export default async function KontaktePage({
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <ContactsSearch defaultValue={q ?? ""} />
-          <ContactFormModal mode="create" triggerLabel="+ Neuer Kontakt" />
+          <ContactFormModal mode="create" triggerLabel="+ Neuer Kontakt" teamMembers={teamMembers} />
         </div>
       </div>
 
-      <ContactsTable contacts={contacts} isAdmin={isAdmin} />
+      <ContactsTable contacts={contacts} isAdmin={isAdmin} teamMembers={teamMembers} />
+
+      <ContactDetailSheet />
     </div>
   );
 }

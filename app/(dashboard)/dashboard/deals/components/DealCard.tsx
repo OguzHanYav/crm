@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { Deal, DealStage } from "../types";
 
 function formatEuro(value: number) {
@@ -10,12 +11,8 @@ function formatEuro(value: number) {
   }).format(value);
 }
 
-function initials(name?: string) {
-  if (!name) return "";
-  const parts = name.split(" ");
-  if (parts.length === 0) return "";
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+function initials(firstName?: string, lastName?: string) {
+  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
 }
 
 export default function DealCard({
@@ -27,6 +24,20 @@ export default function DealCard({
   allStages: DealStage[];
   onStageChange: (newStageId: string) => void;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  function openSheet(e: React.MouseEvent) {
+    // Verhindert Öffnen wenn auf Dropdown geklickt wird
+    if ((e.target as HTMLElement).closest("select")) return;
+    
+    if (!deal.contact_id) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("contactId", deal.contact_id);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
   return (
     <div
       draggable
@@ -34,9 +45,10 @@ export default function DealCard({
         e.dataTransfer.setData("dealId", deal.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      className="cursor-grab rounded-md border border-gray-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+      onClick={openSheet}
+      className="cursor-pointer rounded-md border border-gray-200 bg-white p-3 shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
     >
-      <p className="text-sm font-medium text-gray-900">{deal.title}</p>
+      <p className="text-sm font-medium text-gray-900">{deal.name}</p>
 
       {deal.contact && (
         <p className="mt-1 text-xs text-gray-500">
@@ -51,10 +63,10 @@ export default function DealCard({
 
         {deal.assigned_profile && (
           <div
-            title={deal.assigned_profile.full_name}
+            title={`${deal.assigned_profile.first_name} ${deal.assigned_profile.last_name}`}
             className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-semibold text-indigo-700"
           >
-            {initials(deal.assigned_profile.full_name)}
+            {initials(deal.assigned_profile.first_name, deal.assigned_profile.last_name)}
           </div>
         )}
       </div>

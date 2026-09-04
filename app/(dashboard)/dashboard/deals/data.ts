@@ -37,24 +37,17 @@ export async function getDealsByPipeline(
 ): Promise<Deal[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("deals")
-    .select(
-      `
-      id, 
-      name, 
-      pipeline_id, 
-      deal_stage_id, 
-      contact_id, 
-      assigned_to, 
-      value, 
-      created_at,
-      contact:contacts ( id, first_name, last_name, email, phone ),
-      assigned_profile:profiles!deals_assigned_to_fkey ( id, full_name, role )
-      `
-    )
-    .eq("pipeline_id", pipelineId)
-    .order("created_at", { ascending: false });
+ const { data, error } = await supabase
+  .from("deals")
+  .select(
+    `
+    id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
+    contact:contacts ( id, first_name, last_name, email, phone, company, website, last_contacted_at ),
+    assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
+    `
+  )
+  .eq("pipeline_id", pipelineId)
+  .order("created_at", { ascending: false });
 
   if (error) {
     console.error("getDealsByPipeline error:", error.message);
@@ -91,6 +84,20 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
 
   if (error) {
     console.error("getTeamMembers error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getAllStages(): Promise<DealStage[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_stages")
+    .select("id, pipeline_id, name, position, color")
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("getAllStages error:", error.message);
     return [];
   }
   return data ?? [];

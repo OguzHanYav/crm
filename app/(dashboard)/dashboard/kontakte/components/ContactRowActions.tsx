@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { Contact } from "../types";
+import type { Contact, TeamMember } from "../types";
 import ContactFormModal from "./ContactFormModal";
 import DeleteContactButton from "./DeleteContactButton";
 
 export default function ContactRowActions({
   contact,
   isAdmin,
+  teamMembers,
 }: {
   contact: Contact;
   isAdmin: boolean;
+  teamMembers: TeamMember[];
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -65,6 +67,7 @@ export default function ContactRowActions({
         <ContactFormModal
           mode="edit"
           contact={contact}
+          teamMembers={teamMembers}
           onClose={() => setEditOpen(false)}
           controlledOpen
         />

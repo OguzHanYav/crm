@@ -189,3 +189,27 @@ export async function getStagesByPipeline(pipelineId: string): Promise<{ id: str
   }
   return data ?? [];
 }
+
+export async function getContactStageHistory(contactId: string): Promise<any[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("deal_stage_history")
+    .select(
+      `
+      id, deal_id, from_stage_id, to_stage_id, changed_at,
+      from_stage:deal_stages!deal_stage_history_from_stage_id_fkey ( name ),
+      to_stage:deal_stages!deal_stage_history_to_stage_id_fkey ( name ),
+      deals!inner ( contact_id )
+      `
+    )
+    .eq("deals.contact_id", contactId)
+    .order("changed_at", { ascending: false });
+
+  if (error) {
+    console.error("getContactStageHistory error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
+}
