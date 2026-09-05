@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
-import type { Pipeline, DealStage, Deal, Contact, TeamMember } from "./types";
+import type { Pipeline, DealStage, PipelineStage, Deal, Contact, TeamMember } from "./types";
 
 export const getPipelines = cache(async (): Promise<Pipeline[]> => {
   const supabase = await createClient();
@@ -61,6 +61,50 @@ export const getTeamMembers = cache(async (): Promise<TeamMember[]> => {
   return data ?? [];
 });
 
+// ---- Neu: projekt-gebundene Pipeline-Phasen ----
+export const getPipelineStages = cache(
+  async (projectId: string): Promise<PipelineStage[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("pipeline_stages")
+      .select("id, project_id, name, position, is_visible, color")
+      .eq("project_id", projectId)
+      .eq("is_visible", true)
+      .order("position", { ascending: true });
+
+    if (error) {
+      console.error("getPipelineStages error:", error.message);
+      return [];
+    }
+    return data ?? [];
+  }
+);
+
+// Deals für die neue, projekt-gebundene Pipelines-Ansicht. Gezieltes
+// Column-Selecting statt select('*') für Performance bei großen Datenmengen.
+export async function getDealsByProject(projectId: string): Promise<Deal[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("deals")
+    .select(
+      `
+      id, name, pipeline_id, stage_id, project_id, pipeline_stage_id, contact_id, assigned_to, value, created_at,
+      contact:contacts ( id, first_name, last_name, email, phone, company, country, last_contacted_at ),
+      assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
+      `
+    )
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("getDealsByProject error:", error.message);
+    return [];
+  }
+
+  return (data ?? []) as unknown as Deal[];
+}
+
 export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
   const supabase = await createClient();
 
@@ -68,7 +112,7 @@ export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
     .from("deals")
     .select(
       `
-      id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
+      id, name, pipeline_id, stage_id, project_id, pipeline_stage_id, contact_id, assigned_to, value, created_at,
       contact:contacts ( id, first_name, last_name, email, phone, company, website, country, last_contacted_at ),
       assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
       `

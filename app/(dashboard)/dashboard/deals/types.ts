@@ -12,6 +12,16 @@ export type DealStage = {
   color: string;
 };
 
+// Neue, projekt-gebundene Pipeline-Phase (ersetzt DealStage schrittweise).
+export type PipelineStage = {
+  id: string;
+  project_id: string;
+  name: string;
+  position: number;
+  is_visible: boolean;
+  color: string;
+};
+
 export type Contact = {
   id: string;
   first_name: string;
@@ -36,6 +46,8 @@ export type Deal = {
   name: string;
   pipeline_id: string;
   stage_id: string;
+  project_id: string;
+  pipeline_stage_id: string | null;
   contact_id: string | null;
   assigned_to: string | null;
   value: number;

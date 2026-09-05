@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Button } from '@/components/ui/Button'
 import SignOutButton from './sign-out-button'
+import ProjectSwitcher from './ProjectSwitcher'
 
 function IconSearch() {
   return (
@@ -24,16 +24,19 @@ function IconPlus() {
 
 const CTA_BY_ROUTE: { match: string; label: string; href: string }[] = [
   { match: '/dashboard/kontakte', label: 'Neuer Kontakt', href: '/dashboard/kontakte?new=1' },
-  { match: '/dashboard/deals', label: 'Neuer Deal', href: '/dashboard/deals?new=1' },
   { match: '/dashboard/anrufe', label: 'Anruf protokollieren', href: '/dashboard/anrufe?new=1' },
 ]
 
 export default function Topbar({
   displayName,
   role,
+  projects,
+  activeProjectId,
 }: {
   displayName: string
   role: string
+  projects: { id: string; name: string }[]
+  activeProjectId: string
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -68,18 +71,20 @@ export default function Topbar({
     .join('') || '—'
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white/80 px-6 backdrop-blur-md">
+      <ProjectSwitcher projects={projects} activeProjectId={activeProjectId} />
+
       <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full max-w-md items-center">
-        <div className="ring-focus flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-input px-3 text-sm text-muted-foreground transition-colors focus-within:border-accent/60">
+        <div className="flex h-9 w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 transition-colors focus-within:border-blue-500/60">
           <IconSearch />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Kontakte, Deals, Firmen durchsuchen…"
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            className="flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-400 outline-none"
           />
-          <kbd className="hidden shrink-0 items-center gap-0.5 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:flex">
+          <kbd className="hidden shrink-0 items-center gap-0.5 rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 sm:flex">
             ⌘K
           </kbd>
         </div>
@@ -87,25 +92,24 @@ export default function Topbar({
 
       <div className="flex shrink-0 items-center gap-3">
         {cta && (
-          <Button
-            variant="primary"
-            size="sm"
+          <button
             onClick={() => router.push(cta.href)}
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
           >
             <IconPlus />
             {cta.label}
-          </Button>
+          </button>
         )}
 
-        <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/40 px-2.5 py-1.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
+        <div className="flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50/40 px-2.5 py-1.5">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-600">
             {initials}
           </div>
           <div className="hidden flex-col leading-tight sm:flex">
-            <span className="max-w-[140px] truncate text-xs font-medium text-foreground">
+            <span className="max-w-[140px] truncate text-xs font-medium text-gray-900">
               {displayName}
             </span>
-            <span className="text-[11px] text-muted-foreground">{role}</span>
+            <span className="text-[11px] text-gray-500">{role}</span>
           </div>
         </div>
 

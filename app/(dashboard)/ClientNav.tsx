@@ -1,51 +1,46 @@
 'use client';
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/components/ui/cn'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { ReactElement } from 'react'
 
-function IconDashboard() {
+function IconDashboard(): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-5 w-5">
-      <rect x="3" y="3" width="7" height="9" rx="1.5" />
-      <rect x="14" y="3" width="7" height="5" rx="1.5" />
-      <rect x="14" y="12" width="7" height="9" rx="1.5" />
-      <rect x="3" y="16" width="7" height="5" rx="1.5" />
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M3 12h4v9H3zM12 3h4v18h-4zM21 8h4v13h-4z" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function IconPipeline() {
+function IconPipeline(): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-5 w-5">
-      <path d="M4 6h16" strokeLinecap="round" />
-      <path d="M4 6l6 7v6l4 2v-8l6-7" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M3 5h18M3 12h18M3 19h18" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function IconContacts() {
+function IconContacts(): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-5 w-5">
-      <circle cx="12" cy="8" r="3.2" />
-      <path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" strokeLinecap="round" />
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function IconCalls() {
+function IconCalls(): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-5 w-5">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
       <path d="M5 4h3l1.5 4-2 1.5c1 2.5 2.5 4 5 5l1.5-2 4 1.5v3c0 1-1 1.5-2 1.5C9.5 18.5 5.5 14.5 4.5 8c-.1-1 .5-2 1.5-2z" strokeLinejoin="round" />
     </svg>
   )
 }
 
-function IconSettings() {
+function IconSettings(): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-5 w-5">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h0a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v0a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.6 1z" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" strokeLinejoin="round" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -58,40 +53,32 @@ const navItems = [
   { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
 ]
 
-export default function ClientNav() {
+function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: () => ReactElement }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const isActive = pathname === href || (href === '/dashboard/deals' && pathname.startsWith('/dashboard/deals'))
 
   return (
-    <nav className="flex flex-col items-center gap-1.5">
-      {navItems.map((item) => {
-        const isActive =
-          item.href === '/dashboard'
-            ? pathname === '/dashboard'
-            : pathname.startsWith(item.href)
-        const Icon = item.icon
+    <Link
+      href={href}
+      className={`flex h-11 w-11 items-center justify-center rounded-lg transition-colors ${
+        isActive
+          ? 'bg-blue-50 text-blue-600'
+          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+      }`}
+      title={label}
+    >
+      <Icon />
+    </Link>
+  )
+}
 
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            title={item.label}
-            className={cn(
-              'ring-focus group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors',
-              isActive
-                ? 'bg-accent-soft text-accent'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-            )}
-          >
-            {isActive && (
-              <span className="absolute -left-[13px] top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-accent" />
-            )}
-            <Icon />
-            <span className="pointer-events-none absolute left-full ml-3 whitespace-nowrap rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground opacity-0 shadow-card transition-opacity group-hover:opacity-100 z-50">
-              {item.label}
-            </span>
-          </Link>
-        )
-      })}
+export default function ClientNav() {
+  return (
+    <nav className="flex flex-col items-center gap-1">
+      {navItems.map((item) => (
+        <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+      ))}
     </nav>
   )
 }

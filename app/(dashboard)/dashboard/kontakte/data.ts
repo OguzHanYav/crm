@@ -1,76 +1,31 @@
 import { createClient } from "@/utils/supabase/server";
-import {
-  getPipelines,
-  getStagesByPipeline,
-  getAllStages,
-  getTeamMembers,
-} from "../deals/data";
+import { getActiveProjectId } from "@/utils/projects/active-project";
 import type {
   Contact,
   ContactWithRelations,
   Note,
   CallLog,
   ContactDeal,
-  ContactFilters,
-  DealStatusFilter,
-  CallType,
+  TeamMember,
 } from "./types";
 
-// Referenzdaten (Pipelines, Stages, Team-Mitglieder) kommen aus einer
-// gemeinsamen, React.cache-deduplizierten Quelle. Dadurch wird z.B. beim
-// Öffnen des Kontakt-Sheets (das intern Pipelines/Stages/Team braucht)
-// keine zusätzliche DB-Anfrage ausgelöst, wenn dieselben Daten im selben
-// Request bereits vom Deals-Tab geladen wurden.
-export { getPipelines, getStagesByPipeline, getAllStages, getTeamMembers };
+// ============================================================
+// 1. KONTAKTE (mit Projekt-Filter)
+// ============================================================
 
-async function getContactIdsByDealStatus(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  dealStatus: DealStatusFilter
-): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("deals")
-    .select("contact_id, stage:deal_stages!deals_stage_id_fkey ( name )");
+export type ContactFilters = {
+  q?: string;
+  status?: string;
+  company?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  dealStatus?: string;
+  eventCategory?: string;
+};
 
-  if (error || !data) {
-    console.error("getContactIdsByDealStatus error:", error?.message);
-    return [];
-  }
-
-  const filtered = data.filter((row: any) => {
-    const stageRaw = Array.isArray(row.stage) ? row.stage[0] : row.stage;
-    const stageName = (stageRaw?.name ?? "").toLowerCase();
-    const isWon = stageName.includes("gewonnen") || stageName.includes("won");
-    const isLost = stageName.includes("verloren") || stageName.includes("lost");
-    if (dealStatus === "gewonnen") return isWon;
-    if (dealStatus === "verloren") return isLost;
-    return !isWon && !isLost;
-  });
-
-  return [...new Set(filtered.map((row: any) => row.contact_id).filter(Boolean))];
-}
-
-async function getContactIdsByEventCategory(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  eventCategory: CallType
-): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("call_logs")
-    .select("contact_id")
-    .eq("call_type", eventCategory);
-
-  if (error || !data) {
-    console.error("getContactIdsByEventCategory error:", error?.message);
-    return [];
-  }
-
-  return [...new Set(data.map((row: any) => row.contact_id).filter(Boolean))];
-}
-
-// Dynamische, gefilterte Liste -> bewusst UNGECACHED (Filter ändern sich pro
-// Aufruf). Select bleibt schlank, Sortierung passend zum created_at-Index.
 export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
   const supabase = await createClient();
-
+  const projectId = await getActiveProjectId();
   const normalized: ContactFilters =
     typeof filters === "string" ? { q: filters } : filters ?? {};
 
@@ -78,6 +33,10 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
     .from("contacts")
     .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
     .order("created_at", { ascending: false });
+
+  if (projectId) {
+    query = query.eq("project_id", projectId);
+  }
 
   if (normalized.q && normalized.q.trim().length > 0) {
     const term = normalized.q.trim();
@@ -102,18 +61,6 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
     query = query.lte("created_at", `${normalized.dateTo}T23:59:59.999`);
   }
 
-  if (normalized.dealStatus) {
-    const ids = await getContactIdsByDealStatus(supabase, normalized.dealStatus);
-    if (ids.length === 0) return [];
-    query = query.in("id", ids);
-  }
-
-  if (normalized.eventCategory) {
-    const ids = await getContactIdsByEventCategory(supabase, normalized.eventCategory);
-    if (ids.length === 0) return [];
-    query = query.in("id", ids);
-  }
-
   const { data, error } = await query;
 
   if (error) {
@@ -126,11 +73,19 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
 
 export async function getContactCompanies(): Promise<string[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const projectId = await getActiveProjectId();
+
+  let query = supabase
     .from("contacts")
     .select("company")
     .not("company", "is", null)
     .order("company", { ascending: true });
+
+  if (projectId) {
+    query = query.eq("project_id", projectId);
+  }
+
+  const { data, error } = await query;
 
   if (error || !data) {
     console.error("getContactCompanies error:", error?.message);
@@ -139,6 +94,10 @@ export async function getContactCompanies(): Promise<string[]> {
 
   return [...new Set(data.map((row: any) => row.company).filter(Boolean))];
 }
+
+// ============================================================
+// 2. WEITERE FUNKTIONEN (unverändert)
+// ============================================================
 
 export async function getCurrentUserRole(): Promise<string | null> {
   const supabase = await createClient();
@@ -162,7 +121,20 @@ export async function getCurrentUserRole(): Promise<string | null> {
   return profile?.role ?? null;
 }
 
-// Kontakt inkl. Sales-Rep in EINER Join-Abfrage.
+export async function getTeamMembers(): Promise<TeamMember[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name")
+    .order("first_name", { ascending: true });
+
+  if (error) {
+    console.error("getTeamMembers error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
 export async function getContactById(
   contactId: string
 ): Promise<ContactWithRelations | null> {
@@ -212,7 +184,12 @@ export async function getContactNotes(contactId: string): Promise<Note[]> {
     return [];
   }
 
-  return (data ?? []) as unknown as Note[];
+  return (data ?? []).map((item: any) => {
+    if (item.author && Array.isArray(item.author)) {
+      item.author = item.author[0] || null;
+    }
+    return item;
+  }) as unknown as Note[];
 }
 
 export async function getContactCallLogs(contactId: string): Promise<CallLog[]> {
@@ -234,11 +211,14 @@ export async function getContactCallLogs(contactId: string): Promise<CallLog[]> 
     return [];
   }
 
-  return (data ?? []) as unknown as CallLog[];
+  return (data ?? []).map((item: any) => {
+    if (item.author && Array.isArray(item.author)) {
+      item.author = item.author[0] || null;
+    }
+    return item;
+  }) as unknown as CallLog[];
 }
 
-// Deals inkl. Stage + Pipeline in EINER Join-Abfrage (kein Waterfall),
-// sortiert nach created_at (Index deals.created_at).
 export async function getContactDeals(contactId: string): Promise<ContactDeal[]> {
   const supabase = await createClient();
 
@@ -259,7 +239,44 @@ export async function getContactDeals(contactId: string): Promise<ContactDeal[]>
     return [];
   }
 
-  return (data ?? []) as unknown as ContactDeal[];
+  return (data ?? []).map((item: any) => {
+    if (item.stage && Array.isArray(item.stage)) {
+      item.stage = item.stage[0] || null;
+    }
+    if (item.pipeline && Array.isArray(item.pipeline)) {
+      item.pipeline = item.pipeline[0] || null;
+    }
+    return item;
+  }) as unknown as ContactDeal[];
+}
+
+export async function getPipelines() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pipelines")
+    .select("id, name, description")
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("getPipelines error:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export async function getStagesByPipeline(pipelineId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_stages")
+    .select("id, pipeline_id, name, position, color")
+    .eq("pipeline_id", pipelineId)
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("getStagesByPipeline error:", error.message);
+    return [];
+  }
+  return data ?? [];
 }
 
 export async function getContactStageHistory(contactId: string) {
@@ -283,5 +300,13 @@ export async function getContactStageHistory(contactId: string) {
     return [];
   }
 
-  return data ?? [];
+  return (data ?? []).map((item: any) => {
+    if (item.from_stage && Array.isArray(item.from_stage)) {
+      item.from_stage = item.from_stage[0] || null;
+    }
+    if (item.to_stage && Array.isArray(item.to_stage)) {
+      item.to_stage = item.to_stage[0] || null;
+    }
+    return item;
+  });
 }

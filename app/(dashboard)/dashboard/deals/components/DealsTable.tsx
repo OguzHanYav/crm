@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Deal, DealStage } from "../types";
+import type { Deal, PipelineStage } from "../types";
 
 function formatEuro(value: number) {
   return new Intl.NumberFormat("de-DE", {
@@ -26,7 +26,7 @@ export default function DealsTable({
   onRowClick,
 }: {
   deals: Deal[];
-  allStages: DealStage[];
+  allStages: PipelineStage[];
   onStageChange: (dealId: string, newStageId: string) => void;
   onRowClick: (deal: Deal) => void;
 }) {
@@ -132,10 +132,13 @@ export default function DealsTable({
 
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <select
-                    value={deal.stage_id}
+                    value={deal.pipeline_stage_id ?? ""}
                     onChange={(e) => onStageChange(deal.id, e.target.value)}
                     className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600"
                   >
+                    <option value="" disabled>
+                      — Phase wählen —
+                    </option>
                     {allStages.map((stage) => (
                       <option key={stage.id} value={stage.id}>
                         {stage.name}

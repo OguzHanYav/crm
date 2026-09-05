@@ -1,6 +1,6 @@
 "use client";
 
-import type { DealStage } from "../types";
+import type { PipelineStage } from "../types";
 
 export default function StageTabs({
   stages,
@@ -8,7 +8,7 @@ export default function StageTabs({
   activeStageId,
   onSelect,
 }: {
-  stages: DealStage[];
+  stages: PipelineStage[];
   counts: Record<string, number>;
   activeStageId: string;
   onSelect: (stageId: string) => void;
