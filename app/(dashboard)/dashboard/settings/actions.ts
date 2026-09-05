@@ -84,6 +84,7 @@ export type ImportContactRow = {
   status?: string;
   deal_value?: string;
   event_category?: string;
+  notes?: string;
 };
 
 export type ImportResult = {
@@ -177,25 +178,36 @@ export async function importContactsWithDeals(
       lastName = split.last;
     }
 
-    if (!email || !firstName || !lastName) {
-      errors.push(`Zeile ${rowNumber}: Name und E-Mail sind erforderlich.`);
+    if (!firstName || !lastName) {
+      errors.push(`Zeile ${rowNumber}: Name ist erforderlich.`);
       continue;
     }
 
     const status = VALID_STATUSES.includes(row.status ?? "") ? (row.status as string) : "Lead";
     const dealValue = parseDealValue(row.deal_value);
     const eventCategory = row.event_category?.trim();
-    const notesSuffix = eventCategory ? `Event-Kategorie: ${eventCategory}` : null;
+    const rawNotes = row.notes?.trim();
+    const notesParts = [
+      eventCategory ? `Event-Kategorie: ${eventCategory}` : null,
+      rawNotes || null,
+    ].filter(Boolean);
+    const notesSuffix = notesParts.length > 0 ? notesParts.join(" | ") : null;
 
-    const { data: existing, error: findError } = await supabase
-      .from("contacts")
-      .select("id, notes")
-      .eq("email", email)
-      .maybeSingle();
+    // E-Mail ist optional: ohne E-Mail kann keine Dublette erkannt werden,
+    // in diesem Fall wird immer ein neuer Kontakt angelegt.
+    let existing: { id: string; notes: string | null } | null = null;
+    if (email) {
+      const { data: found, error: findError } = await supabase
+        .from("contacts")
+        .select("id, notes")
+        .eq("email", email)
+        .maybeSingle();
 
-    if (findError) {
-      errors.push(`Zeile ${rowNumber}: Fehler beim Suchen (${findError.message}).`);
-      continue;
+      if (findError) {
+        errors.push(`Zeile ${rowNumber}: Fehler beim Suchen (${findError.message}).`);
+        continue;
+      }
+      existing = found;
     }
 
     let contactId: string;
@@ -229,7 +241,7 @@ export async function importContactsWithDeals(
         .insert({
           first_name: firstName,
           last_name: lastName,
-          email,
+          email: email || null,
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,
           status,

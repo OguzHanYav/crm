@@ -18,6 +18,7 @@ type TargetField =
   | "status"
   | "deal_value"
   | "event_category"
+  | "notes"
   | "ignore";
 
 const TARGET_FIELDS: { value: TargetField; label: string }[] = [
@@ -28,6 +29,7 @@ const TARGET_FIELDS: { value: TargetField; label: string }[] = [
   { value: "status", label: "Status" },
   { value: "deal_value", label: "Deal-Wert" },
   { value: "event_category", label: "Event-Kategorie" },
+  { value: "notes", label: "Notizen" },
   { value: "ignore", label: "— ignorieren —" },
 ];
 
@@ -39,6 +41,7 @@ const AUTO_MATCH: Record<TargetField, string[]> = {
   status: ["status", "phase", "stage"],
   deal_value: ["deal-wert", "deal wert", "wert", "value", "umsatz"],
   event_category: ["event-kategorie", "event kategorie", "kategorie", "category"],
+  notes: ["notizen", "notes", "bemerkung"],
   ignore: [],
 };
 
@@ -200,6 +203,7 @@ export default function DataManagementSettings() {
         status: mapped.status,
         deal_value: mapped.deal_value,
         event_category: mapped.event_category,
+        notes: mapped.notes,
       };
     });
 
@@ -213,8 +217,7 @@ export default function DataManagementSettings() {
     });
   }
 
-  const requiredFieldsMapped =
-    Object.values(mapping).includes("email") && Object.values(mapping).includes("full_name");
+  const requiredFieldsMapped = Object.values(mapping).includes("full_name");
 
   const previewRows = rawRows.slice(0, 5);
 
@@ -396,7 +399,7 @@ export default function DataManagementSettings() {
 
             {!requiredFieldsMapped && (
               <p className="text-xs text-amber-600">
-                Bitte ordne mindestens Name und E-Mail zu, bevor du importierst.
+                Bitte ordne mindestens das Feld Name zu, bevor du importierst.
               </p>
             )}
 
