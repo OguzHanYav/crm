@@ -1,15 +1,27 @@
 import { createClient } from "@/utils/supabase/server";
+import {
+  getPipelines,
+  getStagesByPipeline,
+  getAllStages,
+  getTeamMembers,
+} from "../deals/data";
 import type {
   Contact,
   ContactWithRelations,
   Note,
   CallLog,
   ContactDeal,
-  TeamMember,
   ContactFilters,
   DealStatusFilter,
   CallType,
 } from "./types";
+
+// Referenzdaten (Pipelines, Stages, Team-Mitglieder) kommen aus einer
+// gemeinsamen, React.cache-deduplizierten Quelle. Dadurch wird z.B. beim
+// Öffnen des Kontakt-Sheets (das intern Pipelines/Stages/Team braucht)
+// keine zusätzliche DB-Anfrage ausgelöst, wenn dieselben Daten im selben
+// Request bereits vom Deals-Tab geladen wurden.
+export { getPipelines, getStagesByPipeline, getAllStages, getTeamMembers };
 
 async function getContactIdsByDealStatus(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -54,10 +66,11 @@ async function getContactIdsByEventCategory(
   return [...new Set(data.map((row: any) => row.contact_id).filter(Boolean))];
 }
 
+// Dynamische, gefilterte Liste -> bewusst UNGECACHED (Filter ändern sich pro
+// Aufruf). Select bleibt schlank, Sortierung passend zum created_at-Index.
 export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
   const supabase = await createClient();
 
-  // Backwards-compat: alter Aufruf mit reinem Such-String
   const normalized: ContactFilters =
     typeof filters === "string" ? { q: filters } : filters ?? {};
 
@@ -149,6 +162,7 @@ export async function getCurrentUserRole(): Promise<string | null> {
   return profile?.role ?? null;
 }
 
+// Kontakt inkl. Sales-Rep in EINER Join-Abfrage.
 export async function getContactById(
   contactId: string
 ): Promise<ContactWithRelations | null> {
@@ -223,6 +237,8 @@ export async function getContactCallLogs(contactId: string): Promise<CallLog[]> 
   return (data ?? []) as unknown as CallLog[];
 }
 
+// Deals inkl. Stage + Pipeline in EINER Join-Abfrage (kein Waterfall),
+// sortiert nach created_at (Index deals.created_at).
 export async function getContactDeals(contactId: string): Promise<ContactDeal[]> {
   const supabase = await createClient();
 
@@ -244,49 +260,6 @@ export async function getContactDeals(contactId: string): Promise<ContactDeal[]>
   }
 
   return (data ?? []) as unknown as ContactDeal[];
-}
-
-export async function getTeamMembers(): Promise<TeamMember[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, first_name, last_name")
-    .order("first_name", { ascending: true });
-
-  if (error) {
-    console.error("getTeamMembers error:", error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-export async function getPipelines() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("pipelines")
-    .select("id, name, description")
-    .order("name", { ascending: true });
-
-  if (error) {
-    console.error("getPipelines error:", error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-export async function getStagesByPipeline(pipelineId: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("deal_stages")
-    .select("id, pipeline_id, name, position, color")
-    .eq("pipeline_id", pipelineId)
-    .order("position", { ascending: true });
-
-  if (error) {
-    console.error("getStagesByPipeline error:", error.message);
-    return [];
-  }
-  return data ?? [];
 }
 
 export async function getContactStageHistory(contactId: string) {

@@ -7,7 +7,7 @@ import {
   getContactDeals,
   getTeamMembers,
   getPipelines,
-  getStagesByPipeline,
+  getAllStages,
 } from "../data";
 import ContactHeader from "./components/ContactHeader";
 import ContactInfoCard from "./components/ContactInfoCard";
@@ -26,17 +26,23 @@ export default async function ContactDetailPage({
   const contact = await getContactById(id);
   if (!contact) notFound();
 
-  const [notes, callLogs, deals, teamMembers, pipelines] = await Promise.all([
+  // Alle unabhängigen Reads parallel statt sequentiell (kein Waterfall):
+  // vorher wurde erst auf pipelines gewartet, um danach stagesByPipeline
+  // nachzuladen. getAllStages() liefert alle Stages in einem Rutsch und wird
+  // lokal nach der Default-Pipeline gefiltert.
+  const [notes, callLogs, deals, teamMembers, pipelines, allStages] = await Promise.all([
     getContactNotes(id),
     getContactCallLogs(id),
     getContactDeals(id),
     getTeamMembers(),
     getPipelines(),
+    getAllStages(),
   ]);
 
-  // Erste Pipeline und erste Stage für LinkDealModal
   const defaultPipeline = pipelines.length > 0 ? pipelines[0] : null;
-  const stages = defaultPipeline ? await getStagesByPipeline(defaultPipeline.id) : [];
+  const stages = defaultPipeline
+    ? allStages.filter((s) => s.pipeline_id === defaultPipeline.id).sort((a, b) => a.position - b.position)
+    : [];
   const defaultStage = stages.length > 0 ? stages[0] : null;
 
   return (
