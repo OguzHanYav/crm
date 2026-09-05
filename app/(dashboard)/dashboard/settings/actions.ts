@@ -11,6 +11,8 @@ export type ExportResult = {
   rows?: ExportRow[];
 };
 
+const DEFAULT_PROJECT_NAME = "Döner";
+
 // ==================== EXPORT ====================
 
 export async function exportContacts(): Promise<ExportResult> {
@@ -18,7 +20,7 @@ export async function exportContacts(): Promise<ExportResult> {
   const { data, error } = await supabase
     .from("contacts")
     .select(
-      "id, first_name, last_name, email, phone, company, position, address, country, status, notes, assigned_to, last_contacted_at, created_at"
+      "id, first_name, last_name, email, phone, company, position, address, country, status, notes, project_id, assigned_to, last_contacted_at, created_at"
     )
     .order("created_at", { ascending: false });
 
@@ -36,7 +38,7 @@ export async function exportDeals(): Promise<ExportResult> {
     .from("deals")
     .select(
       `
-      id, name, value, created_at,
+      id, name, value, created_at, project_id,
       contact:contacts ( first_name, last_name, email, phone, company, country ),
       stage:deal_stages!deals_stage_id_fkey ( name ),
       pipeline:pipelines ( name )
@@ -73,7 +75,7 @@ export async function exportDeals(): Promise<ExportResult> {
   return { success: true, rows: flattened };
 }
 
-// ==================== IMPORT ====================
+// ==================== IMPORT (Batch-optimiert) ====================
 
 export type ImportContactRow = {
   full_name?: string;
@@ -83,11 +85,6 @@ export type ImportContactRow = {
   phone?: string;
   company?: string;
   country?: string;
-  /**
-   * Freitext-Feld "Deal": entweder ein Standardwert (z. B. "Neukunde") oder
-   * eine Pipeline-Bezeichnung/-Kürzel (z. B. "Döner"), anhand dessen die
-   * Ziel-Pipeline für den automatisch angelegten Deal bestimmt wird.
-   */
   deal_name?: string;
   event_category?: string;
   notes?: string;
@@ -109,43 +106,31 @@ function splitFullName(fullName: string): { first: string; last: string } {
   return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
 }
 
-type PipelineRow = { id: string; name: string };
-type StageRow = { id: string; pipeline_id: string; name: string; position: number };
-
-function resolveTargetPipeline(
-  pipelines: PipelineRow[],
-  dealNameRaw: string | undefined
-): PipelineRow | null {
-  if (pipelines.length === 0) return null;
-  const dealName = dealNameRaw?.trim().toLowerCase();
-
-  if (dealName) {
-    const match = pipelines.find(
-      (p) =>
-        p.name.toLowerCase().includes(dealName) || dealName.includes(p.name.toLowerCase())
-    );
-    if (match) return match;
-  }
-
-  return pipelines[0];
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
 }
 
-function resolveFirstStage(stages: StageRow[], pipelineId: string): StageRow | null {
-  const stagesForPipeline = stages
-    .filter((s) => s.pipeline_id === pipelineId)
-    .sort((a, b) => a.position - b.position);
-  return stagesForPipeline[0] ?? null;
-}
+type NormalizedRow = {
+  rowNumber: number;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  country: string | null;
+  dealLabel: string;
+  notesSuffix: string | null;
+};
 
 /**
- * Importiert Kontakte aus einer geparsten Zeilenliste (Client parst die Datei mit xlsx).
- * - Dubletten werden anhand der E-Mail-Adresse per Update statt Insert behandelt (upsert-Logik).
- * - Für jeden Kontakt ohne bestehenden Deal wird automatisch ein Deal angelegt. Die Ziel-Pipeline
- *   wird über das Feld "Deal" bestimmt (Freitext-Match auf den Pipeline-Namen), ansonsten wird
- *   die erste Pipeline (alphabetisch) als Standard verwendet. Der Deal-Wert wird beim Import
- *   nicht mehr erfasst und startet immer bei 0.
- * - "Land" wird, sofern vorhanden, in contacts.country gespeichert.
- * - "Event-Kategorie" hat keine eigene Spalte im Schema und wird an contacts.notes angehängt.
+ * Batch-optimierter Import: statt ~2.000 einzelner DB-Requests werden
+ * bestehende Kontakte in wenigen Bulk-Selects nachgeschlagen, danach läuft
+ * EIN Batch-Upsert für alle Kontakte mit E-Mail, EIN Batch-Insert für
+ * Kontakte ohne E-Mail und abschließend EIN Batch-Insert für alle neu
+ * benötigten Deals (Chunking nur als Sicherheitsnetz bei sehr großen
+ * Dateien, jeweils max. 300 Zeilen pro Request).
  */
 export async function importContactsWithDeals(
   rows: ImportContactRow[]
@@ -162,36 +147,88 @@ export async function importContactsWithDeals(
 
   const supabase = await createClient();
   const errors: string[] = [];
-  let imported = 0;
-  let updated = 0;
-  let dealsCreated = 0;
 
-  const { data: pipelines, error: pipelineError } = await supabase
-    .from("pipelines")
+  // ---- 0. Projekt + Pipeline-Referenzen (alt & neu) einmalig laden ----
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
     .select("id, name")
-    .order("name", { ascending: true });
+    .eq("name", DEFAULT_PROJECT_NAME)
+    .maybeSingle();
 
-  if (pipelineError) {
-    console.error("importContactsWithDeals pipeline lookup error:", pipelineError.message);
+  if (projectError || !project) {
+    return {
+      success: false,
+      message: `Standard-Projekt "${DEFAULT_PROJECT_NAME}" wurde nicht gefunden. Bitte Migration (Schritt A) prüfen.`,
+      imported: 0,
+      updated: 0,
+      dealsCreated: 0,
+    };
   }
 
-  const { data: stages, error: stageError } = await supabase
-    .from("deal_stages")
-    .select("id, pipeline_id, name, position")
-    .order("position", { ascending: true });
+  const [
+    { data: pipelineStages, error: stagesError },
+    { data: legacyPipelines, error: legacyPipelineError },
+    { data: legacyStages, error: legacyStageError },
+  ] = await Promise.all([
+    supabase
+      .from("pipeline_stages")
+      .select("id, project_id, name, position, is_visible")
+      .eq("project_id", project.id)
+      .eq("is_visible", true)
+      .order("position", { ascending: true }),
+    supabase.from("pipelines").select("id, name").order("name", { ascending: true }),
+    supabase
+      .from("deal_stages")
+      .select("id, pipeline_id, name, position")
+      .order("position", { ascending: true }),
+  ]);
 
-  if (stageError) {
-    console.error("importContactsWithDeals stage lookup error:", stageError.message);
+  if (stagesError) console.error("importContactsWithDeals pipeline_stages error:", stagesError.message);
+  if (legacyPipelineError) console.error("importContactsWithDeals legacy pipelines error:", legacyPipelineError.message);
+  if (legacyStageError) console.error("importContactsWithDeals legacy deal_stages error:", legacyStageError.message);
+
+  const defaultStage = (pipelineStages ?? [])[0] ?? null;
+  if (!defaultStage) {
+    return {
+      success: false,
+      message: `Für Projekt "${DEFAULT_PROJECT_NAME}" ist keine sichtbare Pipeline-Phase konfiguriert.`,
+      imported: 0,
+      updated: 0,
+      dealsCreated: 0,
+    };
   }
 
-  const pipelineList: PipelineRow[] = pipelines ?? [];
-  const stageList: StageRow[] = stages ?? [];
+  // Legacy-Brücke: deals.pipeline_id / deals.stage_id sind bislang NOT NULL
+  // und müssen bis zur finalen Migration weiterhin befüllt werden.
+  const legacyPipelineList = legacyPipelines ?? [];
+  const legacyStageList = legacyStages ?? [];
+  const legacyDefaultPipeline =
+    legacyPipelineList.find((p) =>
+      p.name.toLowerCase().includes(DEFAULT_PROJECT_NAME.toLowerCase())
+    ) ??
+    legacyPipelineList[0] ??
+    null;
+  const legacyDefaultStage = legacyDefaultPipeline
+    ? legacyStageList
+        .filter((s) => s.pipeline_id === legacyDefaultPipeline.id)
+        .sort((a, b) => a.position - b.position)[0] ?? null
+    : null;
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const rowNumber = i + 2;
-    const email = row.email?.trim();
+  if (!legacyDefaultPipeline || !legacyDefaultStage) {
+    return {
+      success: false,
+      message: "Keine gültige Legacy-Pipeline/-Phase gefunden (deals.pipeline_id/stage_id erfordern weiterhin einen Wert).",
+      imported: 0,
+      updated: 0,
+      dealsCreated: 0,
+    };
+  }
 
+  // ---- 1. Alle Zeilen im Speicher normalisieren & validieren ----
+  const normalized: NormalizedRow[] = [];
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2;
     let firstName = row.first_name?.trim() ?? "";
     let lastName = row.last_name?.trim() ?? "";
     if (!firstName && !lastName && row.full_name) {
@@ -202,118 +239,189 @@ export async function importContactsWithDeals(
 
     if (!firstName || !lastName) {
       errors.push(`Zeile ${rowNumber}: Name ist erforderlich.`);
-      continue;
+      return;
     }
 
-    const country = row.country?.trim() || null;
     const eventCategory = row.event_category?.trim();
     const rawNotes = row.notes?.trim();
     const notesParts = [
       eventCategory ? `Event-Kategorie: ${eventCategory}` : null,
       rawNotes || null,
     ].filter(Boolean);
-    const notesSuffix = notesParts.length > 0 ? notesParts.join(" | ") : null;
 
-    // E-Mail ist optional: ohne E-Mail kann keine Dublette erkannt werden,
-    // in diesem Fall wird immer ein neuer Kontakt angelegt.
-    let existing: { id: string; notes: string | null } | null = null;
-    if (email) {
-      const { data: found, error: findError } = await supabase
-        .from("contacts")
-        .select("id, notes")
-        .eq("email", email)
-        .maybeSingle();
+    normalized.push({
+      rowNumber,
+      firstName,
+      lastName,
+      email: row.email?.trim() || null,
+      phone: row.phone?.trim() || null,
+      company: row.company?.trim() || null,
+      country: row.country?.trim() || null, // Land/Ülke
+      dealLabel: row.deal_name?.trim() || "Neukunde",
+      notesSuffix: notesParts.length > 0 ? notesParts.join(" | ") : null,
+      // Hinweis: "Deal-Wert" wird bewusst nicht mehr eingelesen/verarbeitet.
+    });
+  });
 
-      if (findError) {
-        errors.push(`Zeile ${rowNumber}: Fehler beim Suchen (${findError.message}).`);
-        continue;
-      }
-      existing = found;
+  if (normalized.length === 0) {
+    return {
+      success: false,
+      message: "Keine gültigen Zeilen zum Importieren gefunden.",
+      imported: 0,
+      updated: 0,
+      dealsCreated: 0,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  }
+
+  // ---- 2. EIN Bulk-Select bestehender Kontakte nach E-Mail (für Notes-Merge) ----
+  const emails = [...new Set(normalized.map((r) => r.email).filter((e): e is string => !!e))];
+  const existingByEmail = new Map<string, { id: string; notes: string | null; status: string | null }>();
+
+  for (const emailChunk of chunk(emails, 300)) {
+    const { data: existingContacts, error: existingError } = await supabase
+      .from("contacts")
+      .select("id, email, notes, status")
+      .eq("project_id", project.id)
+      .in("email", emailChunk);
+
+    if (existingError) {
+      console.error("importContactsWithDeals existing-contacts lookup error:", existingError.message);
+      continue;
     }
 
-    let contactId: string;
+    for (const c of existingContacts ?? []) {
+      if (c.email) existingByEmail.set(c.email, { id: c.id, notes: c.notes, status: c.status });
+    }
+  }
 
-    if (existing) {
-      const mergedNotes = notesSuffix
-        ? [existing.notes, notesSuffix].filter(Boolean).join(" · ")
-        : existing.notes;
+  // ---- 3. Contacts-Payload bauen (In-Memory Merge) ----
+  const contactsPayload = normalized.map((r) => {
+    const existing = r.email ? existingByEmail.get(r.email) : undefined;
+    const mergedNotes = existing
+      ? [existing.notes, r.notesSuffix].filter(Boolean).join(" | ") || null
+      : r.notesSuffix;
 
-      const { error: updateError } = await supabase
-        .from("contacts")
-        .update({
-          first_name: firstName,
-          last_name: lastName,
-          phone: row.phone?.trim() || null,
-          company: row.company?.trim() || null,
-          country,
-          notes: mergedNotes,
-        })
-        .eq("id", existing.id);
+    return {
+      first_name: r.firstName,
+      last_name: r.lastName,
+      email: r.email,
+      phone: r.phone,
+      company: r.company,
+      country: r.country,
+      status: existing?.status ?? "Lead",
+      notes: mergedNotes,
+      project_id: project.id,
+    };
+  });
 
-      if (updateError) {
-        errors.push(`Zeile ${rowNumber}: Fehler beim Aktualisieren (${updateError.message}).`);
+  const allEntries = normalized.map((r, index) => ({ r, index, payload: contactsPayload[index] }));
+  const rowsWithEmail = allEntries.filter((x) => !!x.r.email);
+  const rowsWithoutEmail = allEntries.filter((x) => !x.r.email);
+
+  const contactIdByRowIndex = new Map<number, string>();
+  let imported = 0;
+  let updated = 0;
+
+  // 3a. EIN Batch-Upsert für alle Zeilen MIT E-Mail (onConflict: email)
+  for (const batch of chunk(rowsWithEmail, 300)) {
+    const { data: upserted, error: upsertError } = await supabase
+      .from("contacts")
+      .upsert(
+        batch.map((b) => b.payload),
+        { onConflict: "email" }
+      )
+      .select("id, email");
+
+    if (upsertError) {
+      errors.push(`Batch-Upsert Kontakte fehlgeschlagen (${upsertError.message}).`);
+      continue;
+    }
+
+    const idByEmail = new Map((upserted ?? []).map((row) => [row.email as string, row.id as string]));
+    for (const b of batch) {
+      const cid = b.r.email ? idByEmail.get(b.r.email) : undefined;
+      if (!cid) {
+        errors.push(`Zeile ${b.r.rowNumber}: Kontakt-ID nach Upsert nicht gefunden.`);
         continue;
       }
-      contactId = existing.id;
-      updated++;
-    } else {
-      const { data: inserted, error: insertError } = await supabase
-        .from("contacts")
-        .insert({
-          first_name: firstName,
-          last_name: lastName,
-          email: email || null,
-          phone: row.phone?.trim() || null,
-          company: row.company?.trim() || null,
-          country,
-          status: "Lead",
-          notes: notesSuffix,
-        })
-        .select("id")
-        .single();
+      contactIdByRowIndex.set(b.index, cid);
+      if (b.r.email && existingByEmail.has(b.r.email)) updated++;
+      else imported++;
+    }
+  }
 
-      if (insertError || !inserted) {
-        errors.push(`Zeile ${rowNumber}: Fehler beim Anlegen (${insertError?.message ?? "unbekannt"}).`);
-        continue;
-      }
-      contactId = inserted.id;
+  // 3b. EIN Batch-Insert für alle Zeilen OHNE E-Mail (immer neu)
+  for (const batch of chunk(rowsWithoutEmail, 300)) {
+    const { data: inserted, error: insertError } = await supabase
+      .from("contacts")
+      .insert(batch.map((b) => b.payload))
+      .select("id");
+
+    if (insertError) {
+      errors.push(`Batch-Insert Kontakte (ohne E-Mail) fehlgeschlagen (${insertError.message}).`);
+      continue;
+    }
+
+    (inserted ?? []).forEach((row, i) => {
+      const b = batch[i];
+      if (!b) return;
+      contactIdByRowIndex.set(b.index, row.id as string);
       imported++;
+    });
+  }
+
+  // ---- 4. Deals: EIN Bulk-Select bestehender Deals, EIN Batch-Insert neuer Deals ----
+  const allContactIds = [...contactIdByRowIndex.values()];
+  const contactIdsWithDeal = new Set<string>();
+
+  for (const idChunk of chunk(allContactIds, 300)) {
+    const { data: existingDeals, error: dealsLookupError } = await supabase
+      .from("deals")
+      .select("contact_id")
+      .eq("project_id", project.id)
+      .in("contact_id", idChunk);
+
+    if (dealsLookupError) {
+      console.error("importContactsWithDeals existing-deals lookup error:", dealsLookupError.message);
+      continue;
     }
 
-    const targetPipeline = resolveTargetPipeline(pipelineList, row.deal_name);
-    const targetStage = targetPipeline ? resolveFirstStage(stageList, targetPipeline.id) : null;
-
-    if (targetPipeline && targetStage) {
-      const { data: existingDeal, error: dealFindError } = await supabase
-        .from("deals")
-        .select("id")
-        .eq("contact_id", contactId)
-        .maybeSingle();
-
-      if (dealFindError) {
-        errors.push(`Zeile ${rowNumber}: Kontakt gespeichert, Deal-Prüfung fehlgeschlagen (${dealFindError.message}).`);
-        continue;
-      }
-
-      if (!existingDeal) {
-        const dealLabel = row.deal_name?.trim() || "Neukunde";
-        const { error: dealError } = await supabase.from("deals").insert({
-          name: `${dealLabel} – ${firstName} ${lastName}`,
-          pipeline_id: targetPipeline.id,
-          stage_id: targetStage.id,
-          contact_id: contactId,
-          value: 0,
-        });
-
-        if (dealError) {
-          errors.push(`Zeile ${rowNumber}: Kontakt gespeichert, aber Deal-Erstellung fehlgeschlagen (${dealError.message}).`);
-        } else {
-          dealsCreated++;
-        }
-      }
-    } else {
-      errors.push(`Zeile ${rowNumber}: Keine passende Pipeline/Phase gefunden, Deal nicht angelegt.`);
+    for (const d of existingDeals ?? []) {
+      if (d.contact_id) contactIdsWithDeal.add(d.contact_id);
     }
+  }
+
+  const dealsPayload: Record<string, unknown>[] = [];
+  const seenInThisRun = new Set<string>();
+
+  normalized.forEach((r, index) => {
+    const contactId = contactIdByRowIndex.get(index);
+    if (!contactId) return;
+    // Kein neuer Deal, wenn der Kontakt im Projekt bereits einen hat
+    // (weder aus vorherigen Imports noch mehrfach innerhalb dieses Laufs).
+    if (contactIdsWithDeal.has(contactId) || seenInThisRun.has(contactId)) return;
+
+    seenInThisRun.add(contactId);
+    dealsPayload.push({
+      name: `${r.dealLabel} – ${r.firstName} ${r.lastName}`,
+      project_id: project.id,
+      pipeline_stage_id: defaultStage.id,
+      pipeline_id: legacyDefaultPipeline.id,
+      stage_id: legacyDefaultStage.id,
+      contact_id: contactId,
+      value: 0,
+    });
+  });
+
+  let dealsCreated = 0;
+  for (const batch of chunk(dealsPayload, 300)) {
+    const { error: dealsInsertError } = await supabase.from("deals").insert(batch);
+    if (dealsInsertError) {
+      errors.push(`Batch-Insert Deals fehlgeschlagen (${dealsInsertError.message}).`);
+      continue;
+    }
+    dealsCreated += batch.length;
   }
 
   revalidatePath("/dashboard/kontakte");
@@ -330,7 +438,7 @@ export async function importContactsWithDeals(
     message:
       total > 0
         ? `${imported} neu angelegt, ${updated} aktualisiert, ${dealsCreated} Deal(s) erstellt.${
-            errors.length ? ` ${errors.length} Zeile(n) mit Fehlern.` : ""
+            errors.length ? ` ${errors.length} Meldung(en) — siehe Details.` : ""
           }`
         : "Es konnte kein einziger Datensatz importiert werden.",
   };
