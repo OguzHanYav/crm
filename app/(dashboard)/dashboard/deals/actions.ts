@@ -10,6 +10,58 @@ export type ActionResult<T = undefined> = {
   data?: T;
 };
 
+const DEAL_SELECT = `
+  id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
+  contact:contacts ( id, first_name, last_name, email, phone ),
+  assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
+`;
+
+type ContactStatusLike = "Lead" | "In Kontakt" | "Kunde" | "Verloren";
+
+function statusFromStageName(stageName: string | null | undefined): ContactStatusLike | null {
+  if (!stageName) return null;
+  const normalized = stageName.toLowerCase();
+
+  if (normalized.includes("gewonnen") || normalized.includes("won") || normalized.includes("kunde")) {
+    return "Kunde";
+  }
+  if (normalized.includes("verloren") || normalized.includes("lost")) {
+    return "Verloren";
+  }
+  return "In Kontakt";
+}
+
+async function syncContactStatusForStage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  contactId: string | null,
+  newStageId: string
+) {
+  if (!contactId) return;
+
+  const { data: stageRow, error: stageError } = await supabase
+    .from("deal_stages")
+    .select("name")
+    .eq("id", newStageId)
+    .single();
+
+  if (stageError) {
+    console.error("syncContactStatusForStage stage lookup error:", stageError.message);
+    return;
+  }
+
+  const newStatus = statusFromStageName(stageRow?.name);
+  if (!newStatus) return;
+
+  const { error: contactError } = await supabase
+    .from("contacts")
+    .update({ status: newStatus })
+    .eq("id", contactId);
+
+  if (contactError) {
+    console.error("syncContactStatusForStage contact update error:", contactError.message);
+  }
+}
+
 export async function updateDealStage(
   dealId: string,
   newStageId: string
@@ -18,15 +70,9 @@ export async function updateDealStage(
 
   const { data, error } = await supabase
     .from("deals")
-    .update({ deal_stage_id: newStageId })
+    .update({ stage_id: newStageId })
     .eq("id", dealId)
-    .select(
-      `
-      id, name, pipeline_id, deal_stage_id, contact_id, assigned_to, value, created_at,
-      contact:contacts ( id, first_name, last_name, email, phone ),
-      assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
-      `
-    )
+    .select(DEAL_SELECT)
     .single();
 
   if (error) {
@@ -34,21 +80,20 @@ export async function updateDealStage(
     return { success: false, message: error.message };
   }
 
-  const transformedData = {
-    ...data,
-    stage_id: data.deal_stage_id,
-  } as unknown as Deal;
+  const dealRecord = data as unknown as Deal;
+
+  await syncContactStatusForStage(supabase, dealRecord.contact_id, newStageId);
 
   revalidatePath("/dashboard/deals");
-  return { success: true, data: transformedData };
+  revalidatePath("/dashboard/kontakte");
+  if (dealRecord.contact_id) {
+    revalidatePath(`/dashboard/kontakte/${dealRecord.contact_id}`);
+  }
+
+  return { success: true, data: dealRecord };
 }
 
-export type CreateDealState = {
-  success: boolean;
-  message?: string;
-  errors?: any;
-  data?: Deal;
-};
+export type CreateDealState = ActionResult<Deal>;
 
 export async function createDeal(
   _prevState: CreateDealState,
@@ -56,7 +101,7 @@ export async function createDeal(
 ): Promise<CreateDealState> {
   const supabase = await createClient();
 
-  const name = (formData.get("name") as string)?.trim() || (formData.get("title") as string)?.trim();
+  const name = (formData.get("name") as string)?.trim();
   const pipelineId = formData.get("pipeline_id") as string;
   const stageId = formData.get("stage_id") as string;
   const contactId = (formData.get("contact_id") as string) || null;
@@ -80,18 +125,12 @@ export async function createDeal(
     .insert({
       name,
       pipeline_id: pipelineId,
-      deal_stage_id: stageId,
+      stage_id: stageId,
       contact_id: contactId,
       assigned_to: assignedTo,
       value,
     })
-    .select(
-      `
-      id, name, pipeline_id, deal_stage_id, contact_id, assigned_to, value, created_at,
-      contact:contacts ( id, first_name, last_name, email, phone ),
-      assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
-      `
-    )
+    .select(DEAL_SELECT)
     .single();
 
   if (error) {
@@ -99,11 +138,15 @@ export async function createDeal(
     return { success: false, message: error.message };
   }
 
-  const transformedData = {
-    ...data,
-    stage_id: data.deal_stage_id,
-  } as unknown as Deal;
+  const dealRecord = data as unknown as Deal;
+
+  await syncContactStatusForStage(supabase, dealRecord.contact_id, stageId);
 
   revalidatePath("/dashboard/deals");
-  return { success: true, data: transformedData };
+  revalidatePath("/dashboard/kontakte");
+  if (dealRecord.contact_id) {
+    revalidatePath(`/dashboard/kontakte/${dealRecord.contact_id}`);
+  }
+
+  return { success: true, data: dealRecord };
 }

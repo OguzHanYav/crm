@@ -397,6 +397,7 @@ export async function updateContact(
   }
 
   revalidatePath(CONTACTS_PATH);
+  revalidatePath("/dashboard/deals");
   return { success: true, data: data as Contact };
 }
 
@@ -432,6 +433,7 @@ export async function deleteContact(contactId: string): Promise<ActionResult> {
   }
 
   revalidatePath(CONTACTS_PATH);
+  revalidatePath("/dashboard/deals");
   return { success: true };
 }
 

@@ -83,6 +83,9 @@ export default function ContactDetailSheet() {
 
   function refreshPayload() {
     if (contactId) load(contactId);
+    // Sorgt dafür, dass Server Components (Kanban-Board, Kontakt-Tabelle, ...)
+    // die durch revalidatePath() invalidierten Daten neu holen.
+    router.refresh();
   }
 
   if (!isOpen) return null;
@@ -190,7 +193,14 @@ function SheetContent({
             <select
               defaultValue={primaryDeal.stage_id}
               onChange={(e) => {
-                updateDealStage(primaryDeal.id, e.target.value).then(onRefresh);
+                const newStageId = e.target.value;
+                updateDealStage(primaryDeal.id, newStageId).then((result) => {
+                  if (result.success) {
+                    onRefresh();
+                  } else {
+                    alert(result.message ?? "Phase konnte nicht geändert werden.");
+                  }
+                });
               }}
               className="h-8 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
