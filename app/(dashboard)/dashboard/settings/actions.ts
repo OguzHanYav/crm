@@ -37,7 +37,7 @@ export async function exportDeals(): Promise<ExportResult> {
     .select(
       `
       id, name, value, created_at,
-      contact:contacts ( first_name, last_name, email, phone, company ),
+      contact:contacts ( first_name, last_name, email, phone, company, country ),
       stage:deal_stages!deals_stage_id_fkey ( name ),
       pipeline:pipelines ( name )
       `
@@ -64,6 +64,7 @@ export async function exportDeals(): Promise<ExportResult> {
       contact_email: contact?.email ?? "",
       contact_phone: contact?.phone ?? "",
       contact_company: contact?.company ?? "",
+      contact_country: contact?.country ?? "",
       value: d.value,
       created_at: d.created_at,
     };
@@ -81,8 +82,13 @@ export type ImportContactRow = {
   email: string;
   phone?: string;
   company?: string;
-  status?: string;
-  deal_value?: string;
+  country?: string;
+  /**
+   * Freitext-Feld "Deal": entweder ein Standardwert (z. B. "Neukunde") oder
+   * eine Pipeline-Bezeichnung/-Kürzel (z. B. "Döner"), anhand dessen die
+   * Ziel-Pipeline für den automatisch angelegten Deal bestimmt wird.
+   */
+  deal_name?: string;
   event_category?: string;
   notes?: string;
 };
@@ -96,8 +102,6 @@ export type ImportResult = {
   errors?: string[];
 };
 
-const VALID_STATUSES = ["Lead", "In Kontakt", "Kunde", "Verloren"];
-
 function splitFullName(fullName: string): { first: string; last: string } {
   const trimmed = fullName.trim().replace(/\s+/g, " ");
   const parts = trimmed.split(" ");
@@ -105,18 +109,42 @@ function splitFullName(fullName: string): { first: string; last: string } {
   return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
 }
 
-function parseDealValue(raw: string | undefined): number {
-  if (!raw) return 0;
-  const normalized = raw.replace(/[^\d,.-]/g, "").replace(",", ".");
-  const value = Number(normalized);
-  return Number.isFinite(value) && value >= 0 ? value : 0;
+type PipelineRow = { id: string; name: string };
+type StageRow = { id: string; pipeline_id: string; name: string; position: number };
+
+function resolveTargetPipeline(
+  pipelines: PipelineRow[],
+  dealNameRaw: string | undefined
+): PipelineRow | null {
+  if (pipelines.length === 0) return null;
+  const dealName = dealNameRaw?.trim().toLowerCase();
+
+  if (dealName) {
+    const match = pipelines.find(
+      (p) =>
+        p.name.toLowerCase().includes(dealName) || dealName.includes(p.name.toLowerCase())
+    );
+    if (match) return match;
+  }
+
+  return pipelines[0];
+}
+
+function resolveFirstStage(stages: StageRow[], pipelineId: string): StageRow | null {
+  const stagesForPipeline = stages
+    .filter((s) => s.pipeline_id === pipelineId)
+    .sort((a, b) => a.position - b.position);
+  return stagesForPipeline[0] ?? null;
 }
 
 /**
  * Importiert Kontakte aus einer geparsten Zeilenliste (Client parst die Datei mit xlsx).
  * - Dubletten werden anhand der E-Mail-Adresse per Update statt Insert behandelt (upsert-Logik).
- * - Für jeden Kontakt ohne bestehenden Deal wird automatisch ein Deal in der ersten
- *   Pipeline / ersten Phase angelegt (1:1-Beziehung Kontakt <-> Deal), mit optionalem Deal-Wert.
+ * - Für jeden Kontakt ohne bestehenden Deal wird automatisch ein Deal angelegt. Die Ziel-Pipeline
+ *   wird über das Feld "Deal" bestimmt (Freitext-Match auf den Pipeline-Namen), ansonsten wird
+ *   die erste Pipeline (alphabetisch) als Standard verwendet. Der Deal-Wert wird beim Import
+ *   nicht mehr erfasst und startet immer bei 0.
+ * - "Land" wird, sofern vorhanden, in contacts.country gespeichert.
  * - "Event-Kategorie" hat keine eigene Spalte im Schema und wird an contacts.notes angehängt.
  */
 export async function importContactsWithDeals(
@@ -141,29 +169,23 @@ export async function importContactsWithDeals(
   const { data: pipelines, error: pipelineError } = await supabase
     .from("pipelines")
     .select("id, name")
-    .order("name", { ascending: true })
-    .limit(1);
+    .order("name", { ascending: true });
 
   if (pipelineError) {
     console.error("importContactsWithDeals pipeline lookup error:", pipelineError.message);
   }
 
-  const defaultPipeline = pipelines?.[0] ?? null;
-  let defaultStageId: string | null = null;
+  const { data: stages, error: stageError } = await supabase
+    .from("deal_stages")
+    .select("id, pipeline_id, name, position")
+    .order("position", { ascending: true });
 
-  if (defaultPipeline) {
-    const { data: stages, error: stageError } = await supabase
-      .from("deal_stages")
-      .select("id, name, position")
-      .eq("pipeline_id", defaultPipeline.id)
-      .order("position", { ascending: true })
-      .limit(1);
-
-    if (stageError) {
-      console.error("importContactsWithDeals stage lookup error:", stageError.message);
-    }
-    defaultStageId = stages?.[0]?.id ?? null;
+  if (stageError) {
+    console.error("importContactsWithDeals stage lookup error:", stageError.message);
   }
+
+  const pipelineList: PipelineRow[] = pipelines ?? [];
+  const stageList: StageRow[] = stages ?? [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -183,8 +205,7 @@ export async function importContactsWithDeals(
       continue;
     }
 
-    const status = VALID_STATUSES.includes(row.status ?? "") ? (row.status as string) : "Lead";
-    const dealValue = parseDealValue(row.deal_value);
+    const country = row.country?.trim() || null;
     const eventCategory = row.event_category?.trim();
     const rawNotes = row.notes?.trim();
     const notesParts = [
@@ -224,7 +245,7 @@ export async function importContactsWithDeals(
           last_name: lastName,
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,
-          status,
+          country,
           notes: mergedNotes,
         })
         .eq("id", existing.id);
@@ -244,7 +265,8 @@ export async function importContactsWithDeals(
           email: email || null,
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,
-          status,
+          country,
+          status: "Lead",
           notes: notesSuffix,
         })
         .select("id")
@@ -258,7 +280,10 @@ export async function importContactsWithDeals(
       imported++;
     }
 
-    if (defaultPipeline && defaultStageId) {
+    const targetPipeline = resolveTargetPipeline(pipelineList, row.deal_name);
+    const targetStage = targetPipeline ? resolveFirstStage(stageList, targetPipeline.id) : null;
+
+    if (targetPipeline && targetStage) {
       const { data: existingDeal, error: dealFindError } = await supabase
         .from("deals")
         .select("id")
@@ -271,12 +296,13 @@ export async function importContactsWithDeals(
       }
 
       if (!existingDeal) {
+        const dealLabel = row.deal_name?.trim() || "Neukunde";
         const { error: dealError } = await supabase.from("deals").insert({
-          name: `Deal – ${firstName} ${lastName}`,
-          pipeline_id: defaultPipeline.id,
-          stage_id: defaultStageId,
+          name: `${dealLabel} – ${firstName} ${lastName}`,
+          pipeline_id: targetPipeline.id,
+          stage_id: targetStage.id,
           contact_id: contactId,
-          value: dealValue,
+          value: 0,
         });
 
         if (dealError) {
@@ -286,7 +312,7 @@ export async function importContactsWithDeals(
         }
       }
     } else {
-      errors.push(`Zeile ${rowNumber}: Kein Pipeline/Phase-Standard gefunden, Deal nicht angelegt.`);
+      errors.push(`Zeile ${rowNumber}: Keine passende Pipeline/Phase gefunden, Deal nicht angelegt.`);
     }
   }
 

@@ -20,6 +20,7 @@ export type Contact = {
   phone: string | null;
   company: string | null;
   website?: string | null;
+  country?: string | null;
   last_contacted_at?: string | null;
 };
 

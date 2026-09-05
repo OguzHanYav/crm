@@ -15,8 +15,8 @@ type TargetField =
   | "email"
   | "phone"
   | "company"
-  | "status"
-  | "deal_value"
+  | "country"
+  | "deal_name"
   | "event_category"
   | "notes"
   | "ignore";
@@ -26,8 +26,8 @@ const TARGET_FIELDS: { value: TargetField; label: string }[] = [
   { value: "email", label: "E-Mail" },
   { value: "phone", label: "Telefon" },
   { value: "company", label: "Firma" },
-  { value: "status", label: "Status" },
-  { value: "deal_value", label: "Deal-Wert" },
+  { value: "country", label: "Land" },
+  { value: "deal_name", label: "Deal" },
   { value: "event_category", label: "Event-Kategorie" },
   { value: "notes", label: "Notizen" },
   { value: "ignore", label: "— ignorieren —" },
@@ -38,8 +38,8 @@ const AUTO_MATCH: Record<TargetField, string[]> = {
   email: ["email", "e-mail", "mail"],
   phone: ["telefon", "phone", "handy", "mobile", "tel"],
   company: ["firma", "company", "unternehmen", "organisation"],
-  status: ["status", "phase", "stage"],
-  deal_value: ["deal-wert", "deal wert", "wert", "value", "umsatz"],
+  country: ["land", "ülke", "ulke", "country"],
+  deal_name: ["deal", "pipeline"],
   event_category: ["event-kategorie", "event kategorie", "kategorie", "category"],
   notes: ["notizen", "notes", "bemerkung"],
   ignore: [],
@@ -64,14 +64,14 @@ function downloadWorkbook(rows: Record<string, unknown>[], sheetName: string, fi
 }
 
 function downloadTemplate() {
-  const headers = ["Name", "E-Mail", "Telefon", "Firma", "Status", "Deal-Wert", "Event-Kategorie"];
+  const headers = ["Name", "E-Mail", "Telefon", "Firma", "Land", "Deal", "Event-Kategorie"];
   const exampleRow = [
     "Max Mustermann",
     "max.mustermann@beispiel.de",
     "+49 151 23456789",
     "Muster GmbH",
-    "Lead",
-    "5000",
+    "Deutschland",
+    "Neukunde",
     "Webinar Q1",
   ];
   const worksheet = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
@@ -200,8 +200,8 @@ export default function DataManagementSettings() {
         email: mapped.email ?? "",
         phone: mapped.phone,
         company: mapped.company,
-        status: mapped.status,
-        deal_value: mapped.deal_value,
+        country: mapped.country,
+        deal_name: mapped.deal_name,
         event_category: mapped.event_category,
         notes: mapped.notes,
       };
@@ -279,9 +279,12 @@ export default function DataManagementSettings() {
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-base font-semibold text-gray-900">Daten importieren</h2>
         <p className="mt-1 text-sm text-gray-500">
-          Unterstützt .xlsx und .csv. Für jeden Kontakt wird automatisch ein Deal in der
-          Standard-Pipeline angelegt, sofern noch keiner existiert. Dubletten werden anhand der
-          E-Mail-Adresse aktualisiert statt doppelt angelegt.
+          Unterstützt .xlsx und .csv. Für jeden Kontakt wird automatisch ein Deal angelegt, sofern
+          noch keiner existiert — die Ziel-Pipeline wird über das Feld &quot;Deal&quot; bestimmt
+          (z. B. &quot;Neukunde&quot; oder eine Pipeline-Bezeichnung wie &quot;Döner&quot;),
+          andernfalls wird die Standard-Pipeline verwendet. Ein angegebenes Land wird in das
+          Kontakt-Feld &quot;Land&quot; übernommen. Dubletten werden anhand der E-Mail-Adresse
+          aktualisiert statt doppelt angelegt.
         </p>
 
         <div

@@ -2,12 +2,6 @@ import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import type { Pipeline, DealStage, Deal, Contact, TeamMember } from "./types";
 
-// React.cache dedupliziert identische Aufrufe innerhalb desselben Requests
-// (z.B. wenn Deals- und Kontakte-Tab im selben Render Pipelines/Stages/Team
-// abfragen). unstable_cache ist hier bewusst NICHT einsetzbar, da createClient()
-// auf cookies() (next/headers) basiert und Next.js dynamische Funktionen
-// innerhalb von unstable_cache nicht erlaubt (RLS würde sonst umgangen).
-
 export const getPipelines = cache(async (): Promise<Pipeline[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -67,9 +61,6 @@ export const getTeamMembers = cache(async (): Promise<TeamMember[]> => {
   return data ?? [];
 });
 
-// Deals + Kontakt + Sales-Rep in EINER Join-Abfrage (kein Waterfall).
-// Passend zum Index auf deals(stage_id, contact_id, value, created_at):
-// gefiltert nach pipeline_id, sortiert nach created_at (indexed).
 export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
   const supabase = await createClient();
 
@@ -78,7 +69,7 @@ export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
     .select(
       `
       id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
-      contact:contacts ( id, first_name, last_name, email, phone, company, website, last_contacted_at ),
+      contact:contacts ( id, first_name, last_name, email, phone, company, website, country, last_contacted_at ),
       assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
       `
     )
@@ -93,7 +84,6 @@ export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
   return (data ?? []) as unknown as Deal[];
 }
 
-// Nur für Dropdown/Zuordnung benötigt -> schlanker Select statt '*'
 export async function getContacts(): Promise<Contact[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

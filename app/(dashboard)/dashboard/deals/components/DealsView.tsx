@@ -6,7 +6,7 @@ import type { Deal, DealStage, Pipeline, Contact, TeamMember } from "../types";
 import DealsHeader from "./DealsHeader";
 import DealsActionsBar from "./DealsActionsBar";
 import StageTabs from "./StageTabs";
-import StageColumn from "./StageColumn";
+import DealsTable from "./DealsTable";
 import NewDealModal from "./NewDealModal";
 import { updateDealStage } from "../actions";
 
@@ -64,11 +64,13 @@ export default function DealsView({
     [pathname, router, searchParams]
   );
 
-  const moveDeal = useCallback(async (dealId: string, newStageId: string) => {
-    await updateDealStage(dealId, newStageId);
-    router.refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const moveDeal = useCallback(
+    async (dealId: string, newStageId: string) => {
+      await updateDealStage(dealId, newStageId);
+      router.refresh();
+    },
+    [router]
+  );
 
   const openDeal = useCallback(
     (deal: Deal) => {
@@ -80,6 +82,13 @@ export default function DealsView({
 
   const activePipeline = pipelines.find((p) => p.id === selectedPipelineId);
   const activeStageId = searchParams.get("stage") ?? stages[0]?.id ?? "";
+
+  // Es wird ausschließlich die aktuell per Tab ausgewählte Phase gerendert –
+  // keine parallele Spalten-/Kanban-Ansicht mehr.
+  const dealsForActiveStage = useMemo(
+    () => filteredDeals.filter((d) => d.stage_id === activeStageId),
+    [filteredDeals, activeStageId]
+  );
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
@@ -94,18 +103,12 @@ export default function DealsView({
         onSelect={(stageId) => updateParams({ stage: stageId })}
       />
 
-      <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
-        {stages.map((stage) => (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            deals={filteredDeals.filter((d) => d.stage_id === stage.id)}
-            allStages={stages}
-            onDropDeal={moveDeal}
-            onOpenDeal={openDeal}
-          />
-        ))}
-      </div>
+      <DealsTable
+        deals={dealsForActiveStage}
+        allStages={stages}
+        onStageChange={moveDeal}
+        onRowClick={openDeal}
+      />
 
       {modalOpen && (
         <NewDealModal

@@ -52,7 +52,7 @@ function IconSettings() {
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: IconDashboard },
-  { href: '/dashboard/deals', label: 'Deals', icon: IconPipeline },
+  { href: '/dashboard/deals', label: 'Pipelines', icon: IconPipeline },
   { href: '/dashboard/kontakte', label: 'Kontakte', icon: IconContacts },
   { href: '/dashboard/anrufe', label: 'Anrufe', icon: IconCalls },
   { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
