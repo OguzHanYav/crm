@@ -75,12 +75,15 @@ export async function exportDeals(): Promise<ExportResult> {
 // ==================== IMPORT ====================
 
 export type ImportContactRow = {
-  first_name: string;
-  last_name: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
   email: string;
   phone?: string;
   company?: string;
   status?: string;
+  deal_value?: string;
+  event_category?: string;
 };
 
 export type ImportResult = {
@@ -94,6 +97,27 @@ export type ImportResult = {
 
 const VALID_STATUSES = ["Lead", "In Kontakt", "Kunde", "Verloren"];
 
+function splitFullName(fullName: string): { first: string; last: string } {
+  const trimmed = fullName.trim().replace(/\s+/g, " ");
+  const parts = trimmed.split(" ");
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
+}
+
+function parseDealValue(raw: string | undefined): number {
+  if (!raw) return 0;
+  const normalized = raw.replace(/[^\d,.-]/g, "").replace(",", ".");
+  const value = Number(normalized);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+/**
+ * Importiert Kontakte aus einer geparsten Zeilenliste (Client parst die Datei mit xlsx).
+ * - Dubletten werden anhand der E-Mail-Adresse per Update statt Insert behandelt (upsert-Logik).
+ * - Für jeden Kontakt ohne bestehenden Deal wird automatisch ein Deal in der ersten
+ *   Pipeline / ersten Phase angelegt (1:1-Beziehung Kontakt <-> Deal), mit optionalem Deal-Wert.
+ * - "Event-Kategorie" hat keine eigene Spalte im Schema und wird an contacts.notes angehängt.
+ */
 export async function importContactsWithDeals(
   rows: ImportContactRow[]
 ): Promise<ImportResult> {
@@ -144,19 +168,28 @@ export async function importContactsWithDeals(
     const row = rows[i];
     const rowNumber = i + 2;
     const email = row.email?.trim();
-    const firstName = row.first_name?.trim();
-    const lastName = row.last_name?.trim();
+
+    let firstName = row.first_name?.trim() ?? "";
+    let lastName = row.last_name?.trim() ?? "";
+    if (!firstName && !lastName && row.full_name) {
+      const split = splitFullName(row.full_name);
+      firstName = split.first;
+      lastName = split.last;
+    }
 
     if (!email || !firstName || !lastName) {
-      errors.push(`Zeile ${rowNumber}: Vorname, Nachname und E-Mail sind erforderlich.`);
+      errors.push(`Zeile ${rowNumber}: Name und E-Mail sind erforderlich.`);
       continue;
     }
 
     const status = VALID_STATUSES.includes(row.status ?? "") ? (row.status as string) : "Lead";
+    const dealValue = parseDealValue(row.deal_value);
+    const eventCategory = row.event_category?.trim();
+    const notesSuffix = eventCategory ? `Event-Kategorie: ${eventCategory}` : null;
 
     const { data: existing, error: findError } = await supabase
       .from("contacts")
-      .select("id")
+      .select("id, notes")
       .eq("email", email)
       .maybeSingle();
 
@@ -168,6 +201,10 @@ export async function importContactsWithDeals(
     let contactId: string;
 
     if (existing) {
+      const mergedNotes = notesSuffix
+        ? [existing.notes, notesSuffix].filter(Boolean).join(" · ")
+        : existing.notes;
+
       const { error: updateError } = await supabase
         .from("contacts")
         .update({
@@ -176,6 +213,7 @@ export async function importContactsWithDeals(
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,
           status,
+          notes: mergedNotes,
         })
         .eq("id", existing.id);
 
@@ -195,6 +233,7 @@ export async function importContactsWithDeals(
           phone: row.phone?.trim() || null,
           company: row.company?.trim() || null,
           status,
+          notes: notesSuffix,
         })
         .select("id")
         .single();
@@ -225,7 +264,7 @@ export async function importContactsWithDeals(
           pipeline_id: defaultPipeline.id,
           stage_id: defaultStageId,
           contact_id: contactId,
-          value: 0,
+          value: dealValue,
         });
 
         if (dealError) {
