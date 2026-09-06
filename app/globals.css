@@ -1,42 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0A0B0F;
-  --foreground: #EDEEF2;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
 
-  --card: #121319;
-  --card-foreground: #EDEEF2;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
 
-  --popover: #15161D;
-  --popover-foreground: #EDEEF2;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
 
-  --muted: #1A1C24;
-  --muted-foreground: #8B8FA3;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
 
-  --border: #FFFFFF14;
-  --border-strong: #FFFFFF22;
-  --input: #FFFFFF0F;
-  --ring: #6D6AFF66;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --input: #F1F5F9;
+  --ring: #2563EB55;
 
-  --accent: #6D6AFF;
+  --accent: #2563EB;
   --accent-foreground: #FFFFFF;
-  --accent-soft: #6D6AFF1F;
-  --accent-glow: #6D6AFF40;
+  --accent-soft: #2563EB1A;
+  --accent-glow: #2563EB33;
 
-  --success: #22C55E;
-  --success-soft: #22C55E1F;
-  --warning: #F59E0B;
-  --warning-soft: #F59E0B1F;
-  --danger: #EF4444;
-  --danger-soft: #EF44441F;
-  --info: #38BDF8;
-  --info-soft: #38BDF81F;
+  --success: #16A34A;
+  --success-soft: #16A34A1A;
+  --warning: #D97706;
+  --warning-soft: #D977061A;
+  --danger: #DC2626;
+  --danger-soft: #DC26261A;
+  --info: #0284C7;
+  --info-soft: #0284C71A;
 
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-card: 0 4px 24px -8px rgba(0, 0, 0, 0.5);
+  --shadow-soft: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
+  --shadow-card: 0 4px 24px -8px rgba(15, 23, 42, 0.12);
   --shadow-glow: 0 0 0 1px var(--accent-glow), 0 8px 24px -8px var(--accent-glow);
 }
 
@@ -90,7 +90,6 @@ body {
   color: var(--foreground);
 }
 
-/* Slim, elegant scrollbars for the dashboard shell */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -107,7 +106,6 @@ body {
   background: transparent;
 }
 
-/* Utilities: soft glow + consistent focus ring for interactive surfaces */
 .ring-focus {
   outline: none;
 }

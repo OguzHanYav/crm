@@ -26,17 +26,17 @@ export default async function DashboardLayout({
     : profile?.email || user.email
 
   return (
-    <div className="flex min-h-screen bg-[#f3f4f6]">
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-[72px] flex-col items-center justify-between border-r border-gray-200 bg-white py-4">
+    <div className="flex min-h-screen bg-background">
+      <aside className="fixed inset-y-0 left-0 z-40 flex w-[72px] flex-col items-center justify-between border-r border-border bg-card py-4">
         <div className="flex flex-col items-center gap-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-sm font-bold text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">
             Y
           </div>
           <ClientNav />
         </div>
 
         <div
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-500"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
           title={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
         >
           {profile?.role === 'admin' ? 'AD' : 'MA'}
@@ -48,7 +48,7 @@ export default async function DashboardLayout({
           displayName={displayName}
           role={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
         />
-        <main className="flex-1 bg-[#f3f4f6] p-6">{children}</main>
+        <main className="flex-1 bg-background p-6">{children}</main>
       </div>
     </div>
   )

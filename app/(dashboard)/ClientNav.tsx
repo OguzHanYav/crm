@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { ReactElement } from 'react'
 
 function IconDashboard(): ReactElement {
@@ -55,16 +55,15 @@ const navItems = [
 
 function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: () => ReactElement }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
   const isActive = pathname === href || (href === '/dashboard/deals' && pathname.startsWith('/dashboard/deals'))
 
   return (
     <Link
       href={href}
-      className={`flex h-11 w-11 items-center justify-center rounded-lg transition-colors ${
+      className={`ring-focus flex h-11 w-11 items-center justify-center rounded-lg transition-colors ${
         isActive
-          ? 'bg-blue-50 text-blue-600'
-          : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+          ? 'bg-accent-soft text-accent'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       }`}
       title={label}
     >
