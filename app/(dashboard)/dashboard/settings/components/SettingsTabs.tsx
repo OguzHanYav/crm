@@ -2,22 +2,25 @@
 
 import { useState, type ReactNode } from "react";
 
-type TabKey = "data" | "pipeline" | "profile";
+type TabKey = "data" | "pipeline" | "profile" | "admin";
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "data", label: "Daten-Management" },
   { key: "pipeline", label: "Pipeline-Einstellungen" },
   { key: "profile", label: "Profil & Account" },
+  { key: "admin", label: "🔒 Admin" },
 ];
 
 export default function SettingsTabs({
   dataPanel,
   pipelinePanel,
   profilePanel,
+  adminPanel,
 }: {
   dataPanel: ReactNode;
   pipelinePanel: ReactNode;
   profilePanel: ReactNode;
+  adminPanel: ReactNode;
 }) {
   const [tab, setTab] = useState<TabKey>("data");
 
@@ -25,11 +28,12 @@ export default function SettingsTabs({
     data: dataPanel,
     pipeline: pipelinePanel,
     profile: profilePanel,
+    admin: adminPanel,
   };
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 p-1 w-fit">
+      <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 p-1 w-fit flex-wrap">
         {TABS.map((t) => {
           const isActive = t.key === tab;
           return (
