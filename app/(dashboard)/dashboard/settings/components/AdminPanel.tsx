@@ -1,14 +1,31 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { getUsers, setUserRole, type UserRow } from "../admin-actions";
+import { getUsers, updateUser, createUser, type UserRow } from "../admin-actions";
 
 export default function AdminPanel() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Neuer User Formular
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "employee">("employee");
+  const [showForm, setShowForm] = useState(false);
+
+  // Edit User
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "employee">("employee");
+  const [showRoleField, setShowRoleField] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -16,28 +33,84 @@ export default function AdminPanel() {
 
   async function loadUsers() {
     setLoading(true);
+    setError(null);
     const result = await getUsers();
     if (result.success && result.data) {
       setUsers(result.data);
-      // Aktuelle User-ID speichern (für später)
       const { data } = await (await import("@/utils/supabase/client")).createClient().auth.getUser();
-      setCurrentUserId(data.user?.id ?? null);
+      const userId = data.user?.id ?? null;
+      setCurrentUserId(userId);
+      
+      // Prüfe ob der aktuelle User Admin ist
+      const currentUser = result.data.find(u => u.id === userId);
+      setIsAdmin(currentUser?.role === "admin");
     } else {
       setError(result.message ?? "Fehler beim Laden der Benutzer.");
     }
     setLoading(false);
   }
 
-  function handleRoleChange(userId: string, newRole: "admin" | "employee") {
+  function startEdit(user: UserRow) {
+    setEditingId(user.id);
+    setEditFirstName(user.first_name || "");
+    setEditLastName(user.last_name || "");
+    setEditRole(user.role as "admin" | "employee");
+    setShowRoleField(isAdmin); // Nur Admins können Rolle ändern
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  function saveEdit(userId: string) {
+    setError(null);
+    setSuccess(null);
     startTransition(async () => {
-      const result = await setUserRole(userId, newRole);
+      const result = await updateUser(
+        userId,
+        editFirstName,
+        editLastName,
+        showRoleField ? editRole : undefined
+      );
       if (result.success) {
         setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+          prev.map((u) =>
+            u.id === userId
+              ? { ...u, first_name: editFirstName, last_name: editLastName, role: showRoleField ? editRole : u.role }
+              : u
+          )
         );
-        setError(null);
+        setEditingId(null);
+        setSuccess("Benutzer erfolgreich aktualisiert.");
       } else {
-        setError(result.message ?? "Fehler beim Ändern der Rolle.");
+        setError(result.message ?? "Fehler beim Aktualisieren.");
+      }
+    });
+  }
+
+  function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    
+    if (!newEmail || !newPassword || !newFirstName || !newLastName) {
+      setError("Alle Felder sind erforderlich.");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await createUser(newEmail, newPassword, newFirstName, newLastName, newRole);
+      if (result.success) {
+        setSuccess(result.message ?? "Benutzer erfolgreich angelegt.");
+        setNewEmail("");
+        setNewPassword("");
+        setNewFirstName("");
+        setNewLastName("");
+        setNewRole("employee");
+        setShowForm(false);
+        loadUsers();
+      } else {
+        setError(result.message ?? "Fehler beim Anlegen des Benutzers.");
       }
     });
   }
@@ -52,15 +125,106 @@ export default function AdminPanel() {
 
   return (
     <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
-      <h2 className="text-base font-semibold text-foreground">Benutzerverwaltung</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Hier kannst du die Rollen aller Benutzer verwalten.
-      </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Benutzerverwaltung</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isAdmin 
+              ? "Hier kannst du alle Benutzer verwalten, bearbeiten und ihre Rollen anpassen."
+              : "Hier kannst du deine eigenen Profildaten bearbeiten."}
+          </p>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="ring-focus rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:brightness-110"
+          >
+            {showForm ? "✕ Abbrechen" : "+ Neuer Benutzer"}
+          </button>
+        )}
+      </div>
 
       {error && (
         <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
       )}
+      {success && (
+        <p className="mt-3 rounded-md bg-success/10 px-3 py-2 text-sm text-success">{success}</p>
+      )}
 
+      {/* Neuer Benutzer Formular (nur Admin) */}
+      {showForm && isAdmin && (
+        <form onSubmit={handleCreateUser} className="mt-4 rounded-lg border border-border p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Vorname</label>
+              <input
+                type="text"
+                value={newFirstName}
+                onChange={(e) => setNewFirstName(e.target.value)}
+                className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
+                placeholder="Max"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Nachname</label>
+              <input
+                type="text"
+                value={newLastName}
+                onChange={(e) => setNewLastName(e.target.value)}
+                className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
+                placeholder="Mustermann"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">E-Mail</label>
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
+                placeholder="user@beispiel.de"
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Passwort</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
+                placeholder="••••••••"
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Rolle</label>
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as "admin" | "employee")}
+                className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
+              >
+                <option value="employee">Mitarbeiter</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={isPending}
+                className="ring-focus w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
+              >
+                {isPending ? "Wird angelegt..." : "Benutzer anlegen"}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* Benutzer Tabelle */}
       <div className="mt-4 overflow-x-auto rounded-lg border border-border">
         <table className="min-w-full divide-y divide-border text-sm">
           <thead className="bg-muted/30">
@@ -74,46 +238,82 @@ export default function AdminPanel() {
           <tbody className="divide-y divide-border">
             {users.map((user) => {
               const isSelf = user.id === currentUserId;
-              const isAdmin = user.role === "admin";
+              const isAdminUser = user.role === "admin";
+              const isEditing = editingId === user.id;
 
               return (
                 <tr key={user.id} className="hover:bg-muted/20">
                   <td className="px-4 py-3 font-medium text-foreground">
-                    {user.first_name || user.last_name
-                      ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()
-                      : "—"}
+                    {isEditing ? (
+                      <div className="flex gap-2">
+                        <input
+                          value={editFirstName}
+                          onChange={(e) => setEditFirstName(e.target.value)}
+                          className="ring-focus w-20 rounded border border-border bg-input px-2 py-1 text-sm"
+                          placeholder="Vorname"
+                        />
+                        <input
+                          value={editLastName}
+                          onChange={(e) => setEditLastName(e.target.value)}
+                          className="ring-focus w-20 rounded border border-border bg-input px-2 py-1 text-sm"
+                          placeholder="Nachname"
+                        />
+                      </div>
+                    ) : (
+                      user.first_name || user.last_name
+                        ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim()
+                        : "—"
+                    )}
                   </td>
                   <td className="px-4 py-3 text-foreground">{user.email}</td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        isAdmin
-                          ? "bg-accent-soft text-accent"
-                          : "bg-muted/60 text-muted-foreground"
-                      }`}
-                    >
-                      {isAdmin ? "Administrator" : "Mitarbeiter"}
-                    </span>
+                    {isEditing && showRoleField ? (
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value as "admin" | "employee")}
+                        className="ring-focus rounded border border-border bg-input px-2 py-1 text-sm"
+                      >
+                        <option value="employee">Mitarbeiter</option>
+                        <option value="admin">Administrator</option>
+                      </select>
+                    ) : (
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          isAdminUser
+                            ? "bg-accent-soft text-accent"
+                            : "bg-muted/60 text-muted-foreground"
+                        }`}
+                      >
+                        {isAdminUser ? "Administrator" : "Mitarbeiter"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {isSelf ? (
-                      <span className="text-xs text-muted-foreground">(Dein Account)</span>
-                    ) : (
+                    {isEditing ? (
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() =>
-                            handleRoleChange(user.id, isAdmin ? "employee" : "admin")
-                          }
+                          onClick={() => saveEdit(user.id)}
                           disabled={isPending}
-                          className={`ring-focus rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                            isAdmin
-                              ? "border border-warning/30 text-warning hover:bg-warning/10"
-                              : "border border-accent/30 text-accent hover:bg-accent/10"
-                          }`}
+                          className="ring-focus rounded-md bg-accent px-3 py-1 text-xs font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
                         >
-                          {isAdmin ? "👤 Mitarbeiter" : "⭐ Admin"}
+                          Speichern
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="ring-focus rounded-md border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                        >
+                          Abbrechen
                         </button>
                       </div>
+                    ) : (isSelf || isAdmin) ? (
+                      <button
+                        onClick={() => startEdit(user)}
+                        className="ring-focus rounded-md border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                      >
+                        ✎ Bearbeiten
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </td>
                 </tr>
