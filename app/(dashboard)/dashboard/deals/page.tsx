@@ -1,6 +1,5 @@
 import { getOrCreateStandardStages, getAllDeals } from "./data";
-import DealsBoard from "./components/DealsBoard";
-import DealsHeader from "./components/DealsHeader";
+import DealsView from "./components/DealsView";
 import ContactDetailSheet from "@/components/contacts/ContactDetailSheet";
 
 export default async function DealsPage() {
@@ -11,10 +10,7 @@ export default async function DealsPage() {
 
   return (
     <>
-      <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
-        <DealsHeader pipelineName="Pipeline" totalCount={deals.length} />
-        <DealsBoard stages={stages} initialDeals={deals} />
-      </div>
+      <DealsView projectName="Pipeline" stages={stages} deals={deals} />
       <ContactDetailSheet />
     </>
   );

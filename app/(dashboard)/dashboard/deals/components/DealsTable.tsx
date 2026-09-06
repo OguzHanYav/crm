@@ -1,15 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import type { Deal, PipelineStage } from "../types";
-
-function formatEuro(value: number) {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: "EUR",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function formatDateDE(dateString: string) {
   return new Intl.DateTimeFormat("de-DE", {
@@ -30,134 +21,115 @@ export default function DealsTable({
   onStageChange: (dealId: string, newStageId: string) => void;
   onRowClick: (deal: Deal) => void;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const allSelected = deals.length > 0 && selected.size === deals.length;
-
-  function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(deals.map((d) => d.id)));
-  }
-
-  function toggleOne(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
   if (deals.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
-        Keine Deals in dieser Phase.
+      <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
+        Keine Kunden in dieser Phase.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-[#fefce8]">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <thead className="bg-slate-50">
           <tr>
-            <th className="w-10 px-4 py-3">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                onChange={toggleAll}
-                className="h-4 w-4 rounded border-gray-300 accent-blue-600"
-              />
-            </th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Deal-Name</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Name / E-Mail</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Firma</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Telefon</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Land</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Erstellt am</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Phase</th>
-            <th className="px-4 py-3 text-right font-medium text-gray-500">Wert</th>
-            <th className="px-4 py-3 text-right font-medium text-gray-500">Aktionen</th>
+            <th className="px-4 py-3 text-left font-medium text-slate-500">Name (Kunde / Deal)</th>
+            <th className="px-4 py-3 text-left font-medium text-slate-500">Ansprechpartner / Firma</th>
+            <th className="px-4 py-3 text-left font-medium text-slate-500">Telefonnummer</th>
+            <th className="px-4 py-3 text-left font-medium text-slate-500">E-Mail-Adresse</th>
+            <th className="px-4 py-3 text-left font-medium text-slate-500">Status / Erstellt am</th>
+            <th className="px-4 py-3 text-right font-medium text-slate-500">Aktionen</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-slate-100">
           {deals.map((deal) => {
             const contact = deal.contact;
+            const stage = allStages.find((s) => s.id === deal.stage_id);
+
             return (
               <tr
                 key={deal.id}
                 onClick={() => onRowClick(deal)}
-                className="cursor-pointer transition-colors hover:bg-amber-50/60"
+                className="cursor-pointer transition-colors hover:bg-slate-50"
               >
-                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <input
-                    type="checkbox"
-                    checked={selected.has(deal.id)}
-                    onChange={() => toggleOne(deal.id)}
-                    className="h-4 w-4 rounded border-gray-300 accent-blue-600"
-                  />
-                </td>
-
                 <td className="px-4 py-3">
-                  <span className="font-semibold text-gray-900">{deal.name}</span>
+                  <span className="font-medium text-slate-900">{deal.name}</span>
                 </td>
 
                 <td className="px-4 py-3">
                   {contact ? (
                     <div className="flex flex-col">
-                      <span className="font-medium text-gray-800">
+                      <span className="text-slate-800">
                         {contact.first_name} {contact.last_name}
                       </span>
-                      {contact.email && (
-                        <span className="text-xs text-gray-500">{contact.email}</span>
-                      )}
+                      <span className="text-xs text-slate-400">{contact.company ?? "—"}</span>
                     </div>
                   ) : (
-                    <span className="text-gray-400">Kein Ansprechpartner</span>
+                    <span className="text-slate-400">Kein Kontakt</span>
                   )}
                 </td>
-
-                <td className="px-4 py-3 text-gray-600">{contact?.company ?? "—"}</td>
 
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {contact?.phone ? (
-                    <a href={`tel:${contact.phone}`} className="text-sky-500 hover:underline">
+                    <a
+                      href={`tel:${contact.phone}`}
+                      className="text-slate-600 hover:text-slate-900 hover:underline"
+                    >
                       {contact.phone}
                     </a>
                   ) : (
-                    <span className="text-gray-300">—</span>
+                    <span className="text-slate-300">—</span>
                   )}
                 </td>
 
-                <td className="px-4 py-3 text-gray-600">{contact?.country ?? "—"}</td>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  {contact?.email ? (
+                    <a
+                      href={`mailto:${contact.email}`}
+                      className="text-slate-600 hover:text-slate-900 hover:underline"
+                    >
+                      {contact.email}
+                    </a>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
+                </td>
 
-                <td className="px-4 py-3 text-gray-500">{formatDateDE(deal.created_at)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    {stage && (
+                      <span
+                        className="w-fit rounded-full px-2 py-0.5 text-xs font-medium"
+                        style={{ backgroundColor: `${stage.color}1A`, color: stage.color }}
+                      >
+                        {stage.name}
+                      </span>
+                    )}
+                    <span className="text-xs text-slate-400">{formatDateDE(deal.created_at)}</span>
+                  </div>
+                </td>
 
                 <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  <select
-                    value={deal.pipeline_stage_id ?? ""}
-                    onChange={(e) => onStageChange(deal.id, e.target.value)}
-                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-600"
-                  >
-                    <option value="" disabled>
-                      — Phase wählen —
-                    </option>
-                    {allStages.map((stage) => (
-                      <option key={stage.id} value={stage.id}>
-                        {stage.name}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-
-                <td className="px-4 py-3 text-right font-semibold text-gray-800">
-                  {formatEuro(deal.value)}
-                </td>
-
-                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => onRowClick(deal)}
-                    className="rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                  >
-                    Öffnen
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <select
+                      value={deal.stage_id}
+                      onChange={(e) => onStageChange(deal.id, e.target.value)}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 focus:border-slate-400 focus:outline-none"
+                    >
+                      {allStages.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => onRowClick(deal)}
+                      className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                    >
+                      Öffnen
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
