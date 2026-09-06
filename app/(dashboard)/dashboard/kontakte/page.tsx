@@ -1,4 +1,4 @@
-import { getContacts, getCurrentUserRole, getTeamMembers, getContactCompanies } from "./data";
+import { getContacts, getCurrentUserRole, getTeamMembers, getContactCompanies, getContactsTotalCount } from "./data";
 import ContactsSearch from "./components/ContactsSearch";
 import ContactsTable from "./components/ContactsTable";
 import ContactsFilterBar from "./components/ContactsFilterBar";
@@ -31,11 +31,12 @@ export default async function KontaktePage({
     eventCategory: event as CallType | undefined,
   };
 
-  const [contacts, role, teamMembers, companies] = await Promise.all([
+  const [contacts, role, teamMembers, companies, totalCount] = await Promise.all([
     getContacts(filters),
     getCurrentUserRole(),
     getTeamMembers(),
     getContactCompanies(),
+    getContactsTotalCount(filters),
   ]);
 
   const isAdmin = role === "admin";
@@ -46,7 +47,7 @@ export default async function KontaktePage({
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-foreground">Kontakte & Leads</h1>
           <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent">
-            {contacts.length}
+            {totalCount}
           </span>
         </div>
 
@@ -58,7 +59,7 @@ export default async function KontaktePage({
 
       <ContactsFilterBar companies={companies} />
 
-      <ContactsTable contacts={contacts} isAdmin={isAdmin} teamMembers={teamMembers} />
+      <ContactsTable contacts={contacts} isAdmin={isAdmin} teamMembers={teamMembers} totalCount={totalCount} />
 
       <ContactDetailSheet />
     </div>

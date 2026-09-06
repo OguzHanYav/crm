@@ -18,15 +18,30 @@ export type ContactFilters = {
   eventCategory?: string;
 };
 
-export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
+// Lädt standardmäßig nur die ersten 100 Kontakte (Performance); "Mehr laden" ruft
+// loadMoreContacts (actions.ts) mit einem höheren offset erneut auf.
+export async function getContacts(
+  filters?: ContactFilters | string,
+  limit = 100,
+  offset = 0
+): Promise<Contact[]> {
   const supabase = await createClient();
   const normalized: ContactFilters =
     typeof filters === "string" ? { q: filters } : filters ?? {};
 
   let query = supabase
     .from("contacts")
-    .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
-    .order("created_at", { ascending: false });
+    .select(
+      `
+      id, first_name, last_name, email, phone, company, country, status, notes, created_at,
+      deals ( id, created_at, stage_id, stage:deal_stages!stage_id ( id, name, color ) )
+      `
+    )
+    // Sekundäres Sortierkriterium "id": Bulk-Importe teilen sich oft denselben
+    // created_at-Zeitstempel — ohne stabilen Tiebreaker liefert range()-Pagination
+    // instabile/duplizierte Zeilen an den Seitengrenzen.
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true });
 
   if (normalized.q && normalized.q.trim().length > 0) {
     const term = normalized.q.trim();
@@ -51,6 +66,8 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
     query = query.lte("created_at", `${normalized.dateTo}T23:59:59.999`);
   }
 
+  query = query.range(offset, offset + limit - 1);
+
   const { data, error } = await query;
 
   if (error) {
@@ -58,7 +75,46 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
     return [];
   }
 
-  return (data ?? []) as Contact[];
+  return (data ?? []).map((row: any) => {
+    const deals = Array.isArray(row.deals) ? row.deals : row.deals ? [row.deals] : [];
+    const latestDeal = [...deals].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    const stageRaw = latestDeal?.stage;
+    const currentStage = stageRaw ? (Array.isArray(stageRaw) ? stageRaw[0] : stageRaw) : null;
+
+    const { deals: _deals, ...contact } = row;
+    return { ...contact, currentStage: currentStage ?? null };
+  }) as Contact[];
+}
+
+// Gesamtzahl der zu den Filtern passenden Kontakte (für "Zeige X von Y Kontakten").
+export async function getContactsTotalCount(filters?: ContactFilters | string): Promise<number> {
+  const supabase = await createClient();
+  const normalized: ContactFilters =
+    typeof filters === "string" ? { q: filters } : filters ?? {};
+
+  let query = supabase.from("contacts").select("id", { count: "exact", head: true });
+
+  if (normalized.q && normalized.q.trim().length > 0) {
+    const term = normalized.q.trim();
+    query = query.or(
+      `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`
+    );
+  }
+  if (normalized.status) query = query.eq("status", normalized.status);
+  if (normalized.company && normalized.company.trim().length > 0) {
+    query = query.ilike("company", `%${normalized.company.trim()}%`);
+  }
+  if (normalized.dateFrom) query = query.gte("created_at", normalized.dateFrom);
+  if (normalized.dateTo) query = query.lte("created_at", `${normalized.dateTo}T23:59:59.999`);
+
+  const { count, error } = await query;
+  if (error) {
+    console.error("getContactsTotalCount error:", error.message);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export async function getContactCompanies(): Promise<string[]> {

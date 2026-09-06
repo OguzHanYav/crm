@@ -89,6 +89,30 @@ async function bridgePipelineStageToLegacyStage(
   return data?.id ?? null;
 }
 
+const DEALS_LIST_SELECT = `
+  id, name, pipeline_id, stage_id, contact_id, value, created_at,
+  contact:contacts ( id, first_name, last_name, email, phone, company, country )
+`;
+
+// "Mehr laden": lädt den nächsten Batch der Deals-Tabelle nach (siehe getAllDeals in data.ts).
+export async function loadMoreDeals(offset: number, limit = 100): Promise<ActionResult<Deal[]>> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("deals")
+    .select(DEALS_LIST_SELECT)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("loadMoreDeals error:", error.message);
+    return { success: false, message: error.message };
+  }
+
+  return { success: true, data: (data ?? []) as unknown as Deal[] };
+}
+
 export async function updateDealStage(
   dealId: string,
   newStageId: string

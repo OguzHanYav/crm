@@ -147,15 +147,16 @@ export const getOrCreateStandardStages = cache(async (): Promise<PipelineStage[]
   return result;
 });
 
-// Gruppiert alle deal_stages (über sämtliche Pipelines hinweg) nach Namen, damit
-// jeder Pipeline-Tab unabhängig davon greift, welcher Pipeline ein Deal zugeordnet ist.
+// Gruppiert alle AKTIVEN deal_stages (über sämtliche Pipelines hinweg) nach Namen zu
+// Pipeline-Tabs. Dynamisch, d. h. neu in den Einstellungen angelegte Phasen erscheinen
+// automatisch als eigener Tab; deaktivierte Phasen fallen komplett weg.
 export const getPipelinePhases = cache(async (): Promise<PipelinePhase[]> => {
   await getOrCreateStandardStages();
   const supabase = await createClient();
 
   const { data: allStages, error } = await supabase
     .from("deal_stages")
-    .select("id, pipeline_id, name, position, color")
+    .select("id, pipeline_id, name, position, color, is_active")
     .order("position", { ascending: true });
 
   if (error) {
@@ -163,35 +164,49 @@ export const getPipelinePhases = cache(async (): Promise<PipelinePhase[]> => {
     return [];
   }
 
-  const phases: PipelinePhase[] = [];
-  for (const def of STANDARD_STAGE_DEFS) {
-    const key = def.name.trim().toLowerCase();
-    const matches = (allStages ?? []).filter((s) => s.name.trim().toLowerCase() === key);
-    if (matches.length === 0) continue;
-    phases.push({
-      key,
-      name: def.name,
-      color: def.color,
-      stageIds: matches.map((s) => s.id),
-      defaultStageId: matches[0].id,
-    });
+  const active = (allStages ?? []).filter((s) => s.is_active !== false);
+
+  const groups = new Map<string, { name: string; color: string; position: number; stageIds: string[] }>();
+  for (const s of active) {
+    const key = s.name.trim().toLowerCase();
+    const existing = groups.get(key);
+    if (existing) {
+      existing.stageIds.push(s.id);
+      existing.position = Math.min(existing.position, s.position);
+    } else {
+      groups.set(key, { name: s.name, color: s.color, position: s.position, stageIds: [s.id] });
+    }
   }
-  return phases;
+
+  return Array.from(groups.values())
+    .sort((a, b) => a.position - b.position)
+    .map((g) => ({
+      key: g.name.trim().toLowerCase(),
+      name: g.name,
+      color: g.color,
+      stageIds: g.stageIds,
+      defaultStageId: g.stageIds[0],
+    }));
 });
 
-export async function getAllDeals(): Promise<Deal[]> {
+// Lädt standardmäßig nur die ersten 100 Deals (Performance); "Mehr laden" ruft
+// dieselbe Funktion mit einem höheren offset erneut auf (siehe loadMoreDeals in actions.ts).
+export async function getAllDeals(limit = 100, offset = 0): Promise<Deal[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("deals")
     .select(
       `
-      id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
-      contact:contacts ( id, first_name, last_name, email, phone, company, country, last_contacted_at ),
-      assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
+      id, name, pipeline_id, stage_id, contact_id, value, created_at,
+      contact:contacts ( id, first_name, last_name, email, phone, company, country )
       `
     )
-    .order("created_at", { ascending: false });
+    // Sekundäres Sortierkriterium "id" verhindert instabile/duplizierte Zeilen bei
+    // range()-Pagination, wenn viele Deals denselben created_at-Zeitstempel teilen.
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
+    .range(offset, offset + limit - 1);
 
   if (error) {
     console.error("getAllDeals error:", error.message);
@@ -199,6 +214,39 @@ export async function getAllDeals(): Promise<Deal[]> {
   }
 
   return (data ?? []) as unknown as Deal[];
+}
+
+// Echte Anzahl Deals pro Phase direkt aus der DB (unabhängig davon, wie viele
+// Zeilen aktuell client-seitig geladen sind) — je ein exact-count Query pro Phase.
+export async function getPhaseCounts(phases: PipelinePhase[]): Promise<Record<string, number>> {
+  const supabase = await createClient();
+
+  const entries = await Promise.all(
+    phases.map(async (phase) => {
+      const { count, error } = await supabase
+        .from("deals")
+        .select("id", { count: "exact", head: true })
+        .in("stage_id", phase.stageIds);
+
+      if (error) {
+        console.error("getPhaseCounts error:", error.message);
+        return [phase.key, 0] as const;
+      }
+      return [phase.key, count ?? 0] as const;
+    })
+  );
+
+  return Object.fromEntries(entries);
+}
+
+export async function getDealsTotalCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase.from("deals").select("id", { count: "exact", head: true });
+  if (error) {
+    console.error("getDealsTotalCount error:", error.message);
+    return 0;
+  }
+  return count ?? 0;
 }
 
 export async function getContacts(): Promise<Contact[]> {

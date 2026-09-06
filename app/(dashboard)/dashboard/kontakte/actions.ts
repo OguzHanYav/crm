@@ -2,6 +2,8 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getPipelinePhases } from "@/app/(dashboard)/dashboard/deals/data";
+import { getContacts as fetchContacts } from "./data";
 import type { Contact, ContactStatus, Note, CallLog, ContactFilters, DealStatusFilter, CallType } from "./types";
 
 export type ActionResult<T = undefined> = {
@@ -69,7 +71,17 @@ async function getContactIdsByEventCategory(
   return [...new Set(data.map((row: any) => row.contact_id).filter(Boolean))];
 }
 
-// ==================== DATA FETCHER ====================
+// "Mehr laden": nächsten Batch der Kontakte-Tabelle nachladen (siehe getContacts in data.ts).
+export async function loadMoreContacts(
+  offset: number,
+  filters?: ContactFilters,
+  limit = 100
+): Promise<ActionResult<Contact[]>> {
+  const data = await fetchContacts(filters, limit, offset);
+  return { success: true, data };
+}
+
+// ==================== DATA FETCHER (veraltet, siehe ./data.ts) ====================
 export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
   const supabase = await createClient();
   const normalized: ContactFilters =
@@ -504,11 +516,17 @@ export async function logCall(
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Ohne user_id schlägt der Insert an einem NOT-NULL-Constraint fehl und das
+  // Speichern im Call-Log-Tab bricht mit einer generischen DB-Fehlermeldung ab.
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet — Anruf konnte nicht gespeichert werden." };
+  }
+
   const { data, error } = await supabase
     .from("call_logs")
     .insert({
       contact_id: contactId,
-      user_id: user?.id ?? null,
+      user_id: user.id,
       call_type,
       interest_expressed,
       called_at,
@@ -610,7 +628,7 @@ export async function getContactDetailPayload(contactId: string) {
 }
 
 export async function getContactSheetBootstrap() {
-  const [teamMembers, pipelines, stages] = await Promise.all([
+  const [teamMembers, pipelines, stages, phases] = await Promise.all([
     getTeamMembers(),
     getPipelines(),
     (async () => {
@@ -626,7 +644,8 @@ export async function getContactSheetBootstrap() {
       }
       return data ?? [];
     })(),
+    getPipelinePhases(),
   ]);
 
-  return { success: true, data: { teamMembers, pipelines, stages } };
+  return { success: true, data: { teamMembers, pipelines, stages, phases } };
 }

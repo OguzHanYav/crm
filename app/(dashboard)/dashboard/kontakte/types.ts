@@ -15,6 +15,8 @@ export type Contact = {
   assigned_to: string | null;
   last_contacted_at: string | null;
   created_at: string;
+  // Aktuelle Pipeline-Phase des (jüngsten) verknüpften Deals, falls vorhanden.
+  currentStage?: { name: string; color: string } | null;
 };
 
 export type ContactWithRelations = Contact & {
@@ -60,10 +62,21 @@ export type TeamMember = {
   last_name: string;
 };
 
+// Fasst deal_stages mit gleichem Namen über alle Pipelines hinweg zu einer Phase
+// zusammen (siehe deals/data.ts getPipelinePhases) — nur aktive Phasen sind wählbar.
+export type PipelinePhase = {
+  key: string;
+  name: string;
+  color: string;
+  stageIds: string[];
+  defaultStageId: string;
+};
+
 export type ContactSheetBootstrap = {
   teamMembers: TeamMember[];
   pipelines: { id: string; name: string }[];
   stages: { id: string; pipeline_id: string; name: string; position: number; color: string }[];
+  phases: PipelinePhase[];
 };
 
 export type ContactDetailPayload = {

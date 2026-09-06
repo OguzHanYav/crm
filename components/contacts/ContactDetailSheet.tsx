@@ -18,6 +18,19 @@ const TABS: [Tab, string][] = [
   ["calllog", "Call Log"],
 ];
 
+function resolveTargetStageId(
+  pipelineId: string | undefined,
+  phaseKey: string,
+  bootstrap: ContactSheetBootstrap
+): string | null {
+  const phase = bootstrap.phases.find((p) => p.key === phaseKey);
+  if (!phase) return null;
+  const sameStage = bootstrap.stages.find(
+    (s) => s.pipeline_id === pipelineId && phase.stageIds.includes(s.id)
+  );
+  return sameStage?.id ?? phase.defaultStageId;
+}
+
 function formatDateDE(dateString: string, withTime = true) {
   if (!dateString) return "—";
   return new Intl.DateTimeFormat("de-DE", {
@@ -118,8 +131,6 @@ function SheetContent({
 }) {
   const { contact, deals } = payload;
   const primaryDeal = deals[0] ?? null;
-  const stagesForPrimaryPipeline =
-    bootstrap?.stages.filter((s) => s.pipeline_id === primaryDeal?.pipeline_id) ?? [];
 
   return (
     <>
@@ -158,20 +169,8 @@ function SheetContent({
           </a>
         </div>
 
-        {primaryDeal && stagesForPrimaryPipeline.length > 0 && (
-          <Select
-            defaultValue={primaryDeal.stage_id}
-            onChange={(e) => updateDealStage(primaryDeal.id, e.target.value).then(onRefresh)}
-            className="h-9 w-auto text-sm"
-          >
-            {stagesForPrimaryPipeline
-              .sort((a, b) => a.position - b.position)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-          </Select>
+        {primaryDeal && bootstrap && bootstrap.phases.length > 0 && (
+          <PhaseSelect deal={primaryDeal} bootstrap={bootstrap} onRefresh={onRefresh} />
         )}
       </div>
 
@@ -197,6 +196,59 @@ function SheetContent({
         {tab === "calllog" && <CallLogTab payload={payload} onRefresh={onRefresh} />}
       </div>
     </>
+  );
+}
+
+// Nur aktive, kanonische Pipeline-Phasen sind wählbar (keine veralteten/inaktiven
+// deal_stages-Reste). Wechsel wird optimistisch angezeigt, bevor die Server-Action
+// abgeschlossen ist; bei Fehlschlag wird der vorherige Wert wiederhergestellt.
+function PhaseSelect({
+  deal,
+  bootstrap,
+  onRefresh,
+}: {
+  deal: { id: string; stage_id: string; pipeline_id: string };
+  bootstrap: ContactSheetBootstrap;
+  onRefresh: () => void;
+}) {
+  const currentPhaseKey = bootstrap.phases.find((p) => p.stageIds.includes(deal.stage_id))?.key ?? "";
+  const [optimisticKey, setOptimisticKey] = useState(currentPhaseKey);
+
+  useEffect(() => {
+    setOptimisticKey(currentPhaseKey);
+  }, [currentPhaseKey]);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newPhaseKey = e.target.value;
+      const previousKey = optimisticKey;
+      setOptimisticKey(newPhaseKey);
+
+      const targetStageId = resolveTargetStageId(deal.pipeline_id, newPhaseKey, bootstrap);
+      if (!targetStageId) {
+        setOptimisticKey(previousKey);
+        return;
+      }
+
+      updateDealStage(deal.id, targetStageId).then((result) => {
+        if (result.success) {
+          onRefresh();
+        } else {
+          setOptimisticKey(previousKey);
+        }
+      });
+    },
+    [deal, bootstrap, onRefresh, optimisticKey]
+  );
+
+  return (
+    <Select value={optimisticKey} onChange={handleChange} className="h-9 w-auto text-sm">
+      {bootstrap.phases.map((phase) => (
+        <option key={phase.key} value={phase.key}>
+          {phase.name}
+        </option>
+      ))}
+    </Select>
   );
 }
 

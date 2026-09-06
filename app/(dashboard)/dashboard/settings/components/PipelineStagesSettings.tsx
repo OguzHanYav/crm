@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   createPipelineStage,
   updatePipelineStage,
   deletePipelineStage,
   moveStagePosition,
+  toggleStageActive,
   type PipelineStageRow,
 } from "../pipeline-actions";
 
@@ -16,6 +18,7 @@ export default function PipelineStagesSettings({
 }: {
   initialStages: PipelineStageRow[];
 }) {
+  const router = useRouter();
   const [stages, setStages] = useState(initialStages);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -23,7 +26,16 @@ export default function PipelineStagesSettings({
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(DEFAULT_COLOR);
   const [error, setError] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Kurze visuelle "Gespeichert"-Bestätigung neben der jeweiligen Phase.
+  function flashSaved(stageId: string) {
+    setSavedId(stageId);
+    setTimeout(() => setSavedId((current) => (current === stageId ? null : current)), 1500);
+  }
+
+  const activeStages = stages.filter((s) => s.is_active);
 
   function startEdit(stage: PipelineStageRow) {
     setEditingId(stage.id);
@@ -44,6 +56,8 @@ export default function PipelineStagesSettings({
         );
         setEditingId(null);
         setError(null);
+        flashSaved(stageId);
+        router.refresh();
       } else {
         setError(result.message ?? "Speichern fehlgeschlagen.");
       }
@@ -59,6 +73,7 @@ export default function PipelineStagesSettings({
       if (result.success) {
         setStages((prev) => prev.filter((s) => s.id !== stageId));
         setError(null);
+        router.refresh();
       } else {
         setError(result.message ?? "Löschen fehlgeschlagen.");
       }
@@ -66,18 +81,46 @@ export default function PipelineStagesSettings({
   }
 
   function handleMove(stageId: string, direction: "up" | "down") {
-    const index = stages.findIndex((s) => s.id === stageId);
-    const swapIndex = direction === "up" ? index - 1 : index + 1;
-    if (index === -1 || swapIndex < 0 || swapIndex >= stages.length) return;
+    const index = activeStages.findIndex((s) => s.id === stageId);
+    const swapId = direction === "up" ? activeStages[index - 1]?.id : activeStages[index + 1]?.id;
+    if (index === -1 || !swapId) return;
 
-    const next = [...stages];
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-    setStages(next);
+    setStages((prev) => {
+      const next = [...prev];
+      const a = next.findIndex((s) => s.id === stageId);
+      const b = next.findIndex((s) => s.id === swapId);
+      const posA = next[a].position;
+      const posB = next[b].position;
+      next[a] = { ...next[a], position: posB };
+      next[b] = { ...next[b], position: posA };
+      return next;
+    });
 
     startTransition(async () => {
       const result = await moveStagePosition(stageId, direction);
-      if (!result.success) {
+      if (result.success) {
+        flashSaved(stageId);
+        router.refresh();
+      } else {
         setError(result.message ?? "Reihenfolge konnte nicht geändert werden.");
+      }
+    });
+  }
+
+  // Optimistisch: Aktiv/Inaktiv wird sofort umgeschaltet, unabhängig vom Server-Roundtrip.
+  function handleToggleActive(stage: PipelineStageRow) {
+    const nextActive = !stage.is_active;
+    const previous = stages;
+    setStages((prev) => prev.map((s) => (s.id === stage.id ? { ...s, is_active: nextActive } : s)));
+
+    startTransition(async () => {
+      const result = await toggleStageActive(stage.id, nextActive);
+      if (result.success) {
+        flashSaved(stage.id);
+        router.refresh();
+      } else {
+        setStages(previous);
+        setError(result.message ?? "Status konnte nicht geändert werden.");
       }
     });
   }
@@ -93,6 +136,8 @@ export default function PipelineStagesSettings({
         setNewName("");
         setNewColor(DEFAULT_COLOR);
         setError(null);
+        flashSaved(result.data.id);
+        router.refresh();
       } else {
         setError(result.message ?? "Anlegen fehlgeschlagen.");
       }
@@ -103,15 +148,17 @@ export default function PipelineStagesSettings({
     <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
       <h2 className="text-base font-semibold text-foreground">Pipeline-Phasen</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Lege fest, welche Phasen im Deals-Kanban angezeigt werden und in welcher Reihenfolge.
+        Aktive Phasen erscheinen als Tabs in der Pipeline-Ansicht. Erstelle beliebig neue Phasen
+        oder aktiviere/deaktiviere bestehende weiter unten.
       </p>
 
       {error && (
         <p className="mt-3 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
       )}
 
+      {/* Aktive Phasen (Reihenfolge + Bearbeiten) */}
       <ul className="mt-4 flex flex-col gap-2">
-        {stages.map((stage, i) => (
+        {activeStages.map((stage, i) => (
           <li
             key={stage.id}
             className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
@@ -127,7 +174,7 @@ export default function PipelineStagesSettings({
               </button>
               <button
                 onClick={() => handleMove(stage.id, "down")}
-                disabled={i === stages.length - 1 || isPending}
+                disabled={i === activeStages.length - 1 || isPending}
                 className="ring-focus rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
                 aria-label="Nach unten"
               >
@@ -169,6 +216,9 @@ export default function PipelineStagesSettings({
                   style={{ backgroundColor: stage.color }}
                 />
                 <span className="flex-1 text-sm font-medium text-foreground">{stage.name}</span>
+                {savedId === stage.id && (
+                  <span className="text-xs font-medium text-success">✓ Gespeichert</span>
+                )}
                 <button
                   onClick={() => startEdit(stage)}
                   className="ring-focus rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50"
@@ -187,12 +237,47 @@ export default function PipelineStagesSettings({
           </li>
         ))}
 
-        {stages.length === 0 && (
+        {activeStages.length === 0 && (
           <li className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Noch keine Phasen vorhanden.
+            Keine aktiven Phasen.
           </li>
         )}
       </ul>
+
+      {/* Alle Phasen: aktivieren/deaktivieren */}
+      <div className="mt-6 border-t border-border pt-4">
+        <h3 className="text-sm font-semibold text-foreground">Alle Phasen</h3>
+        <ul className="mt-3 flex flex-col gap-2">
+          {stages.map((stage) => (
+            <li
+              key={stage.id}
+              className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+            >
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: stage.color }}
+              />
+              <span className={`flex-1 text-sm ${stage.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
+                {stage.name}
+              </span>
+              {savedId === stage.id && (
+                <span className="text-xs font-medium text-success">✓ Gespeichert</span>
+              )}
+              <button
+                onClick={() => handleToggleActive(stage)}
+                disabled={isPending}
+                className={`ring-focus rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                  stage.is_active
+                    ? "border border-danger/30 text-danger hover:bg-danger/10"
+                    : "bg-accent text-accent-foreground hover:brightness-110"
+                }`}
+              >
+                {stage.is_active ? "Deaktivieren" : "Aktivieren"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div className="mt-5 flex items-center gap-3 border-t border-border pt-4">
         <input

@@ -9,6 +9,7 @@ export type PipelineStageRow = {
   name: string;
   position: number;
   color: string;
+  is_active: boolean;
 };
 
 export type PipelineActionResult<T = undefined> = {
@@ -57,7 +58,7 @@ export async function getPipelineStagesForSettings(): Promise<PipelineStageRow[]
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("deal_stages")
-    .select("id, pipeline_id, name, position, color")
+    .select("id, pipeline_id, name, position, color, is_active")
     .eq("pipeline_id", pipelineId)
     .order("position", { ascending: true });
 
@@ -67,6 +68,28 @@ export async function getPipelineStagesForSettings(): Promise<PipelineStageRow[]
   }
 
   return data ?? [];
+}
+
+export async function toggleStageActive(
+  stageId: string,
+  isActive: boolean
+): Promise<PipelineActionResult<PipelineStageRow>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_stages")
+    .update({ is_active: isActive })
+    .eq("id", stageId)
+    .select("id, pipeline_id, name, position, color, is_active")
+    .single();
+
+  if (error) {
+    console.error("toggleStageActive error:", error.message);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath(SETTINGS_PATH);
+  revalidatePath(DEALS_PATH);
+  return { success: true, data: data as PipelineStageRow };
 }
 
 export async function createPipelineStage(
@@ -96,8 +119,14 @@ export async function createPipelineStage(
 
   const { data, error } = await supabase
     .from("deal_stages")
-    .insert({ pipeline_id: pipelineId, name: trimmed, position: nextPosition, color: color || "#2563EB" })
-    .select("id, pipeline_id, name, position, color")
+    .insert({
+      pipeline_id: pipelineId,
+      name: trimmed,
+      position: nextPosition,
+      color: color || "#2563EB",
+      is_active: true,
+    })
+    .select("id, pipeline_id, name, position, color, is_active")
     .single();
 
   if (error) {
@@ -125,7 +154,7 @@ export async function updatePipelineStage(
     .from("deal_stages")
     .update({ name: trimmed, color: color || "#2563EB" })
     .eq("id", stageId)
-    .select("id, pipeline_id, name, position, color")
+    .select("id, pipeline_id, name, position, color, is_active")
     .single();
 
   if (error) {

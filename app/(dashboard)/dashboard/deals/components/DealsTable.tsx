@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import type { Deal, PipelinePhase } from "../types";
 
 function formatDateDE(dateString: string) {
@@ -11,27 +11,26 @@ function formatDateDE(dateString: string) {
   }).format(new Date(dateString));
 }
 
+type SortKey = "name" | "company" | "country" | "phone" | "email" | "status" | "createdAt";
+type SortDir = "asc" | "desc";
+
+function SortIcon({ dir }: { dir: SortDir | null }) {
+  if (!dir) return <span className="text-slate-300">↕</span>;
+  return <span className="text-slate-700">{dir === "asc" ? "↑" : "↓"}</span>;
+}
+
 const DealsTableRow = memo(function DealsTableRow({
   deal,
   phase,
-  phases,
-  onStageChange,
   onRowClick,
 }: {
   deal: Deal;
   phase: PipelinePhase | undefined;
-  phases: PipelinePhase[];
-  onStageChange: (dealId: string, newPhaseKey: string) => void;
   onRowClick: (deal: Deal) => void;
 }) {
   const contact = deal.contact;
-
   const handleRowClick = useCallback(() => onRowClick(deal), [onRowClick, deal]);
   const handleStopPropagation = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
-  const handleStageChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => onStageChange(deal.id, e.target.value),
-    [onStageChange, deal.id]
-  );
 
   return (
     <tr onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-slate-50">
@@ -51,6 +50,8 @@ const DealsTableRow = memo(function DealsTableRow({
           <span className="text-slate-400">Kein Kontakt</span>
         )}
       </td>
+
+      <td className="px-4 py-3 text-slate-600">{contact?.country ?? "—"}</td>
 
       <td className="px-4 py-3" onClick={handleStopPropagation}>
         {contact?.phone ? (
@@ -76,7 +77,7 @@ const DealsTableRow = memo(function DealsTableRow({
         <div className="flex flex-col gap-1">
           {phase && (
             <span
-              className="w-fit rounded-full px-2 py-0.5 text-xs font-medium"
+              className="w-fit whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold"
               style={{ backgroundColor: `${phase.color}1A`, color: phase.color }}
             >
               {phase.name}
@@ -85,43 +86,84 @@ const DealsTableRow = memo(function DealsTableRow({
           <span className="text-xs text-slate-400">{formatDateDE(deal.created_at)}</span>
         </div>
       </td>
-
-      <td className="px-4 py-3" onClick={handleStopPropagation}>
-        <div className="flex items-center justify-end gap-2">
-          <select
-            value={phase?.key ?? ""}
-            onChange={handleStageChange}
-            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 focus:border-slate-400 focus:outline-none"
-          >
-            {phases.map((p) => (
-              <option key={p.key} value={p.key}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleRowClick}
-            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            Öffnen
-          </button>
-        </div>
-      </td>
     </tr>
   );
 });
 
+// null/undefined-sichere, alphabetische bzw. numerische (Datum) Sortierung.
+function sortDeals(list: Deal[], key: SortKey, dir: SortDir, phases: PipelinePhase[]): Deal[] {
+  const mul = dir === "asc" ? 1 : -1;
+
+  if (key === "createdAt") {
+    return [...list].sort((a, b) => {
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return (aTime - bTime) * mul;
+    });
+  }
+
+  const valueOf = (deal: Deal): string => {
+    const contact = deal.contact;
+    switch (key) {
+      case "name":
+        return (deal.name ?? "").toLowerCase();
+      case "company":
+        return (contact?.company ?? "").toLowerCase();
+      case "country":
+        return (contact?.country ?? "").toLowerCase();
+      case "phone":
+        return contact?.phone ?? "";
+      case "email":
+        return (contact?.email ?? "").toLowerCase();
+      case "status":
+        return (phases.find((p) => p.stageIds.includes(deal.stage_id))?.name ?? "").toLowerCase();
+      default:
+        return "";
+    }
+  };
+
+  return [...list].sort((a, b) => (valueOf(a) || "").localeCompare(valueOf(b) || "") * mul);
+}
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "name", label: "Name (Kunde / Deal)" },
+  { key: "company", label: "Ansprechpartner / Firma" },
+  { key: "country", label: "Land" },
+  { key: "phone", label: "Telefonnummer" },
+  { key: "email", label: "E-Mail-Adresse" },
+];
+
 export default function DealsTable({
   deals,
   phases,
-  onStageChange,
   onRowClick,
 }: {
   deals: Deal[];
   phases: PipelinePhase[];
-  onStageChange: (dealId: string, newPhaseKey: string) => void;
   onRowClick: (deal: Deal) => void;
 }) {
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = useCallback(
+    (key: SortKey) => {
+      if (sortKey !== key) {
+        setSortKey(key);
+        setSortDir("asc");
+      } else if (sortDir === "asc") {
+        setSortDir("desc");
+      } else {
+        setSortKey(null);
+      }
+    },
+    [sortKey, sortDir]
+  );
+
+  const sortedDeals = useMemo(
+    () => (sortKey ? sortDeals(deals, sortKey, sortDir, phases) : deals),
+    [deals, sortKey, sortDir, phases]
+  );
+
   if (deals.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
@@ -135,22 +177,47 @@ export default function DealsTable({
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         <thead className="bg-slate-50">
           <tr>
-            <th className="px-4 py-3 text-left font-medium text-slate-500">Name (Kunde / Deal)</th>
-            <th className="px-4 py-3 text-left font-medium text-slate-500">Ansprechpartner / Firma</th>
-            <th className="px-4 py-3 text-left font-medium text-slate-500">Telefonnummer</th>
-            <th className="px-4 py-3 text-left font-medium text-slate-500">E-Mail-Adresse</th>
-            <th className="px-4 py-3 text-left font-medium text-slate-500">Status / Erstellt am</th>
-            <th className="px-4 py-3 text-right font-medium text-slate-500">Aktionen</th>
+            {COLUMNS.map((col) => (
+              <th key={col.key} className="px-4 py-3 text-left font-medium text-slate-500">
+                <button
+                  type="button"
+                  onClick={() => toggleSort(col.key)}
+                  className="inline-flex items-center gap-1 hover:text-slate-700"
+                >
+                  {col.label}
+                  <SortIcon dir={sortKey === col.key ? sortDir : null} />
+                </button>
+              </th>
+            ))}
+            <th className="px-4 py-3 text-left font-medium text-slate-500">
+              <span className="inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSort("status")}
+                  className="inline-flex items-center gap-1 hover:text-slate-700"
+                >
+                  Status
+                  <SortIcon dir={sortKey === "status" ? sortDir : null} />
+                </button>
+                <span className="text-slate-300">/</span>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("createdAt")}
+                  className="inline-flex items-center gap-1 hover:text-slate-700"
+                >
+                  Erstellt am
+                  <SortIcon dir={sortKey === "createdAt" ? sortDir : null} />
+                </button>
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {deals.map((deal) => (
+          {sortedDeals.map((deal) => (
             <DealsTableRow
               key={deal.id}
               deal={deal}
               phase={phases.find((p) => p.stageIds.includes(deal.stage_id))}
-              phases={phases}
-              onStageChange={onStageChange}
               onRowClick={onRowClick}
             />
           ))}
