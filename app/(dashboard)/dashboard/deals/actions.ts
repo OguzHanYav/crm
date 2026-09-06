@@ -258,5 +258,5 @@ export async function createDeal(
     revalidatePath(`/dashboard/kontakte/${dealRecord.contact_id}`);
   }
 
-  return { success: true, data: dealRecord;
+  return { success: true, data: dealRecord };
 }
