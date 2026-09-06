@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createPipelineStage,
@@ -35,7 +35,13 @@ export default function PipelineStagesSettings({
     setTimeout(() => setSavedId((current) => (current === stageId ? null : current)), 1500);
   }
 
-  const activeStages = stages.filter((s) => s.is_active);
+  // Nach position sortieren (nicht nur filtern) — sonst bleibt die Anzeige nach einem
+  // optimistischen Positions-Swap in der alten Array-Reihenfolge stehen und der Klick
+  // auf ▲/▼ wirkt wirkungslos, bis router.refresh() die Liste neu vom Server holt.
+  const activeStages = useMemo(
+    () => stages.filter((s) => s.is_active).sort((a, b) => a.position - b.position),
+    [stages]
+  );
 
   function startEdit(stage: PipelineStageRow) {
     setEditingId(stage.id);
@@ -248,7 +254,7 @@ export default function PipelineStagesSettings({
       <div className="mt-6 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-foreground">Alle Phasen</h3>
         <ul className="mt-3 flex flex-col gap-2">
-          {stages.map((stage) => (
+          {[...stages].sort((a, b) => a.position - b.position).map((stage) => (
             <li
               key={stage.id}
               className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"

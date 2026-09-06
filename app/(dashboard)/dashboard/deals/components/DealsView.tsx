@@ -5,6 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Deal, PipelinePhase } from "../types";
 import DealsTable from "./DealsTable";
+import FilterDropdown from "./FilterDropdown";
 import { loadMoreDeals } from "../actions";
 
 const LOAD_BATCH_SIZE = 100;
@@ -188,53 +189,27 @@ export default function DealsView({
         })}
       </div>
 
-      {/* Erweiterte Filterleiste */}
-      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      {/* Suche + Filter-Popover */}
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Volltextsuche (Name, Kontakt, Firma, E-Mail, Telefon, Land)"
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none lg:col-span-2"
+          className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
         />
 
-        <select
-          value={activeKey}
-          onChange={(e) => setActiveStage(e.target.value)}
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
-        >
-          {phases.map((phase) => (
-            <option key={phase.key} value={phase.key}>
-              {phase.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          value={companyFilter}
-          onChange={(e) => setCompanyFilter(e.target.value)}
-          placeholder="Firma"
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+        <FilterDropdown
+          phases={phases}
+          activeKey={activeKey}
+          onActiveKeyChange={setActiveStage}
+          companyFilter={companyFilter}
+          onCompanyFilterChange={setCompanyFilter}
+          contactFilter={contactFilter}
+          onContactFilterChange={setContactFilter}
+          countryFilter={countryFilter}
+          onCountryFilterChange={setCountryFilter}
+          countryOptions={countryOptions}
         />
-
-        <input
-          value={contactFilter}
-          onChange={(e) => setContactFilter(e.target.value)}
-          placeholder="E-Mail / Telefon / Vorwahl"
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
-        />
-
-        <select
-          value={countryFilter}
-          onChange={(e) => setCountryFilter(e.target.value)}
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
-        >
-          <option value="">Alle Länder</option>
-          {countryOptions.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
       </div>
 
       <DealsTable deals={renderedDeals} phases={phases} onRowClick={openDeal} />
