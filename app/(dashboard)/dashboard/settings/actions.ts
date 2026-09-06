@@ -3,7 +3,6 @@
 import { randomUUID } from "crypto";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { getActiveProjectId } from "@/utils/projects/active-project";
 
 export type ExportRow = Record<string, unknown>;
 
@@ -13,7 +12,7 @@ export type ExportResult = {
   rows?: ExportRow[];
 };
 
-// ==================== HILFSFUNKTIONEN: CHUNKING & PAGINIERUNG ====================
+// ==================== HILFSFUNKTIONEN ====================
 const READ_PAGE_SIZE = 1000;
 const WRITE_CHUNK_SIZE = 500;
 
@@ -149,7 +148,7 @@ export type ImportResult = {
 
 const VALID_STATUSES = ["Lead", "In Kontakt", "Kunde", "Verloren"];
 
-// ---- Robustes, tolerantes Spalten-Mapping ----
+// ---- Robustes Spalten-Mapping ----
 type RawImportRow = Record<string, unknown>;
 
 const FIELD_ALIASES: Record<string, string[]> = {
@@ -214,6 +213,37 @@ type PreparedRow = {
   existingNotes: string | null;
 };
 
+async function resolveDefaultStageId(supabase: any): Promise<{ pipelineId: string; stageId: string } | null> {
+  const { data: pipelines, error: pipelineError } = await supabase
+    .from("pipelines")
+    .select("id, name")
+    .order("name", { ascending: true })
+    .limit(1);
+
+  if (pipelineError || !pipelines || pipelines.length === 0) {
+    console.error("Keine Pipeline gefunden!");
+    return null;
+  }
+
+  const pipelineId = pipelines[0].id;
+
+  const { data: stages, error: stageError } = await supabase
+    .from("deal_stages")
+    .select("id")
+    .eq("pipeline_id", pipelineId)
+    .order("position", { ascending: true })
+    .limit(1);
+
+  if (stageError || !stages || stages.length === 0) {
+    console.error("Keine Stage für Pipeline gefunden!");
+    return null;
+  }
+
+  return { pipelineId, stageId: stages[0].id };
+}
+
+// ==================== SCHNELLER BULK-IMPORT ====================
+
 export async function importContactsWithDeals(
   rows: ImportContactRow[]
 ): Promise<ImportResult> {
@@ -233,71 +263,59 @@ export async function importContactsWithDeals(
   let updated = 0;
   let dealsCreated = 0;
 
-  // ---- Projekt-ID holen ----
-  const projectId = await getActiveProjectId();
-  if (!projectId) {
+  // ---- Standard-Pipeline / Stage ermitteln ----
+  const defaultStage = await resolveDefaultStageId(supabase);
+  if (!defaultStage) {
     return {
       success: false,
-      message: "Kein aktives Projekt gefunden. Bitte zuerst ein Projekt auswählen.",
+      message: "Keine Pipeline/Stage in der Datenbank gefunden. Bitte zuerst eine Pipeline anlegen.",
       imported: 0,
       updated: 0,
       dealsCreated: 0,
     };
   }
 
-  // ---- Standard-Pipeline / -Phase ermitteln ----
-  const { data: pipelines, error: pipelineError } = await supabase
-    .from("pipelines")
-    .select("id, name")
-    .order("name", { ascending: true })
-    .limit(1);
-
-  if (pipelineError) {
-    console.error("importContactsWithDeals Pipeline-Lookup Fehler:", pipelineError.message);
-  }
-
-  const defaultPipeline = pipelines?.[0] ?? null;
-  let defaultStageId: string | null = null;
-
-  if (defaultPipeline) {
-    const { data: stages, error: stageError } = await supabase
-      .from("deal_stages")
-      .select("id, name, position")
-      .eq("pipeline_id", defaultPipeline.id)
-      .order("position", { ascending: true })
-      .limit(1);
-
-    if (stageError) {
-      console.error("importContactsWithDeals Stage-Lookup Fehler:", stageError.message);
-    }
-    defaultStageId = stages?.[0]?.id ?? null;
-  }
-
-  // ---- 1) Bestehende Kontakte per E-Mail BULK vorab laden (paginiert) ----
   console.log(`[Import] Starte Import von ${rows.length} Zeile(n) …`);
-  const { rows: existingContacts, error: existingContactsError } = await fetchAllPaginated<{
-    id: string;
-    email: string | null;
-    notes: string | null;
-  }>((from, to) =>
-    supabase
-      .from("contacts")
-      .select("id, email, notes")
-      .not("email", "is", null)
-      .range(from, to)
-  );
 
-  if (existingContactsError) {
-    console.error("importContactsWithDeals Bulk-Kontakt-Lookup Fehler:", existingContactsError);
+  // ---- 1) ALLE E-Mails aus der Excel sammeln ----
+  const emails: string[] = [];
+  for (const raw of rows) {
+    const email = readField(raw as unknown as RawImportRow, "email");
+    if (email) emails.push(email);
   }
-  console.log(`[Import] Bestehende Kontakte geladen: ${existingContacts.length}`);
+  const uniqueEmails = [...new Set(emails)].filter(Boolean);
+  
+  console.log(`[Import] ${uniqueEmails.length} eindeutige E-Mail-Adressen gefunden`);
 
+  // ---- 2) BULK-LOOKUP: Alle bestehenden Kontakte mit einer Query holen ----
   const existingByEmail = new Map<string, { id: string; notes: string | null }>();
-  for (const c of existingContacts) {
-    if (c.email) existingByEmail.set(c.email, { id: c.id, notes: c.notes });
+  
+  // Aufteilen in Chunks von 1000 (Supabase Limit für in())
+  for (const chunk of chunkArray(uniqueEmails, 1000)) {
+    try {
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, email, notes")
+        .in("email", chunk);
+      
+      if (error) {
+        console.error("Bulk-Lookup Fehler:", error);
+        continue;
+      }
+      
+      if (data) {
+        for (const c of data) {
+          if (c.email) existingByEmail.set(c.email, { id: c.id, notes: c.notes });
+        }
+      }
+    } catch (err) {
+      console.error("Bulk-Lookup Exception:", err);
+    }
   }
+  
+  console.log(`[Import] ${existingByEmail.size} bestehende Kontakte gefunden`);
 
-  // ---- 2) Zeilen validieren & vorbereiten ----
+  // ---- 3) Zeilen vorbereiten ----
   const prepared: PreparedRow[] = [];
 
   for (let i = 0; i < rows.length; i++) {
@@ -391,13 +409,15 @@ export async function importContactsWithDeals(
     };
   }
 
-  // ---- 3) In Insert- und Update-Kandidaten aufteilen ----
+  // ---- 4) In Insert- und Update-Kandidaten aufteilen ----
   const toInsert = prepared.filter((p) => !p.existingContactId);
   const toUpdate = prepared.filter((p) => p.existingContactId);
 
+  console.log(`[Import] ${toInsert.length} neue Kontakte, ${toUpdate.length} bestehende Kontakte`);
+
   const contactIdByRow = new Map<number, string>();
 
-  // ---- 4) Neue Kontakte in 500er-Chunks einfügen ----
+  // ---- 5) NEUE Kontakte einfügen (BULK) ----
   for (const chunk of chunkArray(toInsert, WRITE_CHUNK_SIZE)) {
     const payload = chunk.map((p) => ({
       id: randomUUID(),
@@ -409,7 +429,6 @@ export async function importContactsWithDeals(
       country: p.country,
       status: p.status,
       notes: p.notesSuffix,
-      project_id: projectId,  // ← HIER: project_id wird gesetzt!
     }));
 
     try {
@@ -418,17 +437,18 @@ export async function importContactsWithDeals(
 
       chunk.forEach((p, idx) => contactIdByRow.set(p.rowNumber, payload[idx].id));
       imported += chunk.length;
-      console.log(`[Import] Kontakte-Chunk eingefügt: ${chunk.length} (gesamt: ${imported})`);
+      console.log(`[Import] Kontakte eingefügt: ${chunk.length} (gesamt: ${imported})`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+      const error = err as any;
+      const message = error.message || "Unbekannter Fehler";
       const first = chunk[0]?.rowNumber;
       const last = chunk[chunk.length - 1]?.rowNumber;
-      errors.push(`Zeilen ${first}–${last}: Chunk-Insert fehlgeschlagen (${message}).`);
-      console.error("importContactsWithDeals Chunk-Insert Fehler:", message);
+      errors.push(`Zeilen ${first}–${last}: Insert fehlgeschlagen (${message})`);
+      console.error("Insert Fehler:", error);
     }
   }
 
-  // ---- 5) Bestehende Kontakte in 500er-Chunks aktualisieren ----
+  // ---- 6) BESTEHENDE Kontakte aktualisieren (BULK UPSERT) ----
   for (const chunk of chunkArray(toUpdate, WRITE_CHUNK_SIZE)) {
     const payload = chunk.map((p) => {
       const mergedNotes = p.notesSuffix
@@ -439,12 +459,12 @@ export async function importContactsWithDeals(
         id: p.existingContactId as string,
         first_name: p.firstName,
         last_name: p.lastName,
+        email: p.email,
         phone: p.phone,
         company: p.company,
         country: p.country,
         status: p.status,
         notes: mergedNotes,
-        // project_id wird NICHT geändert (bleibt beim bestehenden Kontakt)
       };
     });
 
@@ -454,81 +474,78 @@ export async function importContactsWithDeals(
 
       chunk.forEach((p) => contactIdByRow.set(p.rowNumber, p.existingContactId as string));
       updated += chunk.length;
-      console.log(`[Import] Kontakte-Chunk aktualisiert: ${chunk.length} (gesamt: ${updated})`);
+      console.log(`[Import] Kontakte aktualisiert: ${chunk.length} (gesamt: ${updated})`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+      const error = err as any;
+      const message = error.message || "Unbekannter Fehler";
       const first = chunk[0]?.rowNumber;
       const last = chunk[chunk.length - 1]?.rowNumber;
-      errors.push(`Zeilen ${first}–${last}: Chunk-Update fehlgeschlagen (${message}).`);
-      console.error("importContactsWithDeals Chunk-Update Fehler:", message);
+      errors.push(`Zeilen ${first}–${last}: Update fehlgeschlagen (${message})`);
+      console.error("Update Fehler:", error);
     }
   }
 
-  // ---- 6) Deals anlegen ----
-  if (defaultPipeline && defaultStageId) {
-    const allContactIds = [...contactIdByRow.values()];
-    console.log(`[Import] Prüfe bestehende Deals für ${allContactIds.length} Kontakt(e) …`);
+  // ---- 7) Deals anlegen ----
+  const allContactIds = [...contactIdByRow.values()];
+  console.log(`[Import] Prüfe bestehende Deals für ${allContactIds.length} Kontakt(e) …`);
 
-    const contactIdsWithDeal = new Set<string>();
+  const contactIdsWithDeal = new Set<string>();
 
-    for (const idChunk of chunkArray(allContactIds, WRITE_CHUNK_SIZE)) {
-      try {
-        const { rows: dealRows, error: dealLookupError } = await fetchAllPaginated<{
-          contact_id: string;
-        }>((from, to) =>
-          supabase.from("deals").select("contact_id").in("contact_id", idChunk).range(from, to)
-        );
+  for (const idChunk of chunkArray(allContactIds, WRITE_CHUNK_SIZE)) {
+    try {
+      const { rows: dealRows, error: dealLookupError } = await fetchAllPaginated<{
+        contact_id: string;
+      }>((from, to) =>
+        supabase.from("deals").select("contact_id").in("contact_id", idChunk).range(from, to)
+      );
 
-        if (dealLookupError) throw new Error(dealLookupError);
+      if (dealLookupError) throw new Error(dealLookupError);
 
-        for (const d of dealRows) {
-          if (d.contact_id) contactIdsWithDeal.add(d.contact_id);
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-        errors.push(
-          `Deal-Lookup fehlgeschlagen (${message}). Betroffene Kontakte erhalten sicherheitshalber keinen neuen Deal.`
-        );
-        idChunk.forEach((id) => contactIdsWithDeal.add(id));
+      for (const d of dealRows) {
+        if (d.contact_id) contactIdsWithDeal.add(d.contact_id);
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+      errors.push(
+        `Deal-Lookup fehlgeschlagen (${message}). Betroffene Kontakte erhalten keinen neuen Deal.`
+      );
+      idChunk.forEach((id) => contactIdsWithDeal.add(id));
     }
+  }
 
-    const dealsToInsert: { rowNumber: number; payload: Record<string, unknown> }[] = [];
-    for (const p of prepared) {
-      const contactId = contactIdByRow.get(p.rowNumber);
-      if (!contactId) continue;
-      if (contactIdsWithDeal.has(contactId)) continue;
+  const dealsToInsert: { rowNumber: number; payload: Record<string, unknown> }[] = [];
+  for (const p of prepared) {
+    const contactId = contactIdByRow.get(p.rowNumber);
+    if (!contactId) continue;
+    if (contactIdsWithDeal.has(contactId)) continue;
 
-      dealsToInsert.push({
-        rowNumber: p.rowNumber,
-        payload: {
-          name: p.dealName || `Deal – ${p.firstName} ${p.lastName}`.trim(),
-          pipeline_id: defaultPipeline.id,
-          stage_id: defaultStageId,
-          contact_id: contactId,
-          value: p.dealValue,
-          project_id: projectId,  // ← HIER: project_id für Deals!
-        },
-      });
+    dealsToInsert.push({
+      rowNumber: p.rowNumber,
+      payload: {
+        name: p.dealName || `Deal – ${p.firstName} ${p.lastName}`.trim(),
+        pipeline_id: defaultStage.pipelineId,
+        stage_id: defaultStage.stageId,
+        contact_id: contactId,
+        value: p.dealValue,
+      },
+    });
+  }
+
+  for (const chunk of chunkArray(dealsToInsert, WRITE_CHUNK_SIZE)) {
+    try {
+      const { error } = await supabase.from("deals").insert(chunk.map((d) => d.payload));
+      if (error) throw error;
+
+      dealsCreated += chunk.length;
+      console.log(`[Import] Deals eingefügt: ${chunk.length} (gesamt: ${dealsCreated})`);
+    } catch (err) {
+      const error = err as any;
+      const message = error.message || "Unbekannter Fehler";
+      const first = chunk[0]?.rowNumber;
+      const last = chunk[chunk.length - 1]?.rowNumber;
+      errors.push(`Zeilen ${first}–${last}: Deal-Insert fehlgeschlagen (${message})`);
+      console.error("Deal-Insert Fehler:", error);
     }
-
-    for (const chunk of chunkArray(dealsToInsert, WRITE_CHUNK_SIZE)) {
-      try {
-        const { error } = await supabase.from("deals").insert(chunk.map((d) => d.payload));
-        if (error) throw error;
-
-        dealsCreated += chunk.length;
-        console.log(`[Import] Deals-Chunk eingefügt: ${chunk.length} (gesamt: ${dealsCreated})`);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-        const first = chunk[0]?.rowNumber;
-        const last = chunk[chunk.length - 1]?.rowNumber;
-        errors.push(`Zeilen ${first}–${last}: Deal-Chunk-Insert fehlgeschlagen (${message}).`);
-        console.error("importContactsWithDeals Chunk-Deal-Insert Fehler:", message);
-      }
-    }
-  } else {
-    errors.push("Kein Pipeline/Phase-Standard gefunden – es wurden keine Deals angelegt.");
   }
 
   revalidatePath("/dashboard/kontakte");

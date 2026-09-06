@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import SignOutButton from './sign-out-button'
-import ProjectSwitcher from './ProjectSwitcher'
 
 function IconSearch() {
   return (
@@ -30,13 +29,9 @@ const CTA_BY_ROUTE: { match: string; label: string; href: string }[] = [
 export default function Topbar({
   displayName,
   role,
-  projects,
-  activeProjectId,
 }: {
   displayName: string
   role: string
-  projects: { id: string; name: string }[]
-  activeProjectId: string
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -72,8 +67,6 @@ export default function Topbar({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white/80 px-6 backdrop-blur-md">
-      <ProjectSwitcher projects={projects} activeProjectId={activeProjectId} />
-
       <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full max-w-md items-center">
         <div className="flex h-9 w-full items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-500 transition-colors focus-within:border-blue-500/60">
           <IconSearch />

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import { getProjects, getActiveProject } from '@/utils/projects/active-project'
 import ClientNav from './ClientNav'
 import Topbar from './Topbar'
 
@@ -16,12 +15,11 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
-  const [profileResult, projects, activeProject] = await Promise.all([
-    supabase.from('profiles').select('first_name, last_name, email, role').eq('id', user.id).single(),
-    getProjects(),
-    getActiveProject(),
-  ])
-  const profile = profileResult.data
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('first_name, last_name, email, role')
+    .eq('id', user.id)
+    .single()
 
   const displayName = profile?.first_name && profile?.last_name 
     ? `${profile.first_name} ${profile.last_name}`
@@ -49,8 +47,6 @@ export default async function DashboardLayout({
         <Topbar
           displayName={displayName}
           role={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
-          projects={projects}
-          activeProjectId={activeProject?.id ?? ''}
         />
         <main className="flex-1 bg-[#f3f4f6] p-6">{children}</main>
       </div>
