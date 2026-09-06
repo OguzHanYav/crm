@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, memo } from "react";
-import type { Deal, DealStage } from "../types";
+import type { Deal, PipelineStage } from "../types";
 import DealCard from "./DealCard";
 
 function formatEuro(value: number) {
@@ -12,7 +12,7 @@ function formatEuro(value: number) {
   }).format(value);
 }
 
-function StageHeader({ stage, count, total }: { stage: DealStage; count: number; total: number }) {
+function StageHeader({ stage, count, total }: { stage: PipelineStage; count: number; total: number }) {
   return (
     <div className="flex flex-col gap-1.5 border-b border-border/60 px-3 py-3">
       <div className="flex items-center justify-between">
@@ -36,9 +36,9 @@ function StageColumn({
   onDropDeal,
   onOpenDeal,
 }: {
-  stage: DealStage;
+  stage: PipelineStage;
   deals: Deal[];
-  allStages: DealStage[];
+  allStages: PipelineStage[];
   onDropDeal: (dealId: string, newStageId: string) => void;
   onOpenDeal: (deal: Deal) => void;
 }) {
@@ -69,7 +69,7 @@ function StageColumn({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex w-72 shrink-0 flex-col rounded-xl border bg-card/60 transition-colors ${
+      className={`flex w-72 shrink-0 flex-col rounded-xl border bg-card transition-colors ${
         isDragOver ? "border-accent/60 bg-accent-soft/40" : "border-border/60"
       }`}
     >

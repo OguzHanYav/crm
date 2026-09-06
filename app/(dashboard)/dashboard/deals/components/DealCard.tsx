@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback } from "react";
-import type { Deal, DealStage } from "../types";
+import type { Deal, PipelineStage } from "../types";
 
 function formatEuro(value: number) {
   return new Intl.NumberFormat("de-DE", {
@@ -30,7 +30,7 @@ function DealCard({
 }: {
   deal: Deal;
   stageColor: string;
-  allStages: DealStage[];
+  allStages: PipelineStage[];
   onStageChange: (dealId: string, newStageId: string) => void;
   onOpen: (deal: Deal) => void;
 }) {
@@ -62,7 +62,7 @@ function DealCard({
       draggable
       onDragStart={handleDragStart}
       onClick={handleClick}
-      className="group relative cursor-pointer overflow-hidden rounded-lg border border-border/40 bg-card p-3 shadow-soft transition-all hover:border-border-strong hover:shadow-card active:cursor-grabbing"
+      className="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card p-3 shadow-soft transition-all hover:border-border-strong hover:shadow-card active:cursor-grabbing"
     >
       <span className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: stageColor }} />
 
@@ -108,7 +108,7 @@ function DealCard({
   );
 }
 
-function areEqual(prev: Readonly<{ deal: Deal; stageColor: string; allStages: DealStage[] }>, next: Readonly<{ deal: Deal; stageColor: string; allStages: DealStage[] }>) {
+function areEqual(prev: Readonly<{ deal: Deal; stageColor: string; allStages: PipelineStage[] }>, next: Readonly<{ deal: Deal; stageColor: string; allStages: PipelineStage[] }>) {
   return (
     prev.deal === next.deal &&
     prev.stageColor === next.stageColor &&

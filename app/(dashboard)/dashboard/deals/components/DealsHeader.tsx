@@ -10,16 +10,16 @@ export default function DealsHeader({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-baseline gap-2">
-        <h1 className="text-2xl font-bold text-gray-900">{pipelineName}</h1>
-        <span className="text-sm text-gray-400">{totalCount} Datensätze</span>
+        <h1 className="text-2xl font-bold text-foreground">{pipelineName}</h1>
+        <span className="text-sm text-muted-foreground">{totalCount} Datensätze</span>
       </div>
 
       <Link
         href="/dashboard/settings"
-        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 shadow-sm hover:bg-gray-50"
+        className="ring-focus flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground shadow-soft transition-colors hover:bg-muted/40"
       >
         <svg
-          className="h-4 w-4 text-gray-400"
+          className="h-4 w-4 text-muted-foreground"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

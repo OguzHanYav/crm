@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import type { Deal, DealStage } from "../types";
+import type { Deal, PipelineStage } from "../types";
 import StageColumn from "./StageColumn";
 import { updateDealStage } from "../actions";
 
@@ -10,7 +10,7 @@ export default function DealsBoard({
   stages,
   initialDeals,
 }: {
-  stages: DealStage[];
+  stages: PipelineStage[];
   initialDeals: Deal[];
 }) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
@@ -19,10 +19,6 @@ export default function DealsBoard({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // WICHTIG: Wenn page.tsx nach revalidatePath()/router.refresh() neue
-  // Server-Daten liefert, ändern sich initialDeals als Prop. useState allein
-  // würde das ignorieren (nur beim ersten Mount ausgewertet) – daher hier
-  // explizit synchronisieren.
   useEffect(() => {
     setDeals(initialDeals);
   }, [initialDeals]);
@@ -36,7 +32,6 @@ export default function DealsBoard({
         startTransition(async () => {
           const result = await updateDealStage(dealId, newStageId);
           if (!result.success) {
-            // Rollback bei Fehler
             setDeals(previousDeals);
           }
         });

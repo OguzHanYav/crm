@@ -61,36 +61,96 @@ export const getTeamMembers = cache(async (): Promise<TeamMember[]> => {
   return data ?? [];
 });
 
-// ---- Pipeline-Phasen: projektübergreifend, projectId ist jetzt optional ----
-export const getPipelineStages = cache(
-  async (projectId?: string | null): Promise<PipelineStage[]> => {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("deal_stages")
-      .select("id, pipeline_id, name, position, color")
-      .order("position", { ascending: true });
+// ==================== STANDARD-PIPELINE-PHASEN ====================
+const STANDARD_STAGE_DEFS: { name: string; color: string }[] = [
+  { name: "Follow-up", color: "#0284C7" },
+  { name: "Nicht erreicht", color: "#DC2626" },
+  { name: "Erreicht", color: "#2563EB" },
+  { name: "Neu / In Bearbeitung", color: "#D97706" },
+  { name: "Gewonnen", color: "#16A34A" },
+  { name: "Verloren", color: "#64748B" },
+];
 
-    if (error) {
-      console.error("getPipelineStages error:", error.message);
-      return [];
-    }
-    // Transformiere zu PipelineStage Format
-    return (data ?? []).map((stage: any) => ({
-      id: stage.id,
-      project_id: projectId || "00000000-0000-0000-0000-000000000000",
-      name: stage.name,
-      position: stage.position,
-      is_visible: true,
-      color: stage.color || '#6D6AFF',
-    }));
-  }
-);
-
-// Deals: projectId optional. Ohne Wert werden ALLE Deals geladen.
-export async function getDealsByProject(projectId?: string | null): Promise<Deal[]> {
+export const getOrCreateStandardStages = cache(async (): Promise<PipelineStage[]> => {
   const supabase = await createClient();
 
-  let query = supabase
+  const { data: pipelines } = await supabase
+    .from("pipelines")
+    .select("id, name")
+    .order("name", { ascending: true })
+    .limit(1);
+
+  let pipelineId = pipelines?.[0]?.id as string | undefined;
+
+  if (!pipelineId) {
+    const { data: newPipeline, error: createPipelineError } = await supabase
+      .from("pipelines")
+      .insert({ name: "Standard-Pipeline" })
+      .select("id")
+      .single();
+
+    if (createPipelineError) {
+      console.error("getOrCreateStandardStages pipeline create error:", createPipelineError.message);
+      return [];
+    }
+    pipelineId = newPipeline?.id;
+  }
+
+  if (!pipelineId) return [];
+
+  const { data: existingStages, error: stagesError } = await supabase
+    .from("deal_stages")
+    .select("id, name, position, color")
+    .eq("pipeline_id", pipelineId);
+
+  if (stagesError) {
+    console.error("getOrCreateStandardStages stages fetch error:", stagesError.message);
+  }
+
+  const stagesByName = new Map(
+    (existingStages ?? []).map((s) => [s.name.trim().toLowerCase(), s])
+  );
+
+  const result: PipelineStage[] = [];
+
+  for (let i = 0; i < STANDARD_STAGE_DEFS.length; i++) {
+    const def = STANDARD_STAGE_DEFS[i];
+    const key = def.name.trim().toLowerCase();
+    let stage = stagesByName.get(key);
+
+    if (!stage) {
+      const { data: created, error: createStageError } = await supabase
+        .from("deal_stages")
+        .insert({ pipeline_id: pipelineId, name: def.name, position: i, color: def.color })
+        .select("id, name, position, color")
+        .single();
+
+      if (createStageError) {
+        console.error("getOrCreateStandardStages stage create error:", createStageError.message);
+        continue;
+      }
+      stage = created ?? undefined;
+    }
+
+    if (stage) {
+      result.push({
+        id: stage.id,
+        project_id: pipelineId,
+        name: def.name,
+        position: i,
+        is_visible: true,
+        color: def.color,
+      });
+    }
+  }
+
+  return result;
+});
+
+export async function getAllDeals(): Promise<Deal[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
     .from("deals")
     .select(
       `
@@ -101,33 +161,8 @@ export async function getDealsByProject(projectId?: string | null): Promise<Deal
     )
     .order("created_at", { ascending: false });
 
-  const { data, error } = await query;
-
   if (error) {
-    console.error("getDealsByProject error:", error.message);
-    return [];
-  }
-
-  return (data ?? []) as unknown as Deal[];
-}
-
-export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("deals")
-    .select(
-      `
-      id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
-      contact:contacts ( id, first_name, last_name, email, phone, company, website, country, last_contacted_at ),
-      assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
-      `
-    )
-    .eq("pipeline_id", pipelineId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("getDealsByPipeline error:", error.message);
+    console.error("getAllDeals error:", error.message);
     return [];
   }
 

@@ -1,35 +1,20 @@
-import { getActiveProject } from "@/utils/projects/active-project";
-import { getPipelineStages, getDealsByProject } from "./data";
-import DealsView from "./components/DealsView";
+import { getOrCreateStandardStages, getAllDeals } from "./data";
+import DealsBoard from "./components/DealsBoard";
+import DealsHeader from "./components/DealsHeader";
 import ContactDetailSheet from "@/components/contacts/ContactDetailSheet";
 
 export default async function DealsPage() {
-  const activeProject = await getActiveProject();
-
-  if (!activeProject) {
-    return (
-      <div className="p-8 text-center text-gray-500">
-        Kein Projekt gefunden. Bitte zuerst ein Projekt in Supabase anlegen.
-      </div>
-    );
-  }
-
   const [stages, deals] = await Promise.all([
-    getPipelineStages(activeProject.id),
-    getDealsByProject(activeProject.id),
+    getOrCreateStandardStages(),
+    getAllDeals(),
   ]);
-
-  if (stages.length === 0) {
-    return (
-      <div className="p-8 text-center text-gray-500">
-        Für &quot;{activeProject.name}&quot; sind keine sichtbaren Pipeline-Phasen konfiguriert.
-      </div>
-    );
-  }
 
   return (
     <>
-      <DealsView projectName={activeProject.name} stages={stages} deals={deals} />
+      <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
+        <DealsHeader pipelineName="Pipeline" totalCount={deals.length} />
+        <DealsBoard stages={stages} initialDeals={deals} />
+      </div>
       <ContactDetailSheet />
     </>
   );
