@@ -36,19 +36,9 @@ type TabDef = {
   eventCategory?: "opening_call" | "follow_up_call";
 };
 
-const TABS: TabDef[] = [
-  { key: "all", label: "Alle" },
-  { key: "lead", label: "Leads", status: "Lead" },
-  { key: "kunde", label: "Kunden", status: "Kunde" },
-  { key: "followup", label: "Follow-Up", eventCategory: "follow_up_call" },
-];
+const TABS: TabDef[] = [{ key: "all", label: "Alle" }];
 
-function getActiveTabKey(searchParams: URLSearchParams): string {
-  const status = searchParams.get("status");
-  const event = searchParams.get("event");
-  if (event === "follow_up_call") return "followup";
-  if (status === "Lead") return "lead";
-  if (status === "Kunde") return "kunde";
+function getActiveTabKey(): string {
   return "all";
 }
 
@@ -58,7 +48,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
   const searchParams = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
 
-  const activeTabKey = getActiveTabKey(searchParams);
+  const activeTabKey = getActiveTabKey();
 
   const advancedFilterCount = useMemo(() => {
     let count = 0;

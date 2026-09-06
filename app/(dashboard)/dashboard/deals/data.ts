@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
-import type { Pipeline, DealStage, PipelineStage, Deal, Contact, TeamMember } from "./types";
+import type { Pipeline, DealStage, PipelineStage, PipelinePhase, Deal, Contact, TeamMember } from "./types";
 
 export const getPipelines = cache(async (): Promise<Pipeline[]> => {
   const supabase = await createClient();
@@ -145,6 +145,38 @@ export const getOrCreateStandardStages = cache(async (): Promise<PipelineStage[]
   }
 
   return result;
+});
+
+// Gruppiert alle deal_stages (über sämtliche Pipelines hinweg) nach Namen, damit
+// jeder Pipeline-Tab unabhängig davon greift, welcher Pipeline ein Deal zugeordnet ist.
+export const getPipelinePhases = cache(async (): Promise<PipelinePhase[]> => {
+  await getOrCreateStandardStages();
+  const supabase = await createClient();
+
+  const { data: allStages, error } = await supabase
+    .from("deal_stages")
+    .select("id, pipeline_id, name, position, color")
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("getPipelinePhases error:", error.message);
+    return [];
+  }
+
+  const phases: PipelinePhase[] = [];
+  for (const def of STANDARD_STAGE_DEFS) {
+    const key = def.name.trim().toLowerCase();
+    const matches = (allStages ?? []).filter((s) => s.name.trim().toLowerCase() === key);
+    if (matches.length === 0) continue;
+    phases.push({
+      key,
+      name: def.name,
+      color: def.color,
+      stageIds: matches.map((s) => s.id),
+      defaultStageId: matches[0].id,
+    });
+  }
+  return phases;
 });
 
 export async function getAllDeals(): Promise<Deal[]> {

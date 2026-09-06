@@ -227,6 +227,17 @@ async function resolveDefaultStageId(supabase: any): Promise<{ pipelineId: strin
 
   const pipelineId = pipelines[0].id;
 
+  const { data: followUpStage } = await supabase
+    .from("deal_stages")
+    .select("id")
+    .eq("pipeline_id", pipelineId)
+    .ilike("name", "Follow-up")
+    .maybeSingle();
+
+  if (followUpStage?.id) {
+    return { pipelineId, stageId: followUpStage.id };
+  }
+
   const { data: stages, error: stageError } = await supabase
     .from("deal_stages")
     .select("id")

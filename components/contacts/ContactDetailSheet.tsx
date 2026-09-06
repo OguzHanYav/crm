@@ -5,9 +5,18 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { getContactDetailPayload, getContactSheetBootstrap, addNoteToContact, logCall } from "@/app/(dashboard)/dashboard/kontakte/actions";
 import { updateDealStage } from "@/app/(dashboard)/dashboard/deals/actions";
 import type { ContactDetailPayload, ContactSheetBootstrap } from "@/app/(dashboard)/dashboard/kontakte/types";
-import LinkDealModal from "@/app/(dashboard)/dashboard/kontakte/components/LinkDealModal";
+import { Button } from "@/components/ui/Button";
+import { Input, Select, Textarea } from "@/components/ui/Input";
+import { Badge, STATUS_TONE_MAP } from "@/components/ui/Badge";
 
-type Tab = "info" | "activity" | "notes";
+type Tab = "info" | "activity" | "notes" | "calllog";
+
+const TABS: [Tab, string][] = [
+  ["info", "Kontakt-Info"],
+  ["activity", "Aktivitäten"],
+  ["notes", "Notizen"],
+  ["calllog", "Call Log"],
+];
 
 function formatDateDE(dateString: string, withTime = true) {
   if (!dateString) return "—";
@@ -17,27 +26,6 @@ function formatDateDE(dateString: string, withTime = true) {
     year: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
   }).format(new Date(dateString));
-}
-
-function formatEuro(value: number) {
-  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
-}
-
-function IconPhone() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-      <path d="M5 4h3l1.5 4-2 1.5c1 2.5 2.5 4 5 5l1.5-2 4 1.5v3c0 1-1 1.5-2 1.5C9.5 18.5 5.5 14.5 4.5 8c-.1-1 .5-2 1.5-2z" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconMail() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
-      <path d="M3 6.5h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" strokeLinejoin="round" />
-      <path d="m3.5 7 8.5 6 8.5-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 export default function ContactDetailSheet() {
@@ -50,7 +38,6 @@ export default function ContactDetailSheet() {
   const [bootstrap, setBootstrap] = useState<ContactSheetBootstrap | null>(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("info");
-  const [linkDealOpen, setLinkDealOpen] = useState(false);
 
   const isOpen = Boolean(contactId);
 
@@ -83,8 +70,6 @@ export default function ContactDetailSheet() {
 
   function refreshPayload() {
     if (contactId) load(contactId);
-    // Sorgt dafür, dass Server Components (Kanban-Board, Kontakt-Tabelle, ...)
-    // die durch revalidatePath() invalidierten Daten neu holen.
     router.refresh();
   }
 
@@ -92,11 +77,11 @@ export default function ContactDetailSheet() {
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={close} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={close} />
 
-      <div className="relative flex h-full w-full max-w-xl flex-col border-l border-gray-200 bg-white shadow-2xl">
+      <div className="relative flex h-full w-full max-w-xl flex-col rounded-l-2xl border-l border-border bg-card shadow-2xl">
         {loading && !payload ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-gray-400">Lädt...</div>
+          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">Lädt...</div>
         ) : payload ? (
           <SheetContent
             payload={payload}
@@ -105,25 +90,11 @@ export default function ContactDetailSheet() {
             setTab={setTab}
             onClose={close}
             onRefresh={refreshPayload}
-            onOpenLinkDeal={() => setLinkDealOpen(true)}
           />
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
+          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             Kontakt nicht gefunden.
           </div>
-        )}
-
-        {linkDealOpen && payload && bootstrap && (
-          <LinkDealModal
-            contact={payload.contact}
-            pipelines={bootstrap.pipelines}
-            stages={bootstrap.stages}
-            teamMembers={bootstrap.teamMembers}
-            onClose={() => {
-              setLinkDealOpen(false);
-              refreshPayload();
-            }}
-          />
         )}
       </div>
     </div>
@@ -137,7 +108,6 @@ function SheetContent({
   setTab,
   onClose,
   onRefresh,
-  onOpenLinkDeal,
 }: {
   payload: ContactDetailPayload;
   bootstrap: ContactSheetBootstrap | null;
@@ -145,99 +115,74 @@ function SheetContent({
   setTab: (t: Tab) => void;
   onClose: () => void;
   onRefresh: () => void;
-  onOpenLinkDeal: () => void;
 }) {
   const { contact, deals } = payload;
   const primaryDeal = deals[0] ?? null;
-  const stagesForPrimaryPipeline = bootstrap?.stages.filter((s) => s.pipeline_id === primaryDeal?.pipeline_id) ?? [];
+  const stagesForPrimaryPipeline =
+    bootstrap?.stages.filter((s) => s.pipeline_id === primaryDeal?.pipeline_id) ?? [];
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <>
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-gray-200 p-5">
+      <div className="flex flex-col gap-4 border-b border-border p-6">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 {contact.first_name} {contact.last_name}
               </h2>
-              <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-700">
-                {contact.status}
-              </span>
+              <Badge tone={STATUS_TONE_MAP[contact.status] ?? "default"}>{contact.status}</Badge>
             </div>
-            <p className="text-sm text-gray-500">{contact.company ?? "—"}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{contact.company ?? "—"}</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            className="ring-focus flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          >
             ✕
           </button>
         </div>
 
-        {/* Quick Actions */}
         <div className="flex flex-wrap gap-2 text-sm">
           <a
             href={`tel:${contact.phone ?? ""}`}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-gray-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+            className="ring-focus rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
           >
-            <IconPhone /> {contact.phone ?? "Keine Nummer"}
+            📞 {contact.phone ?? "Keine Nummer"}
           </a>
           <a
             href={`mailto:${contact.email}`}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-gray-700 transition-colors hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+            className="ring-focus rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
           >
-            <IconMail /> E-Mail
+            ✉️ E-Mail
           </a>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {primaryDeal && stagesForPrimaryPipeline.length > 0 && (
-            <select
-              defaultValue={primaryDeal.stage_id}
-              onChange={(e) => {
-                const newStageId = e.target.value;
-                updateDealStage(primaryDeal.id, newStageId).then((result) => {
-                  if (result.success) {
-                    onRefresh();
-                  } else {
-                    alert(result.message ?? "Phase konnte nicht geändert werden.");
-                  }
-                });
-              }}
-              className="h-8 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              {stagesForPrimaryPipeline
-                .sort((a, b) => a.position - b.position)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </select>
-          )}
-          <button
-            onClick={onOpenLinkDeal}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        {primaryDeal && stagesForPrimaryPipeline.length > 0 && (
+          <Select
+            defaultValue={primaryDeal.stage_id}
+            onChange={(e) => updateDealStage(primaryDeal.id, e.target.value).then(onRefresh)}
+            className="h-9 w-auto text-sm"
           >
-            + Deal verknüpfen
-          </button>
-        </div>
+            {stagesForPrimaryPipeline
+              .sort((a, b) => a.position - b.position)
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+          </Select>
+        )}
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        {(
-          [
-            ["info", "Kontakt-Info & Call Log"],
-            ["activity", "Aktivitäten"],
-            ["notes", "Notizen"],
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
+      <div className="flex border-b border-border px-2">
+        {TABS.map(([key, label]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${
-              tab === key
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500 hover:text-gray-700"
+            className={`ring-focus flex-1 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+              tab === key ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             {label}
@@ -245,117 +190,46 @@ function SheetContent({
         ))}
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5">
-        {tab === "info" && <InfoTab payload={payload} onRefresh={onRefresh} />}
+      <div className="flex-1 overflow-y-auto p-6">
+        {tab === "info" && <InfoTab payload={payload} />}
         {tab === "activity" && <ActivityTab payload={payload} />}
         {tab === "notes" && <NotesTab payload={payload} onRefresh={onRefresh} />}
+        {tab === "calllog" && <CallLogTab payload={payload} onRefresh={onRefresh} />}
       </div>
-    </div>
+    </>
   );
 }
 
-function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefresh: () => void }) {
-  const { contact, deals } = payload;
-  const [isPending, startTransition] = useTransition();
-
-  function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      const result = await logCall(contact.id, formData);
-      if (result.success) onRefresh();
-    });
-  }
+function InfoTab({ payload }: { payload: ContactDetailPayload }) {
+  const { contact } = payload;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-800">Stammdaten</h3>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <div>
-            <dt className="text-xs text-gray-400">Position</dt>
-            <dd className="text-gray-800">{contact.position ?? "—"}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-gray-400">Firma</dt>
-            <dd className="text-gray-800">{contact.company ?? "—"}</dd>
-          </div>
-          <div className="col-span-2">
-            <dt className="text-xs text-gray-400">Adresse / Land</dt>
-            <dd className="text-gray-800">{[contact.address, contact.country].filter(Boolean).join(", ") || "—"}</dd>
-          </div>
-          <div className="col-span-2">
-            <dt className="text-xs text-gray-400">Sales Rep</dt>
-            <dd className="text-gray-800">
-              {contact.assigned_profile ? `${contact.assigned_profile.first_name} ${contact.assigned_profile.last_name}` : "—"}
-            </dd>
-          </div>
-        </dl>
-      </div>
-
-      {deals.length > 0 && (
+    <div>
+      <h3 className="mb-3 text-sm font-semibold text-foreground">Stammdaten</h3>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-gray-800">Deals</h3>
-          <ul className="flex flex-col gap-1.5">
-            {deals.map((d) => (
-              <li key={d.id} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 text-sm">
-                <span className="text-gray-700">{d.name}</span>
-                <span className="font-medium text-blue-600">{formatEuro(d.value)}</span>
-              </li>
-            ))}
-          </ul>
+          <dt className="text-xs font-medium text-muted-foreground">Position</dt>
+          <dd className="mt-0.5 text-foreground">{contact.position ?? "—"}</dd>
         </div>
-      )}
-
-      <div>
-        <h3 className="mb-2 text-sm font-semibold text-gray-800">Anruf protokollieren</h3>
-        <form action={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Anruf-Typ</label>
-              <select name="call_type" className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="opening_call">Opening-Call</option>
-                <option value="follow_up_call">Follow-Up</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Interesse bekundet</label>
-              <select name="interest_expressed" className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">— unklar —</option>
-                <option value="true">Ja</option>
-                <option value="false">Nein</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Datum/Uhrzeit</label>
-            <input
-              type="datetime-local"
-              name="called_at"
-              defaultValue={new Date().toISOString().slice(0, 16)}
-              className="h-8 w-full rounded-md border border-gray-300 px-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Notiz</label>
-            <textarea
-              name="summary"
-              rows={2}
-              required
-              className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={isPending}
-            className="self-end rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isPending ? "Speichern..." : "Anruf speichern"}
-          </button>
-        </form>
-      </div>
+        <div>
+          <dt className="text-xs font-medium text-muted-foreground">Firma</dt>
+          <dd className="mt-0.5 text-foreground">{contact.company ?? "—"}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs font-medium text-muted-foreground">Adresse / Land</dt>
+          <dd className="mt-0.5 text-foreground">
+            {[contact.address, contact.country].filter(Boolean).join(", ") || "—"}
+          </dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-xs font-medium text-muted-foreground">Sales Rep</dt>
+          <dd className="mt-0.5 text-foreground">
+            {contact.assigned_profile
+              ? `${contact.assigned_profile.first_name} ${contact.assigned_profile.last_name}`
+              : "—"}
+          </dd>
+        </div>
+      </dl>
     </div>
   );
 }
@@ -379,18 +253,18 @@ function ActivityTab({ payload }: { payload: ContactDetailPayload }) {
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  if (items.length === 0) return <p className="text-sm text-gray-400">Noch keine Aktivitäten.</p>;
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">Noch keine Aktivitäten.</p>;
 
   const icons = { note: "📝", call: "📞", stage: "🔄" };
 
   return (
-    <ul className="flex flex-col gap-3">
+    <ul className="flex flex-col gap-4">
       {items.map((item, i) => (
         <li key={i} className="flex gap-3 text-sm">
           <span className="mt-0.5">{icons[item.type]}</span>
           <div>
-            <p className="text-gray-800">{item.content}</p>
-            <p className="text-xs text-gray-400">{formatDateDE(item.date)}</p>
+            <p className="text-foreground">{item.content}</p>
+            <p className="text-xs text-muted-foreground">{formatDateDE(item.date)}</p>
           </div>
         </li>
       ))}
@@ -417,30 +291,26 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
-        <input
+        <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="Neue Notiz..."
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="flex-1"
         />
-        <button
-          onClick={submit}
-          disabled={isPending || !text.trim()}
-          className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button onClick={submit} disabled={isPending || !text.trim()} size="sm">
           {isPending ? "..." : "Speichern"}
-        </button>
+        </Button>
       </div>
 
       {payload.notes.length === 0 ? (
-        <p className="text-sm text-gray-400">Noch keine Notizen.</p>
+        <p className="text-sm text-muted-foreground">Noch keine Notizen.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {payload.notes.map((n) => (
-            <li key={n.id} className="rounded-lg border border-gray-200 p-3 text-sm">
-              <p className="text-gray-800">{n.content}</p>
-              <p className="mt-1 text-xs text-gray-400">
+            <li key={n.id} className="rounded-lg border border-border p-3 text-sm">
+              <p className="text-foreground">{n.content}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
                 {n.author ? `${n.author.first_name} ${n.author.last_name} · ` : ""}
                 {formatDateDE(n.created_at)}
               </p>
@@ -448,6 +318,85 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function CallLogTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefresh: () => void }) {
+  const { contact, callLogs } = payload;
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(formData: FormData) {
+    startTransition(async () => {
+      const result = await logCall(contact.id, formData);
+      if (result.success) onRefresh();
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Anruf protokollieren</h3>
+        <form action={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Anruf-Typ</label>
+              <Select name="call_type" className="h-9 text-sm">
+                <option value="opening_call">Opening-Call</option>
+                <option value="follow_up_call">Follow-Up</option>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Interesse bekundet</label>
+              <Select name="interest_expressed" className="h-9 text-sm">
+                <option value="">— unklar —</option>
+                <option value="true">Ja</option>
+                <option value="false">Nein</option>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Datum/Uhrzeit</label>
+            <Input
+              type="datetime-local"
+              name="called_at"
+              defaultValue={new Date().toISOString().slice(0, 16)}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Notiz</label>
+            <Textarea name="summary" rows={3} required className="text-sm" />
+          </div>
+
+          <Button type="submit" disabled={isPending} size="sm" className="self-end">
+            {isPending ? "Speichern..." : "Speichern"}
+          </Button>
+        </form>
+      </div>
+
+      <div>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Verlauf</h3>
+        {callLogs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Noch keine Anrufe protokolliert.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {callLogs.map((c) => (
+              <li key={c.id} className="rounded-lg border border-border p-3 text-sm">
+                <p className="text-foreground">
+                  {c.call_type === "opening_call" ? "Opening-Call" : "Follow-Up"}: {c.notes || "—"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {c.author ? `${c.author.first_name} ${c.author.last_name} · ` : ""}
+                  {formatDateDE(c.called_at)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

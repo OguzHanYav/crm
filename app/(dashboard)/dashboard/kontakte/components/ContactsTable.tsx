@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Contact } from "../types";
@@ -25,6 +26,60 @@ function IconPhone() {
     </svg>
   );
 }
+
+const ContactRow = memo(function ContactRow({
+  contact,
+  contactHref,
+  isAdmin,
+  teamMembers,
+}: {
+  contact: Contact;
+  contactHref: string;
+  isAdmin: boolean;
+  teamMembers: any[];
+}) {
+  const stopPropagation = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation(), []);
+
+  return (
+    <tr className="group transition-colors duration-150 hover:bg-muted/40">
+      <td className="px-4 py-3">
+        <Link href={contactHref} scroll={false} className="block">
+          <p className="font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline">
+            {contact.first_name} {contact.last_name}
+          </p>
+          <p className="text-xs text-muted-foreground">{contact.email}</p>
+        </Link>
+      </td>
+
+      <td className="px-4 py-3 text-foreground/90">{contact.company ?? "—"}</td>
+
+      <td className="px-4 py-3">
+        <StatusBadge status={contact.status} />
+      </td>
+
+      <td className="px-4 py-3 text-muted-foreground">{formatDateDE(contact.created_at)}</td>
+
+      <td className="px-4 py-3 text-center">
+        {contact.phone ? (
+          <a
+            href={`tel:${contact.phone}`}
+            onClick={stopPropagation}
+            title={contact.phone}
+            className="ring-focus inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-accent transition-colors hover:brightness-110"
+          >
+            <IconPhone />
+          </a>
+        ) : (
+          <span className="text-muted-foreground/40">—</span>
+        )}
+      </td>
+
+      <td className="px-4 py-3 text-right">
+        <ContactRowActions contact={contact} isAdmin={isAdmin} teamMembers={teamMembers} />
+      </td>
+    </tr>
+  );
+});
 
 export default function ContactsTable({
   contacts,
@@ -67,43 +122,13 @@ export default function ContactsTable({
             const contactHref = `/dashboard/kontakte?${params.toString()}`;
 
             return (
-              <tr key={contact.id} className="group transition-colors duration-150 hover:bg-muted/40">
-                <td className="px-4 py-3">
-                  <Link href={contactHref} scroll={false} className="block">
-                    <p className="font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline">
-                      {contact.first_name} {contact.last_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{contact.email}</p>
-                  </Link>
-                </td>
-
-                <td className="px-4 py-3 text-foreground/90">{contact.company ?? "—"}</td>
-
-                <td className="px-4 py-3">
-                  <StatusBadge status={contact.status} />
-                </td>
-
-                <td className="px-4 py-3 text-muted-foreground">{formatDateDE(contact.created_at)}</td>
-
-                <td className="px-4 py-3 text-center">
-                  {contact.phone ? (
-                    <a
-                      href={`tel:${contact.phone}`}
-                      onClick={(e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
-                      title={contact.phone}
-                      className="ring-focus inline-flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-accent transition-colors hover:brightness-110"
-                    >
-                      <IconPhone />
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground/40">—</span>
-                  )}
-                </td>
-
-                <td className="px-4 py-3 text-right">
-                  <ContactRowActions contact={contact} isAdmin={isAdmin} teamMembers={teamMembers} />
-                </td>
-              </tr>
+              <ContactRow
+                key={contact.id}
+                contact={contact}
+                contactHref={contactHref}
+                isAdmin={isAdmin}
+                teamMembers={teamMembers}
+              />
             );
           })}
         </tbody>

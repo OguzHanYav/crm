@@ -56,6 +56,16 @@ export type Deal = {
   assigned_profile: TeamMember | null;
 };
 
+// Fasst alle deal_stages-Zeilen mit demselben Namen (über alle Pipelines hinweg)
+// zu einer Tab-Phase zusammen, damit Deals unabhängig von ihrer Pipeline korrekt zugeordnet werden.
+export type PipelinePhase = {
+  key: string;
+  name: string;
+  color: string;
+  stageIds: string[];
+  defaultStageId: string;
+};
+
 export type StageHistoryEntry = {
   id: string;
   deal_id: string;
