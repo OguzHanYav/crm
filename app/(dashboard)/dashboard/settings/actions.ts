@@ -284,25 +284,24 @@ export async function importContactsWithDeals(
     if (email) emails.push(email);
   }
   const uniqueEmails = [...new Set(emails)].filter(Boolean);
-  
+
   console.log(`[Import] ${uniqueEmails.length} eindeutige E-Mail-Adressen gefunden`);
 
   // ---- 2) BULK-LOOKUP: Alle bestehenden Kontakte mit einer Query holen ----
   const existingByEmail = new Map<string, { id: string; notes: string | null }>();
-  
-  // Aufteilen in Chunks von 1000 (Supabase Limit für in())
+
   for (const chunk of chunkArray(uniqueEmails, 1000)) {
     try {
       const { data, error } = await supabase
         .from("contacts")
         .select("id, email, notes")
         .in("email", chunk);
-      
+
       if (error) {
         console.error("Bulk-Lookup Fehler:", error);
         continue;
       }
-      
+
       if (data) {
         for (const c of data) {
           if (c.email) existingByEmail.set(c.email, { id: c.id, notes: c.notes });
@@ -312,11 +311,12 @@ export async function importContactsWithDeals(
       console.error("Bulk-Lookup Exception:", err);
     }
   }
-  
+
   console.log(`[Import] ${existingByEmail.size} bestehende Kontakte gefunden`);
 
-  // ---- 3) Zeilen vorbereiten ----
+  // ---- 3) Zeilen vorbereiten (inkl. Deduplizierung INNERHALB der Datei) ----
   const prepared: PreparedRow[] = [];
+  const seenEmailsInFile = new Set<string>();
 
   for (let i = 0; i < rows.length; i++) {
     const raw = rows[i] as unknown as RawImportRow;
@@ -366,6 +366,17 @@ export async function importContactsWithDeals(
         `Zeile ${rowNumber}: Übersprungen – weder Name, Firma, E-Mail noch Telefon vorhanden.`
       );
       continue;
+    }
+
+    // ---- Dubletten-Check INNERHALB der Datei ----
+    if (email) {
+      if (seenEmailsInFile.has(email)) {
+        errors.push(
+          `Zeile ${rowNumber}: Dublette (E-Mail "${email}" bereits weiter oben in der Datei vorhanden) – übersprungen.`
+        );
+        continue;
+      }
+      seenEmailsInFile.add(email);
     }
 
     const statusRaw = readField(raw, "status");

@@ -1,5 +1,4 @@
 import { createClient } from "@/utils/supabase/server";
-import { getActiveProjectId } from "@/utils/projects/active-project";
 import type {
   Contact,
   ContactWithRelations,
@@ -8,10 +7,6 @@ import type {
   ContactDeal,
   TeamMember,
 } from "./types";
-
-// ============================================================
-// 1. KONTAKTE (mit Projekt-Filter)
-// ============================================================
 
 export type ContactFilters = {
   q?: string;
@@ -25,7 +20,6 @@ export type ContactFilters = {
 
 export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
   const supabase = await createClient();
-  const projectId = await getActiveProjectId();
   const normalized: ContactFilters =
     typeof filters === "string" ? { q: filters } : filters ?? {};
 
@@ -33,10 +27,6 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
     .from("contacts")
     .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
     .order("created_at", { ascending: false });
-
-  if (projectId) {
-    query = query.eq("project_id", projectId);
-  }
 
   if (normalized.q && normalized.q.trim().length > 0) {
     const term = normalized.q.trim();
@@ -73,19 +63,12 @@ export async function getContacts(filters?: ContactFilters | string): Promise<Co
 
 export async function getContactCompanies(): Promise<string[]> {
   const supabase = await createClient();
-  const projectId = await getActiveProjectId();
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("contacts")
     .select("company")
     .not("company", "is", null)
     .order("company", { ascending: true });
-
-  if (projectId) {
-    query = query.eq("project_id", projectId);
-  }
-
-  const { data, error } = await query;
 
   if (error || !data) {
     console.error("getContactCompanies error:", error?.message);
@@ -94,10 +77,6 @@ export async function getContactCompanies(): Promise<string[]> {
 
   return [...new Set(data.map((row: any) => row.company).filter(Boolean))];
 }
-
-// ============================================================
-// 2. WEITERE FUNKTIONEN (unverändert)
-// ============================================================
 
 export async function getCurrentUserRole(): Promise<string | null> {
   const supabase = await createClient();

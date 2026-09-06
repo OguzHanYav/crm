@@ -12,7 +12,7 @@ export type ActionResult<T = undefined> = {
 };
 
 const DEAL_SELECT = `
-  id, name, pipeline_id, stage_id, project_id, pipeline_stage_id, contact_id, assigned_to, value, created_at,
+  id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
   contact:contacts ( id, first_name, last_name, email, phone ),
   assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
 `;
@@ -59,14 +59,12 @@ async function resolveProjectIdForContact(
   return await getActiveProjectId();
 }
 
-// Brückt eine Legacy-Phase (deal_stages) auf die neue, projekt-gebundene
-// Pipeline-Phase (pipeline_stages) anhand des Namens.
 async function bridgeLegacyStageToPipelineStage(
   supabase: SupabaseClient,
-  projectId: string,
+  projectId: string | null,
   legacyStageName: string | null | undefined
 ): Promise<string | null> {
-  if (!legacyStageName) return null;
+  if (!projectId || !legacyStageName) return null;
   const { data } = await supabase
     .from("pipeline_stages")
     .select("id")
@@ -76,14 +74,12 @@ async function bridgeLegacyStageToPipelineStage(
   return data?.id ?? null;
 }
 
-// Brückt in die Gegenrichtung: neue Pipeline-Phase -> passende Legacy-Phase
-// innerhalb derselben Legacy-Pipeline (damit alte Ansichten konsistent bleiben).
 async function bridgePipelineStageToLegacyStage(
   supabase: SupabaseClient,
-  legacyPipelineId: string,
+  legacyPipelineId: string | null,
   pipelineStageName: string | null | undefined
 ): Promise<string | null> {
-  if (!pipelineStageName) return null;
+  if (!legacyPipelineId || !pipelineStageName) return null;
   const { data } = await supabase
     .from("deal_stages")
     .select("id")
@@ -115,9 +111,11 @@ export async function updateDealStage(
     .eq("id", dealId)
     .maybeSingle();
 
-  const bridgedPipelineStageId = dealBefore?.project_id
-    ? await bridgeLegacyStageToPipelineStage(supabase, dealBefore.project_id, stageRow?.name)
-    : null;
+  const bridgedPipelineStageId = await bridgeLegacyStageToPipelineStage(
+    supabase,
+    dealBefore?.project_id ?? null,
+    stageRow?.name
+  );
 
   const { data, error } = await supabase
     .from("deals")
@@ -146,7 +144,6 @@ export async function updateDealStage(
   return { success: true, data: dealRecord };
 }
 
-// Neu: Stage-Wechsel aus der projekt-gebundenen Pipelines-Tabelle heraus.
 export async function updateDealPipelineStage(
   dealId: string,
   newPipelineStageId: string
@@ -162,9 +159,11 @@ export async function updateDealPipelineStage(
     console.error("updateDealPipelineStage stage lookup error:", stageError.message);
   }
 
-  const bridgedLegacyStageId = dealBefore?.pipeline_id
-    ? await bridgePipelineStageToLegacyStage(supabase, dealBefore.pipeline_id, newStage?.name)
-    : null;
+  const bridgedLegacyStageId = await bridgePipelineStageToLegacyStage(
+    supabase,
+    dealBefore?.pipeline_id ?? null,
+    newStage?.name
+  );
 
   const { data, error } = await supabase
     .from("deals")
@@ -195,8 +194,6 @@ export async function updateDealPipelineStage(
 
 export type CreateDealState = ActionResult<Deal>;
 
-// Deals werden ausschließlich aus der Kontakt-Detailansicht heraus angelegt
-// (LinkDealModal); es gibt keinen globalen "Neuer Deal"-Einstiegspunkt mehr.
 export async function createDeal(
   _prevState: CreateDealState,
   formData: FormData
@@ -223,9 +220,6 @@ export async function createDeal(
   }
 
   const projectId = await resolveProjectIdForContact(supabase, contactId);
-  if (!projectId) {
-    return { success: false, message: "Kein Projekt gefunden." };
-  }
 
   const { data: stageRow } = await supabase
     .from("deal_stages")
@@ -244,8 +238,8 @@ export async function createDeal(
       contact_id: contactId,
       assigned_to: assignedTo,
       value,
-      project_id: projectId,
-      pipeline_stage_id: pipelineStageId,
+      ...(projectId ? { project_id: projectId } : {}),
+      ...(pipelineStageId ? { pipeline_stage_id: pipelineStageId } : {}),
     })
     .select(DEAL_SELECT)
     .single();
@@ -264,5 +258,5 @@ export async function createDeal(
     revalidatePath(`/dashboard/kontakte/${dealRecord.contact_id}`);
   }
 
-  return { success: true, data: dealRecord };
+  return { success: true, data: dealRecord;
 }

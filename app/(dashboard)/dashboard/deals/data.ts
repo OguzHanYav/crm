@@ -61,41 +61,47 @@ export const getTeamMembers = cache(async (): Promise<TeamMember[]> => {
   return data ?? [];
 });
 
-// ---- Neu: projekt-gebundene Pipeline-Phasen ----
+// ---- Pipeline-Phasen: projektübergreifend, projectId ist jetzt optional ----
 export const getPipelineStages = cache(
-  async (projectId: string): Promise<PipelineStage[]> => {
+  async (projectId?: string | null): Promise<PipelineStage[]> => {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("pipeline_stages")
-      .select("id, project_id, name, position, is_visible, color")
-      .eq("project_id", projectId)
-      .eq("is_visible", true)
+      .from("deal_stages")
+      .select("id, pipeline_id, name, position, color")
       .order("position", { ascending: true });
 
     if (error) {
       console.error("getPipelineStages error:", error.message);
       return [];
     }
-    return data ?? [];
+    // Transformiere zu PipelineStage Format
+    return (data ?? []).map((stage: any) => ({
+      id: stage.id,
+      project_id: projectId || "00000000-0000-0000-0000-000000000000",
+      name: stage.name,
+      position: stage.position,
+      is_visible: true,
+      color: stage.color || '#6D6AFF',
+    }));
   }
 );
 
-// Deals für die neue, projekt-gebundene Pipelines-Ansicht. Gezieltes
-// Column-Selecting statt select('*') für Performance bei großen Datenmengen.
-export async function getDealsByProject(projectId: string): Promise<Deal[]> {
+// Deals: projectId optional. Ohne Wert werden ALLE Deals geladen.
+export async function getDealsByProject(projectId?: string | null): Promise<Deal[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("deals")
     .select(
       `
-      id, name, pipeline_id, stage_id, project_id, pipeline_stage_id, contact_id, assigned_to, value, created_at,
+      id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
       contact:contacts ( id, first_name, last_name, email, phone, company, country, last_contacted_at ),
       assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
       `
     )
-    .eq("project_id", projectId)
     .order("created_at", { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("getDealsByProject error:", error.message);
@@ -112,7 +118,7 @@ export async function getDealsByPipeline(pipelineId: string): Promise<Deal[]> {
     .from("deals")
     .select(
       `
-      id, name, pipeline_id, stage_id, project_id, pipeline_stage_id, contact_id, assigned_to, value, created_at,
+      id, name, pipeline_id, stage_id, contact_id, assigned_to, value, created_at,
       contact:contacts ( id, first_name, last_name, email, phone, company, website, country, last_contacted_at ),
       assigned_profile:profiles!deals_assigned_to_fkey ( id, first_name, last_name, role )
       `
