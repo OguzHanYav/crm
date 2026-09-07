@@ -45,7 +45,7 @@ function IconSettings(): ReactElement {
   )
 }
 
-const navItems = [
+export const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: IconDashboard },
   { href: '/dashboard/deals', label: 'Pipelines', icon: IconPipeline },
   { href: '/dashboard/kontakte', label: 'Kontakte', icon: IconContacts },

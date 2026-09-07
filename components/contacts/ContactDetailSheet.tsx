@@ -129,7 +129,7 @@ export default function ContactDetailSheet() {
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={close} />
 
-      <div className="relative flex h-full w-full max-w-xl flex-col rounded-l-2xl border-l border-border bg-card shadow-2xl">
+      <div className="relative flex h-full w-full max-w-full flex-col border-l border-border bg-card shadow-2xl sm:max-w-xl sm:rounded-l-2xl">
         {loading && !payload ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">Lädt...</div>
         ) : payload ? (
@@ -185,7 +185,7 @@ function SheetContent({
           </div>
           <button
             onClick={onClose}
-            className="ring-focus flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            className="ring-focus flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           >
             ✕
           </button>
@@ -194,13 +194,13 @@ function SheetContent({
         <div className="flex flex-wrap gap-2 text-sm">
           <a
             href={`tel:${contact.phone ?? ""}`}
-            className="ring-focus rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
+            className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
           >
             📞 {contact.phone ?? "Keine Nummer"}
           </a>
           <a
             href={`mailto:${contact.email}`}
-            className="ring-focus rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
+            className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
           >
             ✉️ E-Mail
           </a>
@@ -217,7 +217,7 @@ function SheetContent({
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`ring-focus flex-1 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+            className={`ring-focus min-h-[44px] flex-1 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
               tab === key ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -278,7 +278,7 @@ function PhaseSelect({
   );
 
   return (
-    <Select value={optimisticKey} onChange={handleChange} className="h-9 w-auto text-sm">
+    <Select value={optimisticKey} onChange={handleChange} className="h-11 min-h-[44px] w-auto text-sm">
       {bootstrap.phases.map((phase) => (
         <option key={phase.key} value={phase.key}>
           {phase.name}

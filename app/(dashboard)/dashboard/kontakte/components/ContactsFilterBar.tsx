@@ -89,7 +89,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
               <button
                 key={tab.key}
                 onClick={() => selectTab(tab)}
-                className={`ring-focus rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`ring-focus min-h-[44px] rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                   isActive
                     ? "bg-accent text-accent-foreground shadow-soft"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"

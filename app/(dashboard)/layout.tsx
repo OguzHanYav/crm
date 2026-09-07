@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 import ClientNav from './ClientNav'
+import MobileSidebar from './MobileSidebar'
 import Topbar from './Topbar'
 
 export default async function DashboardLayout({
@@ -27,7 +28,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-[72px] flex-col items-center justify-between border-r border-border bg-card py-4">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[72px] flex-col items-center justify-between border-r border-border bg-card py-4 sm:flex">
         <div className="flex flex-col items-center gap-6">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">
             Y
@@ -43,12 +44,13 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      <div className="flex flex-1 flex-col pl-[72px]">
+      <div className="flex flex-1 flex-col sm:pl-[72px]">
         <Topbar
           displayName={displayName}
           role={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
+          mobileNav={<MobileSidebar />}
         />
-        <main className="flex-1 bg-background p-6">{children}</main>
+        <main className="flex-1 bg-background p-4 sm:p-6">{children}</main>
       </div>
     </div>
   )

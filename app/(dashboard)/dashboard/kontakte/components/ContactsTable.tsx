@@ -45,7 +45,7 @@ const ContactRow = memo(function ContactRow({
         </Link>
       </td>
 
-      <td className="truncate px-3 py-2" onClick={stopPropagation}>
+      <td className="hidden truncate px-3 py-2 sm:table-cell" onClick={stopPropagation}>
         {contact.phone ? (
           <a href={`tel:${contact.phone}`} className="text-foreground/90 hover:text-accent hover:underline">
             {contact.phone}
@@ -55,7 +55,7 @@ const ContactRow = memo(function ContactRow({
         )}
       </td>
 
-      <td className="truncate px-3 py-2" onClick={stopPropagation}>
+      <td className="hidden truncate px-3 py-2 md:table-cell" onClick={stopPropagation}>
         {contact.email ? (
           <a href={`mailto:${contact.email}`} className="text-foreground/90 hover:text-accent hover:underline">
             {contact.email}
@@ -65,15 +65,15 @@ const ContactRow = memo(function ContactRow({
         )}
       </td>
 
-      <td className="truncate px-3 py-2 text-foreground/90">{contact.company ?? "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-foreground/90 md:table-cell">{contact.company ?? "—"}</td>
 
-      <td className="truncate px-3 py-2 text-foreground/90">{contact.industry ?? "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-foreground/90 lg:table-cell">{contact.industry ?? "—"}</td>
 
-      <td className="truncate px-3 py-2 text-foreground/90">{contact.country ?? "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-foreground/90 lg:table-cell">{contact.country ?? "—"}</td>
 
-      <td className="truncate px-3 py-2 text-foreground/90">{contact.address ?? "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-foreground/90 xl:table-cell">{contact.address ?? "—"}</td>
 
-      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{formatDateDE(contact.created_at)}</td>
+      <td className="hidden whitespace-nowrap px-3 py-2 text-muted-foreground lg:table-cell">{formatDateDE(contact.created_at)}</td>
 
       <td className="overflow-hidden px-3 py-2">
         {contact.currentStage ? (
@@ -92,16 +92,16 @@ const ContactRow = memo(function ContactRow({
   );
 });
 
-const COLUMNS: { key: ContactSortKey; label: string; width: string }[] = [
-  { key: "name", label: "Name", width: "w-[12%]" },
-  { key: "phone", label: "Telefon", width: "w-[10%]" },
-  { key: "email", label: "E-Mail", width: "w-[15%]" },
-  { key: "company", label: "Firma", width: "w-[11%]" },
-  { key: "industry", label: "Branche", width: "w-[10%]" },
-  { key: "country", label: "Land", width: "w-[7%]" },
-  { key: "address", label: "Adresse", width: "w-[10%]" },
-  { key: "createdAt", label: "Erstellt am", width: "w-[8%]" },
-  { key: "status", label: "Status", width: "w-[17%]" },
+const COLUMNS: { key: ContactSortKey; label: string; width: string; visibility: string }[] = [
+  { key: "name", label: "Name", width: "w-[12%]", visibility: "" },
+  { key: "phone", label: "Telefon", width: "w-[10%]", visibility: "hidden sm:table-cell" },
+  { key: "email", label: "E-Mail", width: "w-[15%]", visibility: "hidden md:table-cell" },
+  { key: "company", label: "Firma", width: "w-[11%]", visibility: "hidden md:table-cell" },
+  { key: "industry", label: "Branche", width: "w-[10%]", visibility: "hidden lg:table-cell" },
+  { key: "country", label: "Land", width: "w-[7%]", visibility: "hidden lg:table-cell" },
+  { key: "address", label: "Adresse", width: "w-[10%]", visibility: "hidden xl:table-cell" },
+  { key: "createdAt", label: "Erstellt am", width: "w-[8%]", visibility: "hidden lg:table-cell" },
+  { key: "status", label: "Status", width: "w-[17%]", visibility: "" },
 ];
 
 export default function ContactsTable({
@@ -181,13 +181,20 @@ export default function ContactsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Card className="overflow-hidden">
-        <table className="w-full table-fixed text-xs">
+      <Card className="overflow-x-auto">
+        <table className="w-full min-w-[720px] table-fixed text-xs">
           <thead className="bg-muted/30">
             <tr>
               {COLUMNS.map((col) => (
-                <th key={col.key} className={`${col.width} px-3 py-2 text-left font-medium text-muted-foreground`}>
-                  <button type="button" onClick={() => handleSortChange(col.key)} className="truncate hover:text-foreground">
+                <th
+                  key={col.key}
+                  className={`${col.width} ${col.visibility} px-3 py-2 text-left font-medium text-muted-foreground`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleSortChange(col.key)}
+                    className="flex min-h-[44px] w-full items-center truncate hover:text-foreground"
+                  >
                     {col.label}
                   </button>
                 </th>
@@ -219,7 +226,7 @@ export default function ContactsTable({
             type="button"
             onClick={handleLoadMore}
             disabled={isLoadingMore}
-            className="ring-focus rounded-md bg-accent px-4 py-1.5 font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
+            className="ring-focus min-h-[44px] rounded-md bg-accent px-4 py-1.5 font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
           >
             {isLoadingMore ? "Lädt…" : `Mehr laden (+${Math.min(LOAD_BATCH_SIZE, totalCount - localContacts.length)})`}
           </button>

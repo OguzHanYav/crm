@@ -30,7 +30,7 @@ const DealsTableRow = memo(function DealsTableRow({
         <span className="font-medium text-slate-900">{deal.name}</span>
       </td>
 
-      <td className="truncate px-3 py-2" onClick={handleStopPropagation}>
+      <td className="hidden truncate px-3 py-2 sm:table-cell" onClick={handleStopPropagation}>
         {contact?.phone ? (
           <a href={`tel:${contact.phone}`} className="text-slate-600 hover:text-slate-900 hover:underline">
             {contact.phone}
@@ -40,7 +40,7 @@ const DealsTableRow = memo(function DealsTableRow({
         )}
       </td>
 
-      <td className="truncate px-3 py-2" onClick={handleStopPropagation}>
+      <td className="hidden truncate px-3 py-2 md:table-cell" onClick={handleStopPropagation}>
         {contact?.email ? (
           <a href={`mailto:${contact.email}`} className="text-slate-600 hover:text-slate-900 hover:underline">
             {contact.email}
@@ -50,15 +50,15 @@ const DealsTableRow = memo(function DealsTableRow({
         )}
       </td>
 
-      <td className="truncate px-3 py-2 text-slate-700">{contact?.company ?? "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-slate-700 md:table-cell">{contact?.company ?? "—"}</td>
 
-      <td className="truncate px-3 py-2 text-slate-600">{deal.industry || contact?.industry || "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-slate-600 lg:table-cell">{deal.industry || contact?.industry || "—"}</td>
 
-      <td className="truncate px-3 py-2 text-slate-600">{deal.country || contact?.country || "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-slate-600 lg:table-cell">{deal.country || contact?.country || "—"}</td>
 
-      <td className="truncate px-3 py-2 text-slate-600">{deal.address || contact?.address || "—"}</td>
+      <td className="hidden truncate px-3 py-2 text-slate-600 xl:table-cell">{deal.address || contact?.address || "—"}</td>
 
-      <td className="whitespace-nowrap px-3 py-2 text-slate-500">{formatDateDE(deal.created_at)}</td>
+      <td className="hidden whitespace-nowrap px-3 py-2 text-slate-500 lg:table-cell">{formatDateDE(deal.created_at)}</td>
 
       <td className="overflow-hidden px-3 py-2">
         {phase && (
@@ -75,16 +75,16 @@ const DealsTableRow = memo(function DealsTableRow({
   );
 });
 
-const COLUMNS: { key: DealSortKey; label: string; width: string }[] = [
-  { key: "name", label: "Name", width: "w-[13%]" },
-  { key: "phone", label: "Telefon", width: "w-[10%]" },
-  { key: "email", label: "E-Mail", width: "w-[15%]" },
-  { key: "company", label: "Firma", width: "w-[11%]" },
-  { key: "industry", label: "Branche", width: "w-[10%]" },
-  { key: "country", label: "Land", width: "w-[7%]" },
-  { key: "address", label: "Adresse", width: "w-[11%]" },
-  { key: "createdAt", label: "Erstellt am", width: "w-[8%]" },
-  { key: "status", label: "Status", width: "w-[15%]" },
+const COLUMNS: { key: DealSortKey; label: string; width: string; visibility: string }[] = [
+  { key: "name", label: "Name", width: "w-[13%]", visibility: "" },
+  { key: "phone", label: "Telefon", width: "w-[10%]", visibility: "hidden sm:table-cell" },
+  { key: "email", label: "E-Mail", width: "w-[15%]", visibility: "hidden md:table-cell" },
+  { key: "company", label: "Firma", width: "w-[11%]", visibility: "hidden md:table-cell" },
+  { key: "industry", label: "Branche", width: "w-[10%]", visibility: "hidden lg:table-cell" },
+  { key: "country", label: "Land", width: "w-[7%]", visibility: "hidden lg:table-cell" },
+  { key: "address", label: "Adresse", width: "w-[11%]", visibility: "hidden xl:table-cell" },
+  { key: "createdAt", label: "Erstellt am", width: "w-[8%]", visibility: "hidden lg:table-cell" },
+  { key: "status", label: "Status", width: "w-[15%]", visibility: "" },
 ];
 
 export default function DealsTable({
@@ -123,16 +123,19 @@ export default function DealsTable({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
-      <table className="w-full table-fixed text-xs">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <table className="w-full min-w-[720px] table-fixed text-xs">
         <thead className="bg-slate-50">
           <tr>
             {COLUMNS.map((col) => (
-              <th key={col.key} className={`${col.width} px-3 py-2 text-left font-medium text-slate-500`}>
+              <th
+                key={col.key}
+                className={`${col.width} ${col.visibility} px-3 py-2 text-left font-medium text-slate-500`}
+              >
                 <button
                   type="button"
                   onClick={() => onSortChange(col.key)}
-                  className="truncate hover:text-slate-700"
+                  className="flex min-h-[44px] w-full items-center truncate hover:text-slate-700"
                 >
                   {col.label}
                 </button>

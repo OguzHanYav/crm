@@ -35,7 +35,7 @@ export default function ContactsSearch({ defaultValue }: { defaultValue: string 
       value={value}
       onChange={(e) => setValue(e.target.value)}
       placeholder="Suche nach Name, E-Mail oder Firma..."
-      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:w-72"
+      className="min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:w-72"
     />
   );
 }

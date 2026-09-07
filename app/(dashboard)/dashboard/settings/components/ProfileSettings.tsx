@@ -1,4 +1,5 @@
 import type { ProfileInfo } from "../profile-data";
+import ChangePasswordForm from "./ChangePasswordForm";
 
 export default function ProfileSettings({ profile }: { profile: ProfileInfo | null }) {
   if (!profile) {
@@ -40,6 +41,8 @@ export default function ProfileSettings({ profile }: { profile: ProfileInfo | nu
           <dd className="mt-0.5 text-sm font-medium text-foreground">{profile.role}</dd>
         </div>
       </dl>
+
+      <ChangePasswordForm email={profile.email} />
     </section>
   );
 }

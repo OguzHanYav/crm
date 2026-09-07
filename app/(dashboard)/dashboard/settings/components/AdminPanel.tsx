@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
-import { getUsers, updateUser, createUser, type UserRow } from "../admin-actions";
+import {
+  getUsers,
+  updateUser,
+  createUser,
+  updateUserByAdmin,
+  deleteUserByAdmin,
+  type UserRow,
+} from "../admin-actions";
 
 export default function AdminPanel() {
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -24,8 +31,13 @@ export default function AdminPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "employee">("employee");
   const [showRoleField, setShowRoleField] = useState(false);
+
+  // Delete User
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -52,8 +64,11 @@ export default function AdminPanel() {
 
   function startEdit(user: UserRow) {
     setEditingId(user.id);
+    setDeleteConfirmId(null);
     setEditFirstName(user.first_name || "");
     setEditLastName(user.last_name || "");
+    setEditEmail(user.email || "");
+    setEditPassword("");
     setEditRole(user.role as "admin" | "employee");
     setShowRoleField(isAdmin); // Nur Admins können Rolle ändern
   }
@@ -66,24 +81,62 @@ export default function AdminPanel() {
     setError(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await updateUser(
-        userId,
-        editFirstName,
-        editLastName,
-        showRoleField ? editRole : undefined
-      );
+      // Admins können Name, E-Mail, Passwort und Rolle jedes Benutzers ändern
+      // (Service-Role-Client) — Mitarbeiter dürfen an sich selbst nur den Namen ändern.
+      const result = isAdmin
+        ? await updateUserByAdmin(userId, {
+            firstName: editFirstName,
+            lastName: editLastName,
+            email: editEmail,
+            password: editPassword || undefined,
+          })
+        : await updateUser(userId, editFirstName, editLastName);
+
       if (result.success) {
         setUsers((prev) =>
           prev.map((u) =>
             u.id === userId
-              ? { ...u, first_name: editFirstName, last_name: editLastName, role: showRoleField ? editRole : u.role }
+              ? {
+                  ...u,
+                  first_name: editFirstName,
+                  last_name: editLastName,
+                  email: isAdmin ? editEmail : u.email,
+                  role: showRoleField ? editRole : u.role,
+                }
               : u
           )
         );
         setEditingId(null);
-        setSuccess("Benutzer erfolgreich aktualisiert.");
+        setSuccess(result.message ?? "Benutzer erfolgreich aktualisiert.");
       } else {
         setError(result.message ?? "Fehler beim Aktualisieren.");
+      }
+    });
+  }
+
+  function confirmDelete(userId: string) {
+    setError(null);
+    setSuccess(null);
+    setEditingId(null);
+    setDeleteConfirmId(userId);
+  }
+
+  function cancelDelete() {
+    setDeleteConfirmId(null);
+  }
+
+  function performDelete(userId: string) {
+    setError(null);
+    setSuccess(null);
+    startTransition(async () => {
+      const result = await deleteUserByAdmin(userId);
+      if (result.success) {
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        setDeleteConfirmId(null);
+        setSuccess(result.message ?? "Benutzer erfolgreich gelöscht.");
+      } else {
+        setError(result.message ?? "Fehler beim Löschen.");
+        setDeleteConfirmId(null);
       }
     });
   }
@@ -265,7 +318,30 @@ export default function AdminPanel() {
                         : "—"
                     )}
                   </td>
-                  <td className="px-4 py-3 text-foreground">{user.email}</td>
+                  <td className="px-4 py-3 text-foreground">
+                    {isEditing && isAdmin ? (
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="ring-focus w-full min-w-[160px] rounded border border-border bg-input px-2 py-1 text-sm"
+                          placeholder="E-Mail"
+                          required
+                        />
+                        <input
+                          type="password"
+                          value={editPassword}
+                          onChange={(e) => setEditPassword(e.target.value)}
+                          className="ring-focus w-full min-w-[160px] rounded border border-border bg-input px-2 py-1 text-sm"
+                          placeholder="Neues Passwort (optional)"
+                          minLength={6}
+                        />
+                      </div>
+                    ) : (
+                      user.email
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {isEditing && showRoleField ? (
                       <select
@@ -289,7 +365,24 @@ export default function AdminPanel() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {isEditing ? (
+                    {deleteConfirmId === user.id ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-xs text-danger">Wirklich löschen?</span>
+                        <button
+                          onClick={() => performDelete(user.id)}
+                          disabled={isPending}
+                          className="ring-focus rounded-md bg-danger px-3 py-1 text-xs font-medium text-white hover:brightness-110 disabled:opacity-50"
+                        >
+                          Ja, löschen
+                        </button>
+                        <button
+                          onClick={cancelDelete}
+                          className="ring-focus rounded-md border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    ) : isEditing ? (
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => saveEdit(user.id)}
@@ -306,12 +399,22 @@ export default function AdminPanel() {
                         </button>
                       </div>
                     ) : (isSelf || isAdmin) ? (
-                      <button
-                        onClick={() => startEdit(user)}
-                        className="ring-focus rounded-md border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/50"
-                      >
-                        ✎ Bearbeiten
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => startEdit(user)}
+                          className="ring-focus rounded-md border border-border px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                        >
+                          ✎ Bearbeiten
+                        </button>
+                        {isAdmin && !isSelf && (
+                          <button
+                            onClick={() => confirmDelete(user.id)}
+                            className="ring-focus rounded-md border border-danger/30 px-3 py-1 text-xs font-medium text-danger hover:bg-danger/10"
+                          >
+                            🗑 Löschen
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}

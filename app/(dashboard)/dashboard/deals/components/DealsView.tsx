@@ -202,7 +202,7 @@ export default function DealsView({
 
         <Link
           href="/dashboard/settings?tab=pipeline"
-          className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="flex min-h-[44px] items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
         >
           Pipeline-Einstellungen
         </Link>
@@ -224,7 +224,7 @@ export default function DealsView({
                 backgroundColor: isSelected ? phase.color : undefined,
                 borderColor: isSelected ? phase.color : undefined,
               }}
-              className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
                 isSelected
                   ? "text-white"
                   : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
@@ -249,7 +249,7 @@ export default function DealsView({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Volltextsuche (Name, Kontakt, Firma, E-Mail, Telefon, Land)"
-          className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+          className="min-h-[44px] flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
         />
 
         <FilterDropdown
@@ -305,7 +305,7 @@ export default function DealsView({
             type="button"
             onClick={handleLoadMore}
             disabled={isLoadingMore}
-            className="rounded-md bg-slate-900 px-4 py-1.5 font-medium text-white disabled:opacity-50"
+            className="min-h-[44px] rounded-md bg-slate-900 px-4 py-1.5 font-medium text-white disabled:opacity-50"
           >
             {isLoadingMore ? "Lädt…" : `Mehr laden (+${Math.min(renderLimit, totalCount - localDeals.length)})`}
           </button>

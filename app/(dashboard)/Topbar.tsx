@@ -29,9 +29,11 @@ const CTA_BY_ROUTE: { match: string; label: string; href: string }[] = [
 export default function Topbar({
   displayName,
   role,
+  mobileNav,
 }: {
   displayName: string
   role: string
+  mobileNav?: React.ReactNode
 }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -66,9 +68,10 @@ export default function Topbar({
     .join('') || '—'
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card/80 px-6 backdrop-blur-md">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-md sm:gap-4 sm:px-6">
+      {mobileNav}
       <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full max-w-md items-center">
-        <div className="ring-focus flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors focus-within:border-accent/60">
+        <div className="ring-focus flex h-11 min-h-[44px] w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors focus-within:border-accent/60">
           <IconSearch />
           <input
             ref={inputRef}
@@ -87,10 +90,10 @@ export default function Topbar({
         {cta && (
           <button
             onClick={() => router.push(cta.href)}
-            className="ring-focus flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:brightness-110"
+            className="ring-focus flex min-h-[44px] items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:brightness-110"
           >
             <IconPlus />
-            {cta.label}
+            <span className="hidden sm:inline">{cta.label}</span>
           </button>
         )}
 

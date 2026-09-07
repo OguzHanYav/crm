@@ -221,6 +221,100 @@ export async function createUser(
   return { success: true, message: "Benutzer erfolgreich angelegt!" };
 }
 
+export async function updateUserByAdmin(
+  userId: string,
+  updates: { firstName: string; lastName: string; email: string; password?: string }
+): Promise<ActionResult> {
+  if (!(await isCurrentUserAdmin())) {
+    return { success: false, message: "Nur Administratoren dürfen Benutzer bearbeiten." };
+  }
+
+  if (!updates.email) {
+    return { success: false, message: "E-Mail ist erforderlich." };
+  }
+
+  if (updates.password && updates.password.length < 6) {
+    return { success: false, message: "Das Passwort muss mindestens 6 Zeichen lang sein." };
+  }
+
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  const authUpdate: { email: string; password?: string } = { email: updates.email };
+  if (updates.password) authUpdate.password = updates.password;
+
+  const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, authUpdate);
+
+  if (authError) {
+    console.error("updateUserByAdmin auth error:", authError.message);
+    return { success: false, message: authError.message };
+  }
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .update({
+      first_name: updates.firstName,
+      last_name: updates.lastName,
+      email: updates.email,
+    })
+    .eq("id", userId);
+
+  if (profileError) {
+    console.error("updateUserByAdmin profile error:", profileError.message);
+    return { success: false, message: profileError.message };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true, message: "Benutzer erfolgreich aktualisiert." };
+}
+
+export async function deleteUserByAdmin(userId: string): Promise<ActionResult> {
+  if (!(await isCurrentUserAdmin())) {
+    return { success: false, message: "Nur Administratoren dürfen Benutzer löschen." };
+  }
+
+  const currentUserId = await getCurrentUserId();
+  if (currentUserId === userId) {
+    return { success: false, message: "Du kannst deinen eigenen Account nicht löschen." };
+  }
+
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+
+  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+  if (authError) {
+    console.error("deleteUserByAdmin auth error:", authError.message);
+    return { success: false, message: authError.message };
+  }
+
+  const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userId);
+
+  if (profileError) {
+    console.error("deleteUserByAdmin profile error:", profileError.message);
+    return { success: false, message: profileError.message };
+  }
+
+  revalidatePath("/dashboard/settings");
+  return { success: true, message: "Benutzer erfolgreich gelöscht." };
+}
+
 export async function getCurrentUserRole(): Promise<"admin" | "employee" | null> {
   const supabase = await createServerClient();
   const { data: profile } = await supabase

@@ -34,10 +34,13 @@ export default function LogCallModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-full rounded-xl bg-white p-6 shadow-xl sm:max-w-sm">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">Anruf protokollieren</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            className="flex h-11 w-11 items-center justify-center text-gray-400 hover:text-gray-600"
+          >
             ✕
           </button>
         </div>
@@ -49,7 +52,7 @@ export default function LogCallModal({
               name="call_type"
               required
               defaultValue="opening_call"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="min-h-[44px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="opening_call">Opening-Call</option>
               <option value="follow_up_call">Follow-Up</option>
@@ -61,7 +64,7 @@ export default function LogCallModal({
             <select
               name="interest_expressed"
               defaultValue=""
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="min-h-[44px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">— unklar —</option>
               <option value="true">Ja</option>
@@ -76,7 +79,7 @@ export default function LogCallModal({
               type="datetime-local"
               required
               defaultValue={new Date().toISOString().slice(0, 16)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="min-h-[44px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
 
@@ -86,7 +89,7 @@ export default function LogCallModal({
               name="summary"
               rows={3}
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="min-h-[44px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               placeholder="Worüber wurde gesprochen?"
             />
           </div>
@@ -95,14 +98,14 @@ export default function LogCallModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="min-h-[44px] rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Abbrechen
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="min-h-[44px] rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {isPending ? "Speichern..." : "Speichern"}
             </button>
