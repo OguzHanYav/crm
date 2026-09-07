@@ -36,7 +36,7 @@ const ContactRow = memo(function ContactRow({
   isAdmin: boolean;
   teamMembers: any[];
 }) {
-  const stopPropagation = useCallback((e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation(), []);
+  const stopPropagation = useCallback((e: React.MouseEvent<HTMLTableCellElement>) => e.stopPropagation(), []);
 
   return (
     <tr className="group transition-colors duration-150 hover:bg-muted/40">

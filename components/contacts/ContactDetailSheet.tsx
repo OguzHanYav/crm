@@ -71,12 +71,12 @@ function parseNotesFields(notes: string | null | undefined) {
 
 function formatDateDE(dateString: string, withTime = true) {
   if (!dateString) return "—";
-  return new Intl.DateTimeFormat("de-DE", {
+  return new Date(dateString).toLocaleString("de-DE", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
     ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-  }).format(new Date(dateString));
+  });
 }
 
 export default function ContactDetailSheet() {
