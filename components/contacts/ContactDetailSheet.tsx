@@ -2,20 +2,19 @@
 
 import { useState, useEffect, useTransition, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { getContactDetailPayload, getContactSheetBootstrap, addNoteToContact, logCall } from "@/app/(dashboard)/dashboard/kontakte/actions";
+import { getContactDetailPayload, getContactSheetBootstrap, addNoteToContact } from "@/app/(dashboard)/dashboard/kontakte/actions";
 import { updateDealStage } from "@/app/(dashboard)/dashboard/deals/actions";
 import type { ContactDetailPayload, ContactSheetBootstrap } from "@/app/(dashboard)/dashboard/kontakte/types";
 import { Button } from "@/components/ui/Button";
-import { Input, Select, Textarea } from "@/components/ui/Input";
+import { Input, Select } from "@/components/ui/Input";
 import { Badge, STATUS_TONE_MAP } from "@/components/ui/Badge";
 
-type Tab = "info" | "activity" | "notes" | "calllog";
+type Tab = "info" | "activity" | "notes";
 
 const TABS: [Tab, string][] = [
-  ["info", "Kontakt-Info"],
+  ["info", "Info"],
   ["activity", "Aktivitäten"],
   ["notes", "Notizen"],
-  ["calllog", "Call Log"],
 ];
 
 function resolveTargetStageId(
@@ -231,7 +230,6 @@ function SheetContent({
         {tab === "info" && <InfoTab payload={payload} />}
         {tab === "activity" && <ActivityTab payload={payload} />}
         {tab === "notes" && <NotesTab payload={payload} onRefresh={onRefresh} />}
-        {tab === "calllog" && <CallLogTab payload={payload} onRefresh={onRefresh} />}
       </div>
     </>
   );
@@ -451,90 +449,3 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
   );
 }
 
-function CallLogTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefresh: () => void }) {
-  const { contact, callLogs } = payload;
-  const [isPending, startTransition] = useTransition();
-
-  // Kein <form action={fn}>: unter React 18 wird eine lokale (nicht als "use server"
-  // markierte) Funktion dort NICHT als Formular-Action erkannt — der Klick löst
-  // stattdessen ein natives Form-Submit/Reload aus und logCall wird nie ausgeführt.
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-    startTransition(async () => {
-      const result = await logCall(contact.id, formData);
-      if (result.success) {
-        form.reset();
-        onRefresh();
-      }
-    });
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Anruf protokollieren</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Anruf-Typ</label>
-              <Select name="call_type" className="h-9 text-sm">
-                <option value="opening_call">Opening-Call</option>
-                <option value="follow_up_call">Follow-Up</option>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Interesse bekundet</label>
-              <Select name="interest_expressed" className="h-9 text-sm">
-                <option value="">— unklar —</option>
-                <option value="true">Ja</option>
-                <option value="false">Nein</option>
-              </Select>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Datum/Uhrzeit</label>
-            <Input
-              type="datetime-local"
-              name="called_at"
-              defaultValue={new Date().toISOString().slice(0, 16)}
-              className="h-9 text-sm"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Notiz</label>
-            <Textarea name="summary" rows={3} required className="text-sm" />
-          </div>
-
-          <Button type="submit" disabled={isPending} size="sm" className="self-end">
-            {isPending ? "Speichern..." : "Speichern"}
-          </Button>
-        </form>
-      </div>
-
-      <div>
-        <h3 className="mb-3 text-sm font-semibold text-foreground">Verlauf</h3>
-        {callLogs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Noch keine Anrufe protokolliert.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {callLogs.map((c) => (
-              <li key={c.id} className="rounded-lg border border-border p-3 text-sm">
-                <p className="text-foreground">
-                  {c.call_type === "opening_call" ? "Opening-Call" : "Follow-Up"}: {c.notes || "—"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {c.author ? `${c.author.first_name} ${c.author.last_name} · ` : ""}
-                  {formatDateDE(c.called_at)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}

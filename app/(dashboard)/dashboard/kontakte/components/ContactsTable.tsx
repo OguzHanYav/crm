@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Contact, ContactFilters, ContactSortKey, SortDir } from "../types";
 import StatusBadge from "./StatusBadge";
-import ContactRowActions from "./ContactRowActions";
 import { Card } from "@/components/ui/Card";
 import { loadMoreContacts } from "../actions";
 
@@ -28,13 +27,9 @@ function formatDateDE(dateString: string) {
 const ContactRow = memo(function ContactRow({
   contact,
   contactHref,
-  isAdmin,
-  teamMembers,
 }: {
   contact: Contact;
   contactHref: string;
-  isAdmin: boolean;
-  teamMembers: any[];
 }) {
   const stopPropagation = useCallback((e: React.MouseEvent<HTMLTableCellElement>) => e.stopPropagation(), []);
 
@@ -93,10 +88,6 @@ const ContactRow = memo(function ContactRow({
           <StatusBadge status={contact.status} />
         )}
       </td>
-
-      <td className="px-3 py-2 text-right">
-        <ContactRowActions contact={contact} isAdmin={isAdmin} teamMembers={teamMembers} />
-      </td>
     </tr>
   );
 });
@@ -110,7 +101,7 @@ const COLUMNS: { key: ContactSortKey; label: string; width: string }[] = [
   { key: "country", label: "Land", width: "w-[7%]" },
   { key: "address", label: "Adresse", width: "w-[10%]" },
   { key: "createdAt", label: "Erstellt am", width: "w-[8%]" },
-  { key: "status", label: "Status", width: "w-[9%]" },
+  { key: "status", label: "Status", width: "w-[17%]" },
 ];
 
 export default function ContactsTable({
@@ -201,7 +192,6 @@ export default function ContactsTable({
                   </button>
                 </th>
               ))}
-              <th className="w-[8%] px-3 py-2 text-right font-medium text-muted-foreground">Aktionen</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
@@ -212,13 +202,7 @@ export default function ContactsTable({
               const contactHref = `/dashboard/kontakte?${params.toString()}`;
 
               return (
-                <ContactRow
-                  key={contact.id}
-                  contact={contact}
-                  contactHref={contactHref}
-                  isAdmin={isAdmin}
-                  teamMembers={teamMembers}
-                />
+                <ContactRow key={contact.id} contact={contact} contactHref={contactHref} />
               );
             })}
           </tbody>

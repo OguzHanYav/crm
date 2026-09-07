@@ -555,6 +555,7 @@ export async function logCall(
     .eq("id", contactId);
 
   revalidatePath("/dashboard/kontakte");
+  revalidatePath(`/dashboard/kontakte/${contactId}`);
   revalidatePath("/dashboard/deals");
   return { success: true, data: result as CallLog };
 }

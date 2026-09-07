@@ -4,20 +4,6 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { logCall } from "../../actions";
 
-const CALL_TYPES = [
-  { value: "setting_call", label: "Setting Call" },
-  { value: "closing_call", label: "Closing Call" },
-  { value: "follow_up_call", label: "Follow-up" },
-];
-
-const CALL_RESULTS = [
-  { value: "gatekeeper_reached", label: "Gatekeeper erreicht" },
-  { value: "interested", label: "Interessiert" },
-  { value: "appointment_booked", label: "Termin vereinbart" },
-  { value: "no_interest", label: "Kein Interesse" },
-  { value: "no_answer", label: "Nicht erreicht" },
-];
-
 export default function LogCallModal({
   contactId,
   onClose,
@@ -28,7 +14,15 @@ export default function LogCallModal({
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
-  function handleSubmit(formData: FormData) {
+  // Kein <form action={fn}>: unter React 18 wird eine lokale (nicht als "use server"
+  // markierte) Funktion dort NICHT als Formular-Action erkannt — der Klick löste
+  // stattdessen ein natives Form-Submit/Reload aus und logCall wurde nie ausgeführt.
+  // Zusätzlich mussten die Feldnamen exakt zu logCall() passen (call_type/
+  // interest_expressed/called_at/summary) — vorher hießen sie call_result/
+  // call_date/call_time/notes, wodurch logCall() immer "Zusammenfassung fehlt" lieferte.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
     startTransition(async () => {
       const result = await logCall(contactId, formData);
       if (result.success) {
@@ -48,65 +42,50 @@ export default function LogCallModal({
           </button>
         </div>
 
-        <form action={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Anruf-Typ</label>
             <select
               name="call_type"
               required
+              defaultValue="opening_call"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
-              {CALL_TYPES.map((type) => (
-                <option key={type.value} value={type.value}>
-                  {type.label}
-                </option>
-              ))}
+              <option value="opening_call">Opening-Call</option>
+              <option value="follow_up_call">Follow-Up</option>
             </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Ergebnis</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Interesse bekundet</label>
             <select
-              name="call_result"
-              required
+              name="interest_expressed"
+              defaultValue=""
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
-              {CALL_RESULTS.map((result) => (
-                <option key={result.value} value={result.value}>
-                  {result.label}
-                </option>
-              ))}
+              <option value="">— unklar —</option>
+              <option value="true">Ja</option>
+              <option value="false">Nein</option>
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Datum</label>
-              <input
-                name="call_date"
-                type="date"
-                required
-                defaultValue={new Date().toISOString().split("T")[0]}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Uhrzeit</label>
-              <input
-                name="call_time"
-                type="time"
-                required
-                defaultValue={new Date().toTimeString().slice(0, 5)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Datum/Uhrzeit</label>
+            <input
+              name="called_at"
+              type="datetime-local"
+              required
+              defaultValue={new Date().toISOString().slice(0, 16)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Notizen</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Zusammenfassung</label>
             <textarea
-              name="notes"
+              name="summary"
               rows={3}
+              required
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               placeholder="Worüber wurde gesprochen?"
             />

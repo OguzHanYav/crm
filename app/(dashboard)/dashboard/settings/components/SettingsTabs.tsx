@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 type TabKey = "data" | "pipeline" | "profile" | "admin";
+const TAB_KEYS: TabKey[] = ["data", "pipeline", "profile", "admin"];
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "data", label: "Daten-Management" },
@@ -22,7 +24,11 @@ export default function SettingsTabs({
   profilePanel: ReactNode;
   adminPanel: ReactNode;
 }) {
-  const [tab, setTab] = useState<TabKey>("data");
+  // Direct-Routing: /dashboard/settings?tab=pipeline öffnet den passenden Unter-Tab
+  // sofort (z. B. vom "Pipeline-Einstellungen"-Button in der Pipeline-Ansicht aus).
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") as TabKey | null;
+  const [tab, setTab] = useState<TabKey>(initialTab && TAB_KEYS.includes(initialTab) ? initialTab : "data");
 
   const panels: Record<TabKey, ReactNode> = {
     data: dataPanel,
