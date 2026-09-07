@@ -67,6 +67,12 @@ export type PipelinePhase = {
   defaultStageId: string;
 };
 
+// Sortierschlüssel für die Deals-Tabelle — wird serverseitig in der Supabase-Query
+// angewendet (vor .range()), damit "Mehr laden" den global sortierten Bestand
+// fortsetzt statt nur die lokal geladenen 100 Zeilen umzusortieren.
+export type DealSortKey = "name" | "company" | "country" | "phone" | "email" | "status" | "createdAt";
+export type SortDir = "asc" | "desc";
+
 export type StageHistoryEntry = {
   id: string;
   deal_id: string;

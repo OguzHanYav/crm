@@ -31,6 +31,44 @@ function resolveTargetStageId(
   return sameStage?.id ?? phase.defaultStageId;
 }
 
+// Der Import speichert Branche/Adresse/Telefon 2 zusammengefasst in notes, z. B.
+// "Branche: Gastronomie | Adresse: Musterstr. 1 | Telefon 2: +49 ...". Extrahiert
+// die einzelnen Felder daraus, damit sie in eigenen Zeilen angezeigt werden können.
+function parseNotesFields(notes: string | null | undefined) {
+  const result: { branche: string | null; adresse: string | null; telefon2: string | null; rest: string | null } = {
+    branche: null,
+    adresse: null,
+    telefon2: null,
+    rest: null,
+  };
+  if (!notes) return result;
+
+  const rest: string[] = [];
+  for (const part of notes.split("|").map((p) => p.trim())) {
+    if (!part) continue;
+    const match = part.match(/^([^:]+):\s*(.*)$/);
+    if (match) {
+      const label = match[1].trim().toLowerCase();
+      const value = match[2].trim();
+      if (label === "branche") {
+        result.branche = value || null;
+        continue;
+      }
+      if (label === "adresse") {
+        result.adresse = value || null;
+        continue;
+      }
+      if (label === "telefon 2") {
+        result.telefon2 = value || null;
+        continue;
+      }
+    }
+    rest.push(part);
+  }
+  result.rest = rest.length > 0 ? rest.join(" | ") : null;
+  return result;
+}
+
 function formatDateDE(dateString: string, withTime = true) {
   if (!dateString) return "—";
   return new Intl.DateTimeFormat("de-DE", {
@@ -254,34 +292,73 @@ function PhaseSelect({
 
 function InfoTab({ payload }: { payload: ContactDetailPayload }) {
   const { contact } = payload;
+  const parsedNotes = parseNotesFields(contact.notes);
+  const adresse = contact.address || parsedNotes.adresse;
 
   return (
-    <div>
-      <h3 className="mb-3 text-sm font-semibold text-foreground">Stammdaten</h3>
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground">Position</dt>
-          <dd className="mt-0.5 text-foreground">{contact.position ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-muted-foreground">Firma</dt>
-          <dd className="mt-0.5 text-foreground">{contact.company ?? "—"}</dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-xs font-medium text-muted-foreground">Adresse / Land</dt>
-          <dd className="mt-0.5 text-foreground">
-            {[contact.address, contact.country].filter(Boolean).join(", ") || "—"}
-          </dd>
-        </div>
-        <div className="col-span-2">
-          <dt className="text-xs font-medium text-muted-foreground">Sales Rep</dt>
-          <dd className="mt-0.5 text-foreground">
-            {contact.assigned_profile
-              ? `${contact.assigned_profile.first_name} ${contact.assigned_profile.last_name}`
-              : "—"}
-          </dd>
-        </div>
-      </dl>
+    <div className="flex flex-col gap-6">
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Kontakt</h3>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Ansprechpartner</dt>
+            <dd className="mt-0.5 text-foreground">
+              {contact.first_name} {contact.last_name}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Position</dt>
+            <dd className="mt-0.5 text-foreground">{contact.position ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Firma</dt>
+            <dd className="mt-0.5 text-foreground">{contact.company ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Sales Rep</dt>
+            <dd className="mt-0.5 text-foreground">
+              {contact.assigned_profile
+                ? `${contact.assigned_profile.first_name} ${contact.assigned_profile.last_name}`
+                : "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">E-Mail</dt>
+            <dd className="mt-0.5 truncate text-foreground">{contact.email || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Telefon</dt>
+            <dd className="mt-0.5 text-foreground">{contact.phone || parsedNotes.telefon2 || "—"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Adresse & Region</h3>
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+          <div className="col-span-2">
+            <dt className="text-xs font-medium text-muted-foreground">Adresse</dt>
+            <dd className="mt-0.5 text-foreground">{adresse || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Land</dt>
+            <dd className="mt-0.5 text-foreground">{contact.country ?? "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-muted-foreground">Status</dt>
+            <dd className="mt-0.5 text-foreground">{contact.status ?? "—"}</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-xs font-medium text-muted-foreground">Branche / Event-Kategorie</dt>
+            <dd className="mt-0.5 text-foreground">{parsedNotes.branche ?? "—"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Notizen</h3>
+        <p className="whitespace-pre-wrap text-sm text-foreground">{parsedNotes.rest ?? "—"}</p>
+      </section>
     </div>
   );
 }

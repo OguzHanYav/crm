@@ -3,7 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getActiveProjectId } from "@/utils/projects/active-project";
-import type { Deal } from "./types";
+import type { Deal, DealSortKey, SortDir } from "./types";
 
 export type ActionResult<T = undefined> = {
   success: boolean;
@@ -95,15 +95,46 @@ const DEALS_LIST_SELECT = `
 `;
 
 // "Mehr laden": lädt den nächsten Batch der Deals-Tabelle nach (siehe getAllDeals in data.ts).
-export async function loadMoreDeals(offset: number, limit = 100): Promise<ActionResult<Deal[]>> {
+// sortKey/sortDir MUSS mit dem Aufruf übereinstimmen, der die bereits geladenen
+// Zeilen erzeugt hat — sonst ist der angehängte Batch nicht global sortiert.
+export async function loadMoreDeals(
+  offset: number,
+  limit = 100,
+  sortKey?: DealSortKey,
+  sortDir: SortDir = "asc"
+): Promise<ActionResult<Deal[]>> {
   const supabase = await createClient();
+  const ascending = sortDir === "asc";
 
-  const { data, error } = await supabase
-    .from("deals")
-    .select(DEALS_LIST_SELECT)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: true })
-    .range(offset, offset + limit - 1);
+  let query = supabase.from("deals").select(DEALS_LIST_SELECT);
+
+  switch (sortKey) {
+    case "name":
+      query = query.order("name", { ascending });
+      break;
+    case "company":
+      query = query.order("company", { ascending, referencedTable: "contacts" });
+      break;
+    case "country":
+      query = query.order("country", { ascending, referencedTable: "contacts" });
+      break;
+    case "phone":
+      query = query.order("phone", { ascending, referencedTable: "contacts" });
+      break;
+    case "email":
+      query = query.order("email", { ascending, referencedTable: "contacts" });
+      break;
+    case "status":
+      query = query.order("stage_id", { ascending });
+      break;
+    case "createdAt":
+      query = query.order("created_at", { ascending });
+      break;
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  const { data, error } = await query.order("id", { ascending: true }).range(offset, offset + limit - 1);
 
   if (error) {
     console.error("loadMoreDeals error:", error.message);

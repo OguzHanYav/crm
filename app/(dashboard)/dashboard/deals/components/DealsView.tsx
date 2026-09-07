@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import type { Deal, PipelinePhase } from "../types";
+import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
 import DealsTable from "./DealsTable";
 import FilterDropdown from "./FilterDropdown";
 import { loadMoreDeals } from "../actions";
@@ -41,8 +41,15 @@ export default function DealsView({
 
   const [localDeals, setLocalDeals] = useState<Deal[]>(() => dedupeById(deals));
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // Steuert nur, wie viele der bereits geladenen/gefilterten Zeilen aktuell gerendert
-  // werden (DOM-Performance) — unabhängig von der echten Gesamtzahl und vom Nachladen.
+  // Sortierung wird serverseitig (vor .range()) angewendet — siehe getAllDeals/loadMoreDeals
+  // in data.ts/actions.ts — damit "Mehr laden" den global sortierten Bestand fortsetzt.
+  const [sortKey, setSortKey] = useState<DealSortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // Zwei getrennte Zustände, die sich NIE gegenseitig überschreiben:
+  // - fetchLimit: wie viele Datensätze insgesamt vom Server geladen wurden (100, +renderLimit je Klick).
+  // - renderLimit: rein die Dropdown-Auswahl (25/50/100) — Seitengröße bzw. Nachlade-Schrittweite,
+  //   ausschließlich vom Nutzer über das Dropdown gesetzt.
+  const [fetchLimit, setFetchLimit] = useState(LOAD_BATCH_SIZE);
   const [renderLimit, setRenderLimit] = useState(100);
 
   useEffect(() => {
@@ -96,26 +103,53 @@ export default function DealsView({
       .filter((deal) => !countryFilter || (deal.country || deal.contact?.country) === countryFilter);
   }, [localDeals, activePhase, search, companyFilter, contactFilter, countryFilter]);
 
-  const renderedDeals = useMemo(
-    () => dealsForActiveStage.slice(0, renderLimit),
-    [dealsForActiveStage, renderLimit]
-  );
+  // Keine zusätzliche Anzeige-Kappung mehr — alles, was geladen und gefiltert
+  // wurde, wird auch angezeigt. renderLimit bestimmt nur die Nachlade-Schrittweite.
+  const renderedDeals = dealsForActiveStage;
 
   const hasMore = localDeals.length < totalCount;
 
-  // Append: der nächste Batch wird HINTER die bereits geladenen Deals gehängt,
-  // die Tabelle wird nicht ersetzt.
+  // Append: der nächste Batch (Größe = renderLimit) wird HINTER die bereits
+  // geladenen Deals gehängt, die Tabelle wird nicht ersetzt. renderLimit selbst
+  // bleibt dabei unverändert — nur fetchLimit (Ladefortschritt) wächst.
   const handleLoadMore = useCallback(async () => {
     setIsLoadingMore(true);
-    const result = await loadMoreDeals(localDeals.length, LOAD_BATCH_SIZE);
+    // Gleicher sortKey/sortDir wie beim bisherigen Bestand — sonst wäre der neue
+    // Batch anders sortiert als der Rest und die Reihenfolge bräche wieder.
+    const result = await loadMoreDeals(localDeals.length, renderLimit, sortKey ?? undefined, sortDir);
     if (result.success && result.data) {
       setLocalDeals((prev) => dedupeById([...prev, ...(result.data as Deal[])]));
-      // Ohne diese Anhebung blieb das Render-Limit (Standard 100) hart und die neu
-      // geladenen Zeilen verschwanden trotz erfolgreichem Nachladen aus der Ansicht.
-      setRenderLimit((prev) => prev + LOAD_BATCH_SIZE);
+      setFetchLimit((prev) => prev + renderLimit);
     }
     setIsLoadingMore(false);
-  }, [localDeals.length]);
+  }, [localDeals.length, sortKey, sortDir, renderLimit]);
+
+  // Sortierwechsel: von vorn (offset 0) neu und GLOBAL sortiert laden, nicht nur
+  // die bereits im Speicher befindlichen ~100 Zeilen lokal umsortieren.
+  const handleSortChange = useCallback(
+    (key: DealSortKey) => {
+      let nextKey: DealSortKey | null = key;
+      let nextDir: SortDir = "asc";
+      if (sortKey === key) {
+        if (sortDir === "asc") {
+          nextDir = "desc";
+        } else {
+          nextKey = null;
+        }
+      }
+      setSortKey(nextKey);
+      setSortDir(nextDir);
+      setIsLoadingMore(true);
+      loadMoreDeals(0, LOAD_BATCH_SIZE, nextKey ?? undefined, nextDir).then((result) => {
+        if (result.success && result.data) {
+          setLocalDeals(dedupeById(result.data));
+          setFetchLimit(LOAD_BATCH_SIZE);
+        }
+        setIsLoadingMore(false);
+      });
+    },
+    [sortKey, sortDir]
+  );
 
   const setActiveStage = useCallback(
     (stageKey: string) => {
@@ -213,12 +247,19 @@ export default function DealsView({
         />
       </div>
 
-      <DealsTable deals={renderedDeals} phases={phases} onRowClick={openDeal} />
+      <DealsTable
+        deals={renderedDeals}
+        onRowClick={openDeal}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSortChange={handleSortChange}
+      />
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
         <div className="flex items-center gap-4">
           <span>
-            Zeige {renderedDeals.length} von {dealsForActiveStage.length} (insgesamt {totalCount} Deals)
+            Zeige {renderedDeals.length} von {dealsForActiveStage.length} geladen ({fetchLimit} angefragt,
+            insgesamt {totalCount} Deals)
           </span>
           <div className="flex items-center gap-2">
             <span>Render-Limit</span>
@@ -243,7 +284,7 @@ export default function DealsView({
             disabled={isLoadingMore}
             className="rounded-md bg-slate-900 px-4 py-1.5 font-medium text-white disabled:opacity-50"
           >
-            {isLoadingMore ? "Lädt…" : `Mehr laden (+${Math.min(LOAD_BATCH_SIZE, totalCount - localDeals.length)})`}
+            {isLoadingMore ? "Lädt…" : `Mehr laden (+${Math.min(renderLimit, totalCount - localDeals.length)})`}
           </button>
         )}
       </div>

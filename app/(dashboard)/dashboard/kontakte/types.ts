@@ -96,6 +96,12 @@ export const CONTACT_STATUSES: ContactStatus[] = [
 
 export type DealStatusFilter = "offen" | "gewonnen" | "verloren";
 
+// Sortierschlüssel für die Kontakte-Tabelle — wird serverseitig in der Supabase-Query
+// angewendet (vor .range()), damit "Mehr laden" den global sortierten Bestand
+// fortsetzt statt nur die lokal geladenen 100 Zeilen umzusortieren.
+export type ContactSortKey = "name" | "company" | "country" | "email" | "phone" | "status" | "createdAt";
+export type SortDir = "asc" | "desc";
+
 export type ContactFilters = {
   q?: string;
   status?: ContactStatus;

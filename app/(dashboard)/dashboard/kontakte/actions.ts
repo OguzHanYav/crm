@@ -4,7 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getPipelinePhases } from "@/app/(dashboard)/dashboard/deals/data";
 import { getContacts as fetchContacts } from "./data";
-import type { Contact, ContactStatus, Note, CallLog, ContactFilters, DealStatusFilter, CallType } from "./types";
+import type { Contact, ContactStatus, Note, CallLog, ContactFilters, DealStatusFilter, CallType, ContactSortKey, SortDir } from "./types";
 
 export type ActionResult<T = undefined> = {
   success: boolean;
@@ -75,9 +75,11 @@ async function getContactIdsByEventCategory(
 export async function loadMoreContacts(
   offset: number,
   filters?: ContactFilters,
-  limit = 100
+  limit = 100,
+  sortKey?: ContactSortKey,
+  sortDir: SortDir = "asc"
 ): Promise<ActionResult<Contact[]>> {
-  const data = await fetchContacts(filters, limit, offset);
+  const data = await fetchContacts(filters, limit, offset, sortKey, sortDir);
   return { success: true, data };
 }
 

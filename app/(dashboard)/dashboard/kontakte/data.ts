@@ -6,6 +6,8 @@ import type {
   CallLog,
   ContactDeal,
   TeamMember,
+  ContactSortKey,
+  SortDir,
 } from "./types";
 
 export type ContactFilters = {
@@ -23,7 +25,9 @@ export type ContactFilters = {
 export async function getContacts(
   filters?: ContactFilters | string,
   limit = 100,
-  offset = 0
+  offset = 0,
+  sortKey?: ContactSortKey,
+  sortDir: SortDir = "asc"
 ): Promise<Contact[]> {
   const supabase = await createClient();
   const normalized: ContactFilters =
@@ -36,12 +40,39 @@ export async function getContacts(
       id, first_name, last_name, email, phone, company, country, status, notes, created_at,
       deals ( id, created_at, stage_id, stage:deal_stages!stage_id ( id, name, color ) )
       `
-    )
-    // Sekundäres Sortierkriterium "id": Bulk-Importe teilen sich oft denselben
-    // created_at-Zeitstempel — ohne stabilen Tiebreaker liefert range()-Pagination
-    // instabile/duplizierte Zeilen an den Seitengrenzen.
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: true });
+    );
+
+  const ascending = sortDir === "asc";
+  switch (sortKey) {
+    case "name":
+      query = query.order("first_name", { ascending }).order("last_name", { ascending });
+      break;
+    case "company":
+      query = query.order("company", { ascending });
+      break;
+    case "country":
+      query = query.order("country", { ascending });
+      break;
+    case "email":
+      query = query.order("email", { ascending });
+      break;
+    case "phone":
+      query = query.order("phone", { ascending });
+      break;
+    case "status":
+      query = query.order("status", { ascending });
+      break;
+    case "createdAt":
+      query = query.order("created_at", { ascending });
+      break;
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  // Sekundäres Sortierkriterium "id": Bulk-Importe teilen sich oft denselben
+  // created_at-Zeitstempel — ohne stabilen Tiebreaker liefert range()-Pagination
+  // instabile/duplizierte Zeilen an den Seitengrenzen.
+  query = query.order("id", { ascending: true });
 
   if (normalized.q && normalized.q.trim().length > 0) {
     const term = normalized.q.trim();

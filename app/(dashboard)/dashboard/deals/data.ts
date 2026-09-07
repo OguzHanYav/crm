@@ -1,6 +1,46 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
-import type { Pipeline, DealStage, PipelineStage, PipelinePhase, Deal, Contact, TeamMember } from "./types";
+import type { Pipeline, DealStage, PipelineStage, PipelinePhase, Deal, Contact, TeamMember, DealSortKey, SortDir } from "./types";
+
+const DEALS_SELECT = `
+  id, name, pipeline_id, stage_id, contact_id, value, created_at, country,
+  contact:contacts ( id, first_name, last_name, email, phone, company, country )
+`;
+
+// Wendet den gewählten Sortierschlüssel serverseitig an (inkl. Sortierung nach
+// eingebetteten contacts-Feldern) und hängt "id" als stabilen Tiebreaker an, damit
+// range()-Pagination über mehrere "Mehr laden"-Aufrufe hinweg konsistent bleibt.
+function applyDealsSort(query: any, sortKey: DealSortKey | undefined, sortDir: SortDir) {
+  const ascending = sortDir === "asc";
+
+  switch (sortKey) {
+    case "name":
+      query = query.order("name", { ascending });
+      break;
+    case "company":
+      query = query.order("company", { ascending, referencedTable: "contacts" });
+      break;
+    case "country":
+      query = query.order("country", { ascending, referencedTable: "contacts" });
+      break;
+    case "phone":
+      query = query.order("phone", { ascending, referencedTable: "contacts" });
+      break;
+    case "email":
+      query = query.order("email", { ascending, referencedTable: "contacts" });
+      break;
+    case "status":
+      query = query.order("stage_id", { ascending });
+      break;
+    case "createdAt":
+      query = query.order("created_at", { ascending });
+      break;
+    default:
+      query = query.order("created_at", { ascending: false });
+  }
+
+  return query.order("id", { ascending: true });
+}
 
 export const getPipelines = cache(async (): Promise<Pipeline[]> => {
   const supabase = await createClient();
@@ -208,22 +248,19 @@ export const getPipelinePhases = cache(async (): Promise<PipelinePhase[]> => {
 
 // Lädt standardmäßig nur die ersten 100 Deals (Performance); "Mehr laden" ruft
 // dieselbe Funktion mit einem höheren offset erneut auf (siehe loadMoreDeals in actions.ts).
-export async function getAllDeals(limit = 100, offset = 0): Promise<Deal[]> {
+export async function getAllDeals(
+  limit = 100,
+  offset = 0,
+  sortKey?: DealSortKey,
+  sortDir: SortDir = "asc"
+): Promise<Deal[]> {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("deals")
-    .select(
-      `
-      id, name, pipeline_id, stage_id, contact_id, value, created_at, country,
-      contact:contacts ( id, first_name, last_name, email, phone, company, country )
-      `
-    )
-    // Sekundäres Sortierkriterium "id" verhindert instabile/duplizierte Zeilen bei
-    // range()-Pagination, wenn viele Deals denselben created_at-Zeitstempel teilen.
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: true })
-    .range(offset, offset + limit - 1);
+  let query = supabase.from("deals").select(DEALS_SELECT);
+  query = applyDealsSort(query, sortKey, sortDir);
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("getAllDeals error:", error.message);
