@@ -7,6 +7,7 @@ import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
 import DealsTable from "./DealsTable";
 import FilterDropdown from "./FilterDropdown";
 import { loadMoreDeals } from "../actions";
+import { useCrmStore } from "@/lib/store/useCrmStore";
 
 const LOAD_BATCH_SIZE = 100;
 const RENDER_LIMIT_OPTIONS = [25, 50, 100];
@@ -34,11 +35,17 @@ export default function DealsView({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [search, setSearch] = useState("");
-  const [companyFilter, setCompanyFilter] = useState("");
-  const [contactFilter, setContactFilter] = useState(""); // E-Mail / Telefon / Vorwahl
-  const [countryFilter, setCountryFilter] = useState("");
-  const [industryFilter, setIndustryFilter] = useState("");
+  // Filterzustand liegt im globalen Zustand-Store (statt lokalem useState), damit er
+  // seitenübergreifend erhalten bleibt und Konsumenten selektiv (statt per Prop-Drilling
+  // über den ganzen Baum) nur bei tatsächlicher Änderung ihrer Slice neu rendern.
+  const dealsFilters = useCrmStore((s) => s.dealsFilters);
+  const setDealsFilter = useCrmStore((s) => s.setDealsFilter);
+  const { search, companyFilter, contactFilter, countryFilter, industryFilter } = dealsFilters;
+  const setSearch = useCallback((value: string) => setDealsFilter("search", value), [setDealsFilter]);
+  const setCompanyFilter = useCallback((value: string) => setDealsFilter("companyFilter", value), [setDealsFilter]);
+  const setContactFilter = useCallback((value: string) => setDealsFilter("contactFilter", value), [setDealsFilter]);
+  const setCountryFilter = useCallback((value: string) => setDealsFilter("countryFilter", value), [setDealsFilter]);
+  const setIndustryFilter = useCallback((value: string) => setDealsFilter("industryFilter", value), [setDealsFilter]);
 
   const [localDeals, setLocalDeals] = useState<Deal[]>(() => dedupeById(deals));
   const [isLoadingMore, setIsLoadingMore] = useState(false);

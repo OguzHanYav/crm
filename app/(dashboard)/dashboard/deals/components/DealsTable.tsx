@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
 
 function formatDateDE(dateString: string) {
@@ -102,6 +102,18 @@ export default function DealsTable({
   sortDir: SortDir;
   onSortChange: (key: DealSortKey) => void;
 }) {
+  // Vermeidet O(n*m) phases.find(...) pro Zeile bei jedem Render — stattdessen
+  // einmalige O(m) Map-Erstellung, danach O(1) Lookup pro Deal.
+  const phaseByStageId = useMemo(() => {
+    const map = new Map<string, PipelinePhase>();
+    for (const phase of phases) {
+      for (const stageId of phase.stageIds) {
+        map.set(stageId, phase);
+      }
+    }
+    return map;
+  }, [phases]);
+
   if (deals.length === 0) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
@@ -133,7 +145,7 @@ export default function DealsTable({
             <DealsTableRow
               key={deal.id}
               deal={deal}
-              phase={phases.find((p) => p.stageIds.includes(deal.stage_id))}
+              phase={phaseByStageId.get(deal.stage_id)}
               onRowClick={onRowClick}
             />
           ))}
