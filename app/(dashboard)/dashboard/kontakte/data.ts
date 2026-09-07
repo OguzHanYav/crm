@@ -37,7 +37,7 @@ export async function getContacts(
     .from("contacts")
     .select(
       `
-      id, first_name, last_name, email, phone, company, country, status, notes, created_at,
+      id, first_name, last_name, email, phone, company, country, address, industry, status, notes, created_at,
       deals ( id, created_at, stage_id, stage:deal_stages!stage_id ( id, name, color ) )
       `
     );
@@ -58,6 +58,12 @@ export async function getContacts(
       break;
     case "phone":
       query = query.order("phone", { ascending });
+      break;
+    case "address":
+      query = query.order("address", { ascending });
+      break;
+    case "industry":
+      query = query.order("industry", { ascending });
       break;
     case "status":
       query = query.order("status", { ascending });

@@ -14,6 +14,9 @@ export default function FilterDropdown({
   countryFilter,
   onCountryFilterChange,
   countryOptions,
+  industryFilter,
+  onIndustryFilterChange,
+  industryOptions,
 }: {
   phases: PipelinePhase[];
   activeKey: string;
@@ -25,6 +28,9 @@ export default function FilterDropdown({
   countryFilter: string;
   onCountryFilterChange: (value: string) => void;
   countryOptions: string[];
+  industryFilter: string;
+  onIndustryFilterChange: (value: string) => void;
+  industryOptions: string[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,7 +43,7 @@ export default function FilterDropdown({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  const activeCount = [companyFilter.trim(), contactFilter.trim(), countryFilter].filter(
+  const activeCount = [companyFilter.trim(), contactFilter.trim(), countryFilter, industryFilter].filter(
     (v) => v !== ""
   ).length;
 
@@ -45,6 +51,7 @@ export default function FilterDropdown({
     onCompanyFilterChange("");
     onContactFilterChange("");
     onCountryFilterChange("");
+    onIndustryFilterChange("");
   }
 
   return (
@@ -117,6 +124,22 @@ export default function FilterDropdown({
                 {countryOptions.map((c) => (
                   <option key={c} value={c}>
                     {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Branche</label>
+              <select
+                value={industryFilter}
+                onChange={(e) => onIndustryFilterChange(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none"
+              >
+                <option value="">Alle Branchen</option>
+                {industryOptions.map((i) => (
+                  <option key={i} value={i}>
+                    {i}
                   </option>
                 ))}
               </select>

@@ -1,18 +1,23 @@
 "use client";
 
 import { memo, useCallback } from "react";
-import type { Deal, DealSortKey, SortDir } from "../types";
+import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
 
-function SortIcon({ dir }: { dir: SortDir | null }) {
-  if (!dir) return <span className="text-slate-300">↕</span>;
-  return <span className="text-slate-700">{dir === "asc" ? "↑" : "↓"}</span>;
+function formatDateDE(dateString: string) {
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(dateString));
 }
 
 const DealsTableRow = memo(function DealsTableRow({
   deal,
+  phase,
   onRowClick,
 }: {
   deal: Deal;
+  phase: PipelinePhase | undefined;
   onRowClick: (deal: Deal) => void;
 }) {
   const contact = deal.contact;
@@ -21,22 +26,21 @@ const DealsTableRow = memo(function DealsTableRow({
 
   return (
     <tr onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-slate-50">
-      <td className="px-4 py-3">
-        <div className="flex flex-col">
-          <span className="font-medium text-slate-900">{deal.name}</span>
-          {contact && (
-            <span className="text-xs text-slate-400">
-              {contact.first_name} {contact.last_name}
-            </span>
-          )}
-        </div>
+      <td className="truncate px-3 py-2">
+        <span className="font-medium text-slate-900">{deal.name}</span>
       </td>
 
-      <td className="px-4 py-3 text-slate-700">{contact?.company ?? "—"}</td>
+      <td className="truncate px-3 py-2" onClick={handleStopPropagation}>
+        {contact?.phone ? (
+          <a href={`tel:${contact.phone}`} className="text-slate-600 hover:text-slate-900 hover:underline">
+            {contact.phone}
+          </a>
+        ) : (
+          <span className="text-slate-300">—</span>
+        )}
+      </td>
 
-      <td className="px-4 py-3 text-slate-600">{deal.country || contact?.country || "—"}</td>
-
-      <td className="px-4 py-3" onClick={handleStopPropagation}>
+      <td className="truncate px-3 py-2" onClick={handleStopPropagation}>
         {contact?.email ? (
           <a href={`mailto:${contact.email}`} className="text-slate-600 hover:text-slate-900 hover:underline">
             {contact.email}
@@ -46,35 +50,53 @@ const DealsTableRow = memo(function DealsTableRow({
         )}
       </td>
 
-      <td className="px-4 py-3" onClick={handleStopPropagation}>
-        {contact?.phone ? (
-          <a href={`tel:${contact.phone}`} className="text-slate-600 hover:text-slate-900 hover:underline">
-            {contact.phone}
-          </a>
-        ) : (
-          <span className="text-slate-300">—</span>
+      <td className="truncate px-3 py-2 text-slate-700">{contact?.company ?? "—"}</td>
+
+      <td className="truncate px-3 py-2 text-slate-600">{deal.industry || contact?.industry || "—"}</td>
+
+      <td className="truncate px-3 py-2 text-slate-600">{deal.country || contact?.country || "—"}</td>
+
+      <td className="truncate px-3 py-2 text-slate-600">{deal.address || contact?.address || "—"}</td>
+
+      <td className="whitespace-nowrap px-3 py-2 text-slate-500">{formatDateDE(deal.created_at)}</td>
+
+      <td className="overflow-hidden px-3 py-2">
+        {phase && (
+          <span
+            className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold"
+            style={{ backgroundColor: `${phase.color}1A`, color: phase.color }}
+            title={phase.name}
+          >
+            {phase.name}
+          </span>
         )}
       </td>
     </tr>
   );
 });
 
-const COLUMNS: { key: DealSortKey; label: string }[] = [
-  { key: "name", label: "Name" },
-  { key: "company", label: "Firma" },
-  { key: "country", label: "Land" },
-  { key: "email", label: "E-Mail" },
-  { key: "phone", label: "Telefon" },
+const COLUMNS: { key: DealSortKey; label: string; width: string }[] = [
+  { key: "name", label: "Name", width: "w-[13%]" },
+  { key: "phone", label: "Telefon", width: "w-[10%]" },
+  { key: "email", label: "E-Mail", width: "w-[15%]" },
+  { key: "company", label: "Firma", width: "w-[11%]" },
+  { key: "industry", label: "Branche", width: "w-[10%]" },
+  { key: "country", label: "Land", width: "w-[7%]" },
+  { key: "address", label: "Adresse", width: "w-[11%]" },
+  { key: "createdAt", label: "Erstellt am", width: "w-[8%]" },
+  { key: "status", label: "Status", width: "w-[15%]" },
 ];
 
 export default function DealsTable({
   deals,
+  phases,
   onRowClick,
   sortKey,
   sortDir,
   onSortChange,
 }: {
   deals: Deal[];
+  phases: PipelinePhase[];
   onRowClick: (deal: Deal) => void;
   sortKey: DealSortKey | null;
   sortDir: SortDir;
@@ -89,19 +111,18 @@ export default function DealsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
+    <div className="rounded-lg border border-slate-200 bg-white">
+      <table className="w-full table-fixed text-xs">
         <thead className="bg-slate-50">
           <tr>
             {COLUMNS.map((col) => (
-              <th key={col.key} className="px-4 py-3 text-left font-medium text-slate-500">
+              <th key={col.key} className={`${col.width} px-3 py-2 text-left font-medium text-slate-500`}>
                 <button
                   type="button"
                   onClick={() => onSortChange(col.key)}
-                  className="inline-flex items-center gap-1 hover:text-slate-700"
+                  className="truncate hover:text-slate-700"
                 >
                   {col.label}
-                  <SortIcon dir={sortKey === col.key ? sortDir : null} />
                 </button>
               </th>
             ))}
@@ -109,7 +130,12 @@ export default function DealsTable({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {deals.map((deal) => (
-            <DealsTableRow key={deal.id} deal={deal} onRowClick={onRowClick} />
+            <DealsTableRow
+              key={deal.id}
+              deal={deal}
+              phase={phases.find((p) => p.stageIds.includes(deal.stage_id))}
+              onRowClick={onRowClick}
+            />
           ))}
         </tbody>
       </table>

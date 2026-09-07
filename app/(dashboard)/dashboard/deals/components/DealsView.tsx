@@ -38,6 +38,7 @@ export default function DealsView({
   const [companyFilter, setCompanyFilter] = useState("");
   const [contactFilter, setContactFilter] = useState(""); // E-Mail / Telefon / Vorwahl
   const [countryFilter, setCountryFilter] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("");
 
   const [localDeals, setLocalDeals] = useState<Deal[]>(() => dedupeById(deals));
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -68,6 +69,15 @@ export default function DealsView({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [localDeals]);
 
+  const industryOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of localDeals) {
+      const i = d.industry || d.contact?.industry;
+      if (i) set.add(i);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [localDeals]);
+
   // Alle Filter (Tab-Phase, Volltextsuche, Firma, E-Mail/Telefon/Vorwahl, Land) werden UND-verknüpft.
   const dealsForActiveStage = useMemo(() => {
     if (!activePhase) return [];
@@ -88,6 +98,7 @@ export default function DealsView({
           contact?.company,
           contact?.phone,
           deal.country || contact?.country,
+          deal.industry || contact?.industry,
         ]
           .filter(Boolean)
           .join(" ")
@@ -100,8 +111,9 @@ export default function DealsView({
         const haystack = [deal.contact?.email, deal.contact?.phone].filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(contactTerm);
       })
-      .filter((deal) => !countryFilter || (deal.country || deal.contact?.country) === countryFilter);
-  }, [localDeals, activePhase, search, companyFilter, contactFilter, countryFilter]);
+      .filter((deal) => !countryFilter || (deal.country || deal.contact?.country) === countryFilter)
+      .filter((deal) => !industryFilter || (deal.industry || deal.contact?.industry) === industryFilter);
+  }, [localDeals, activePhase, search, companyFilter, contactFilter, countryFilter, industryFilter]);
 
   // Keine zusätzliche Anzeige-Kappung mehr — alles, was geladen und gefiltert
   // wurde, wird auch angezeigt. renderLimit bestimmt nur die Nachlade-Schrittweite.
@@ -244,11 +256,15 @@ export default function DealsView({
           countryFilter={countryFilter}
           onCountryFilterChange={setCountryFilter}
           countryOptions={countryOptions}
+          industryFilter={industryFilter}
+          onIndustryFilterChange={setIndustryFilter}
+          industryOptions={industryOptions}
         />
       </div>
 
       <DealsTable
         deals={renderedDeals}
+        phases={phases}
         onRowClick={openDeal}
         sortKey={sortKey}
         sortDir={sortDir}

@@ -2,8 +2,9 @@
 // Liest die Rohdatei (Header stehen erst ab einer Titel-/Leerzeile, Spalten in
 // türkischer Sprache: Firma, Ülke, Branş, E-posta, Telefon 1/2, Adres) und
 // schreibt eine bereinigte Datei crm_ready_import_fixed.xlsx im Projekt-Root mit
-// den Spalten: Name, Firma, Land, E-Mail, Telefon, Event-Kategorie, Status,
-// Deal-Wert, Notizen — Header direkt in Zeile 1.
+// den Spalten: Name, Firma, Land, E-Mail, Telefon, Branche, Adresse,
+// Event-Kategorie, Status, Deal-Wert, Notizen — Header direkt in Zeile 1.
+// Adresse/Branche stehen als EIGENE Felder (nicht mehr nur in Notizen verkettet).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -72,13 +73,9 @@ const fixedRows = rawRows
     const branche = getBranche(row);
     const adres = getAdres(row);
 
-    const notizen = [
-      branche ? `Branche: ${branche}` : "",
-      adres ? `Adresse: ${adres}` : "",
-      telefon2 ? `Telefon 2: ${telefon2}` : "",
-    ]
-      .filter(Boolean)
-      .join(" | ");
+    // Nur noch echter Rest (Telefon 2) in Notizen — Adresse/Branche haben jetzt
+    // eigene Spalten und werden nicht mehr in Notizen verkettet.
+    const notizen = telefon2 ? `Telefon 2: ${telefon2}` : "";
 
     return {
       Name: firma,
@@ -86,6 +83,8 @@ const fixedRows = rawRows
       Land: getLand(row) || "",
       "E-Mail": getEmail(row) || "",
       Telefon: telefon || "",
+      Branche: branche || "",
+      Adresse: adres || "",
       "Event-Kategorie": branche || "",
       Status: "Lead",
       "Deal-Wert": 0,
@@ -97,7 +96,19 @@ const fixedRows = rawRows
 console.log(`${fixedRows.length} gültige Zeilen (mit Firma) aufbereitet.`);
 
 const worksheet = XLSX.utils.json_to_sheet(fixedRows, {
-  header: ["Name", "Firma", "Land", "E-Mail", "Telefon", "Event-Kategorie", "Status", "Deal-Wert", "Notizen"],
+  header: [
+    "Name",
+    "Firma",
+    "Land",
+    "E-Mail",
+    "Telefon",
+    "Branche",
+    "Adresse",
+    "Event-Kategorie",
+    "Status",
+    "Deal-Wert",
+    "Notizen",
+  ],
 });
 const outWorkbook = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(outWorkbook, worksheet, "Import");

@@ -455,10 +455,19 @@ function CallLogTab({ payload, onRefresh }: { payload: ContactDetailPayload; onR
   const { contact, callLogs } = payload;
   const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(formData: FormData) {
+  // Kein <form action={fn}>: unter React 18 wird eine lokale (nicht als "use server"
+  // markierte) Funktion dort NICHT als Formular-Action erkannt — der Klick löst
+  // stattdessen ein natives Form-Submit/Reload aus und logCall wird nie ausgeführt.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     startTransition(async () => {
       const result = await logCall(contact.id, formData);
-      if (result.success) onRefresh();
+      if (result.success) {
+        form.reset();
+        onRefresh();
+      }
     });
   }
 
@@ -466,7 +475,7 @@ function CallLogTab({ payload, onRefresh }: { payload: ContactDetailPayload; onR
     <div className="flex flex-col gap-6">
       <div>
         <h3 className="mb-3 text-sm font-semibold text-foreground">Anruf protokollieren</h3>
-        <form action={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Anruf-Typ</label>

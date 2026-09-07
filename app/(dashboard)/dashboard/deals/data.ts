@@ -3,8 +3,8 @@ import { createClient } from "@/utils/supabase/server";
 import type { Pipeline, DealStage, PipelineStage, PipelinePhase, Deal, Contact, TeamMember, DealSortKey, SortDir } from "./types";
 
 const DEALS_SELECT = `
-  id, name, pipeline_id, stage_id, contact_id, value, created_at, country,
-  contact:contacts ( id, first_name, last_name, email, phone, company, country )
+  id, name, pipeline_id, stage_id, contact_id, value, created_at, country, address, industry,
+  contact:contacts ( id, first_name, last_name, email, phone, company, country, address, industry )
 `;
 
 // Wendet den gewählten Sortierschlüssel serverseitig an (inkl. Sortierung nach
@@ -28,6 +28,12 @@ function applyDealsSort(query: any, sortKey: DealSortKey | undefined, sortDir: S
       break;
     case "email":
       query = query.order("email", { ascending, referencedTable: "contacts" });
+      break;
+    case "address":
+      query = query.order("address", { ascending, referencedTable: "contacts" });
+      break;
+    case "industry":
+      query = query.order("industry", { ascending, referencedTable: "contacts" });
       break;
     case "status":
       query = query.order("stage_id", { ascending });

@@ -10,6 +10,7 @@ export type Contact = {
   position: string | null;
   address: string | null;
   country: string | null;
+  industry?: string | null;
   status: ContactStatus;
   notes: string | null;
   assigned_to: string | null;
@@ -99,7 +100,16 @@ export type DealStatusFilter = "offen" | "gewonnen" | "verloren";
 // Sortierschlüssel für die Kontakte-Tabelle — wird serverseitig in der Supabase-Query
 // angewendet (vor .range()), damit "Mehr laden" den global sortierten Bestand
 // fortsetzt statt nur die lokal geladenen 100 Zeilen umzusortieren.
-export type ContactSortKey = "name" | "company" | "country" | "email" | "phone" | "status" | "createdAt";
+export type ContactSortKey =
+  | "name"
+  | "company"
+  | "country"
+  | "email"
+  | "phone"
+  | "address"
+  | "industry"
+  | "status"
+  | "createdAt";
 export type SortDir = "asc" | "desc";
 
 export type ContactFilters = {

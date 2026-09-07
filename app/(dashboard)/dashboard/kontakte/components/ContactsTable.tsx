@@ -4,21 +4,25 @@ import { memo, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Contact, ContactFilters, ContactSortKey, SortDir } from "../types";
+import StatusBadge from "./StatusBadge";
 import ContactRowActions from "./ContactRowActions";
 import { Card } from "@/components/ui/Card";
 import { loadMoreContacts } from "../actions";
 
 const LOAD_BATCH_SIZE = 100;
 
-function SortIcon({ dir }: { dir: SortDir | null }) {
-  if (!dir) return <span className="text-muted-foreground/40">↕</span>;
-  return <span className="text-foreground">{dir === "asc" ? "↑" : "↓"}</span>;
-}
-
 // Dedupliziert nach id — verhindert React "duplicate key"-Fehler, wenn range()-Pagination
 // (z. B. bei instabiler Sortierung) dieselbe Zeile mehrfach zurückliefert.
 function dedupeById<T extends { id: string }>(items: T[]): T[] {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
+}
+
+function formatDateDE(dateString: string) {
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(dateString));
 }
 
 const ContactRow = memo(function ContactRow({
@@ -36,29 +40,17 @@ const ContactRow = memo(function ContactRow({
 
   return (
     <tr className="group transition-colors duration-150 hover:bg-muted/40">
-      <td className="px-4 py-3">
-        <Link href={contactHref} scroll={false} className="block">
-          <p className="font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline">
-            {contact.first_name} {contact.last_name}
-          </p>
+      <td className="truncate px-3 py-2">
+        <Link
+          href={contactHref}
+          scroll={false}
+          className="block truncate font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline"
+        >
+          {contact.first_name} {contact.last_name}
         </Link>
       </td>
 
-      <td className="px-4 py-3 text-foreground/90">{contact.company ?? "—"}</td>
-
-      <td className="px-4 py-3 text-foreground/90">{contact.country ?? "—"}</td>
-
-      <td className="px-4 py-3" onClick={stopPropagation}>
-        {contact.email ? (
-          <a href={`mailto:${contact.email}`} className="text-foreground/90 hover:text-accent hover:underline">
-            {contact.email}
-          </a>
-        ) : (
-          <span className="text-muted-foreground/40">—</span>
-        )}
-      </td>
-
-      <td className="px-4 py-3" onClick={stopPropagation}>
+      <td className="truncate px-3 py-2" onClick={stopPropagation}>
         {contact.phone ? (
           <a href={`tel:${contact.phone}`} className="text-foreground/90 hover:text-accent hover:underline">
             {contact.phone}
@@ -68,19 +60,57 @@ const ContactRow = memo(function ContactRow({
         )}
       </td>
 
-      <td className="px-4 py-3 text-right">
+      <td className="truncate px-3 py-2" onClick={stopPropagation}>
+        {contact.email ? (
+          <a href={`mailto:${contact.email}`} className="text-foreground/90 hover:text-accent hover:underline">
+            {contact.email}
+          </a>
+        ) : (
+          <span className="text-muted-foreground/40">—</span>
+        )}
+      </td>
+
+      <td className="truncate px-3 py-2 text-foreground/90">{contact.company ?? "—"}</td>
+
+      <td className="truncate px-3 py-2 text-foreground/90">{contact.industry ?? "—"}</td>
+
+      <td className="truncate px-3 py-2 text-foreground/90">{contact.country ?? "—"}</td>
+
+      <td className="truncate px-3 py-2 text-foreground/90">{contact.address ?? "—"}</td>
+
+      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{formatDateDE(contact.created_at)}</td>
+
+      <td className="overflow-hidden px-3 py-2">
+        {contact.currentStage ? (
+          <span
+            className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold"
+            style={{ backgroundColor: `${contact.currentStage.color}1A`, color: contact.currentStage.color }}
+            title={contact.currentStage.name}
+          >
+            {contact.currentStage.name}
+          </span>
+        ) : (
+          <StatusBadge status={contact.status} />
+        )}
+      </td>
+
+      <td className="px-3 py-2 text-right">
         <ContactRowActions contact={contact} isAdmin={isAdmin} teamMembers={teamMembers} />
       </td>
     </tr>
   );
 });
 
-const COLUMNS: { key: ContactSortKey; label: string }[] = [
-  { key: "name", label: "Name" },
-  { key: "company", label: "Firma" },
-  { key: "country", label: "Land" },
-  { key: "email", label: "E-Mail" },
-  { key: "phone", label: "Telefon" },
+const COLUMNS: { key: ContactSortKey; label: string; width: string }[] = [
+  { key: "name", label: "Name", width: "w-[12%]" },
+  { key: "phone", label: "Telefon", width: "w-[10%]" },
+  { key: "email", label: "E-Mail", width: "w-[15%]" },
+  { key: "company", label: "Firma", width: "w-[11%]" },
+  { key: "industry", label: "Branche", width: "w-[10%]" },
+  { key: "country", label: "Land", width: "w-[7%]" },
+  { key: "address", label: "Adresse", width: "w-[10%]" },
+  { key: "createdAt", label: "Erstellt am", width: "w-[8%]" },
+  { key: "status", label: "Status", width: "w-[9%]" },
 ];
 
 export default function ContactsTable({
@@ -160,23 +190,18 @@ export default function ContactsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Card className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-border text-sm">
+      <Card className="overflow-hidden">
+        <table className="w-full table-fixed text-xs">
           <thead className="bg-muted/30">
             <tr>
               {COLUMNS.map((col) => (
-                <th key={col.key} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
-                  <button
-                    type="button"
-                    onClick={() => handleSortChange(col.key)}
-                    className="inline-flex items-center gap-1 hover:text-foreground"
-                  >
+                <th key={col.key} className={`${col.width} px-3 py-2 text-left font-medium text-muted-foreground`}>
+                  <button type="button" onClick={() => handleSortChange(col.key)} className="truncate hover:text-foreground">
                     {col.label}
-                    <SortIcon dir={sortKey === col.key ? sortDir : null} />
                   </button>
                 </th>
               ))}
-              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Aktionen</th>
+              <th className="w-[8%] px-3 py-2 text-right font-medium text-muted-foreground">Aktionen</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">

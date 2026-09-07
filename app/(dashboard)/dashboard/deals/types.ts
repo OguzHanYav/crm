@@ -31,6 +31,8 @@ export type Contact = {
   company: string | null;
   website?: string | null;
   country?: string | null;
+  address?: string | null;
+  industry?: string | null;
   last_contacted_at?: string | null;
 };
 
@@ -53,6 +55,8 @@ export type Deal = {
   value: number;
   created_at: string;
   country?: string | null;
+  address?: string | null;
+  industry?: string | null;
   contact: Contact | null;
   assigned_profile: TeamMember | null;
 };
@@ -70,7 +74,16 @@ export type PipelinePhase = {
 // Sortierschlüssel für die Deals-Tabelle — wird serverseitig in der Supabase-Query
 // angewendet (vor .range()), damit "Mehr laden" den global sortierten Bestand
 // fortsetzt statt nur die lokal geladenen 100 Zeilen umzusortieren.
-export type DealSortKey = "name" | "company" | "country" | "phone" | "email" | "status" | "createdAt";
+export type DealSortKey =
+  | "name"
+  | "company"
+  | "country"
+  | "phone"
+  | "email"
+  | "address"
+  | "industry"
+  | "status"
+  | "createdAt";
 export type SortDir = "asc" | "desc";
 
 export type StageHistoryEntry = {

@@ -5,9 +5,10 @@ globalThis.WebSocket = WebSocket;
 // Liest crm_ready_import_fixed.xlsx aus dem Projekt-Root, lädt ALLE bestehenden
 // contacts/deals vorab in den Speicher und matcht per normalisiertem Firmennamen
 // (Kleinbuchstaben, Diakritika/Sonderzeichen entfernt) bzw. E-Mail — robust gegen
-// Schreibweisen wie "Rivelli Tamplaş" vs. "RIVELLI TAMPLAS". Aktualisiert country
-// (und Wert/Notizen) in contacts UND deals. Voraussetzung: add-deals-country-column.sql
-// wurde bereits ausgeführt.
+// Schreibweisen wie "Rivelli Tamplaş" vs. "RIVELLI TAMPLAS". Aktualisiert
+// country/address/industry (und Wert/Notizen) in contacts UND deals.
+// Voraussetzung: add-deals-country-column.sql, add-deals-address-column.sql und
+// add-industry-column.sql wurden bereits ausgeführt.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -121,8 +122,8 @@ async function main() {
 
   console.log("Lade bestehende contacts/deals aus Supabase ...");
   const [allContacts, allDeals] = await Promise.all([
-    fetchAll("contacts", "id, email, company, country, phone"),
-    fetchAll("deals", "id, contact_id, name, country, value"),
+    fetchAll("contacts", "id, email, company, country, address, industry, phone"),
+    fetchAll("deals", "id, contact_id, name, country, address, industry, value"),
   ]);
   console.log(`  ${allContacts.length} Kontakte, ${allDeals.length} Deals geladen.`);
 
@@ -160,6 +161,8 @@ async function main() {
     const country = String(row["Land"] ?? "").trim() || null;
     const email = String(row["E-Mail"] ?? "").trim() || null;
     const phone = String(row["Telefon"] ?? "").trim() || null;
+    const address = String(row["Adresse"] ?? "").trim() || null;
+    const industry = String(row["Branche"] ?? "").trim() || null;
     const notes = String(row["Notizen"] ?? "").trim() || null;
     const dealValue = Number(row["Deal-Wert"]) || 0;
 
@@ -174,7 +177,14 @@ async function main() {
     if (contact) {
       const { error } = await supabase
         .from("contacts")
-        .update({ company: company || undefined, country, phone: phone || undefined, notes: notes || undefined })
+        .update({
+          company: company || undefined,
+          country,
+          address,
+          industry,
+          phone: phone || undefined,
+          notes: notes || undefined,
+        })
         .eq("id", contact.id);
       if (error) {
         console.error("Kontakt-Update-Fehler:", company || email, error.message);
@@ -182,6 +192,8 @@ async function main() {
       }
       contactId = contact.id;
       contact.country = country;
+      contact.address = address;
+      contact.industry = industry;
       contactsUpdated++;
     } else {
       const { first, last } = splitName(name || company);
@@ -194,10 +206,12 @@ async function main() {
           phone,
           company: company || null,
           country,
+          address,
+          industry,
           status: "Lead",
           notes,
         })
-        .select("id, email, company, country")
+        .select("id, email, company, country, address, industry")
         .single();
       if (error) {
         console.error("Kontakt-Insert-Fehler:", company || email, error.message);
@@ -214,7 +228,7 @@ async function main() {
     const existingDeal = (dealsByContactId.get(contactId) || [])[0] || dealsByNameKey.get(companyKey) || null;
 
     if (existingDeal) {
-      const updatePayload = { country, value: dealValue };
+      const updatePayload = { country, address, industry, value: dealValue };
       if (!existingDeal.contact_id) updatePayload.contact_id = contactId;
       const { error } = await supabase.from("deals").update(updatePayload).eq("id", existingDeal.id);
       if (error) {
@@ -232,8 +246,10 @@ async function main() {
           contact_id: contactId,
           value: dealValue,
           country,
+          address,
+          industry,
         })
-        .select("id, contact_id, name, country")
+        .select("id, contact_id, name, country, address, industry")
         .single();
       if (error) {
         console.error("Deal-Insert-Fehler:", company || email, error.message);
@@ -253,16 +269,17 @@ async function main() {
   console.log(`  Deals aktualisiert:    ${dealsUpdated}`);
   console.log(`  Übersprungen:          ${skipped}`);
 
-  // Fallback: alle noch verbliebenen Deals ohne Land, deren Kontakt eines hat.
-  console.log("Fallback-Pass: country von contacts auf verbleibende deals kopieren ...");
+  // Fallback: alle noch verbliebenen Deals ohne Land/Adresse/Branche, deren
+  // Kontakt einen Wert hat.
+  console.log("Fallback-Pass: country/address/industry von contacts auf verbleibende deals kopieren ...");
   let fallbackCopied = 0;
   let offset = 0;
   const pageSize = 1000;
   while (true) {
     const { data: page, error } = await supabase
       .from("deals")
-      .select("id, contact_id, country, contact:contacts ( country )")
-      .is("country", null)
+      .select("id, contact_id, country, address, industry, contact:contacts ( country, address, industry )")
+      .or("country.is.null,address.is.null,industry.is.null")
       .not("contact_id", "is", null)
       .range(offset, offset + pageSize - 1);
     if (error) {
@@ -271,9 +288,15 @@ async function main() {
     }
     if (!page || page.length === 0) break;
     for (const deal of page) {
-      const c = Array.isArray(deal.contact) ? deal.contact[0]?.country : deal.contact?.country;
+      const c = Array.isArray(deal.contact) ? deal.contact[0] : deal.contact;
       if (!c) continue;
-      const { error: updErr } = await supabase.from("deals").update({ country: c }).eq("id", deal.id);
+      const patch = {};
+      if (!deal.country && c.country) patch.country = c.country;
+      if (!deal.address && c.address) patch.address = c.address;
+      if (!deal.industry && c.industry) patch.industry = c.industry;
+      if (Object.keys(patch).length === 0) continue;
+
+      const { error: updErr } = await supabase.from("deals").update(patch).eq("id", deal.id);
       if (!updErr) fallbackCopied++;
     }
     if (page.length < pageSize) break;

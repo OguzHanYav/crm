@@ -90,8 +90,8 @@ async function bridgePipelineStageToLegacyStage(
 }
 
 const DEALS_LIST_SELECT = `
-  id, name, pipeline_id, stage_id, contact_id, value, created_at, country,
-  contact:contacts ( id, first_name, last_name, email, phone, company, country )
+  id, name, pipeline_id, stage_id, contact_id, value, created_at, country, address, industry,
+  contact:contacts ( id, first_name, last_name, email, phone, company, country, address, industry )
 `;
 
 // "Mehr laden": lädt den nächsten Batch der Deals-Tabelle nach (siehe getAllDeals in data.ts).
@@ -123,6 +123,12 @@ export async function loadMoreDeals(
       break;
     case "email":
       query = query.order("email", { ascending, referencedTable: "contacts" });
+      break;
+    case "address":
+      query = query.order("address", { ascending, referencedTable: "contacts" });
+      break;
+    case "industry":
+      query = query.order("industry", { ascending, referencedTable: "contacts" });
       break;
     case "status":
       query = query.order("stage_id", { ascending });
