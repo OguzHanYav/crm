@@ -6,7 +6,7 @@ type Size = "sm" | "md" | "icon";
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-accent text-accent-foreground hover:brightness-110 shadow-[0_0_0_1px_var(--accent-glow)] hover:shadow-glow",
+    "bg-accent text-accent-foreground hover:brightness-110 shadow-[0_0_0_1px_var(--accent-glow)] hover:shadow-glow hover:shadow-md",
   secondary:
     "bg-muted text-foreground hover:bg-muted/70 border border-border",
   outline:
@@ -33,7 +33,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        "ring-focus inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+        "ring-focus inline-flex items-center justify-center rounded-xl font-medium shadow-sm transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100",
         variantClasses[variant],
         sizeClasses[size],
         className

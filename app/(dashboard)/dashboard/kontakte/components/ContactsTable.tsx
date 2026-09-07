@@ -78,7 +78,7 @@ const ContactRow = memo(function ContactRow({
       <td className="overflow-hidden px-3 py-2">
         {contact.currentStage ? (
           <span
-            className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold"
+            className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
             style={{ backgroundColor: `${contact.currentStage.color}1A`, color: contact.currentStage.color }}
             title={contact.currentStage.name}
           >

@@ -202,45 +202,44 @@ export default function DealsView({
 
         <Link
           href="/dashboard/settings?tab=pipeline"
-          className="flex min-h-[44px] items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          className="flex min-h-[40px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 active:scale-[0.98]"
         >
           Pipeline-Einstellungen
         </Link>
       </div>
 
-      {/* Phasen-Tab-Leiste — inaktive Tabs bleiben dezent-neutral, erst der ausgewählte
-          Tab nimmt die Hex-Farbe der Phase als Hintergrund/Border-Akzent an. */}
-      <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
-        {phases.map((phase) => {
-          const isSelected = phase.key === activeKey;
-          const count = phaseCounts[phase.key] ?? 0;
+      {/* Phasen-Tab-Leiste als Segmented Control — inaktive Tabs bleiben dezent-neutral,
+          erst der ausgewählte Tab nimmt die Hex-Farbe der Phase als Hintergrund an. */}
+      <div className="no-scrollbar mb-4 overflow-x-auto">
+        <div className="flex min-h-[44px] w-fit items-center gap-1 whitespace-nowrap rounded-xl bg-gray-100 p-1">
+          {phases.map((phase) => {
+            const isSelected = phase.key === activeKey;
+            const count = phaseCounts[phase.key] ?? 0;
 
-          return (
-            <button
-              key={phase.key}
-              type="button"
-              onClick={() => setActiveStage(phase.key)}
-              style={{
-                backgroundColor: isSelected ? phase.color : undefined,
-                borderColor: isSelected ? phase.color : undefined,
-              }}
-              className={`flex min-h-[44px] items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
-                isSelected
-                  ? "text-white"
-                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {phase.name}
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                  isSelected ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"
+            return (
+              <button
+                key={phase.key}
+                type="button"
+                onClick={() => setActiveStage(phase.key)}
+                style={{
+                  backgroundColor: isSelected ? phase.color : undefined,
+                }}
+                className={`flex min-h-[36px] shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                  isSelected ? "text-white shadow-sm" : "text-gray-500 hover:text-gray-900"
                 }`}
               >
-                {count}
-              </span>
-            </button>
-          );
-        })}
+                {phase.name}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
+                    isSelected ? "bg-white/25 text-white" : "bg-gray-200/70 text-gray-500"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Suche + Filter-Popover */}
@@ -249,7 +248,7 @@ export default function DealsView({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Volltextsuche (Name, Kontakt, Firma, E-Mail, Telefon, Land)"
-          className="min-h-[44px] flex-1 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+          className="min-h-[40px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none"
         />
 
         <FilterDropdown
@@ -289,7 +288,7 @@ export default function DealsView({
             <select
               value={renderLimit}
               onChange={(e) => setRenderLimit(Number(e.target.value))}
-              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-sm focus:border-slate-400 focus:outline-none"
+              className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1 text-sm transition-colors focus:border-blue-500 focus:outline-none"
             >
               {RENDER_LIMIT_OPTIONS.map((n) => (
                 <option key={n} value={n}>
@@ -305,7 +304,7 @@ export default function DealsView({
             type="button"
             onClick={handleLoadMore}
             disabled={isLoadingMore}
-            className="min-h-[44px] rounded-md bg-slate-900 px-4 py-1.5 font-medium text-white disabled:opacity-50"
+            className="flex min-h-[40px] items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow active:scale-[0.98] disabled:opacity-50"
           >
             {isLoadingMore ? "Lädt…" : `Mehr laden (+${Math.min(renderLimit, totalCount - localDeals.length)})`}
           </button>

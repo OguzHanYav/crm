@@ -25,7 +25,10 @@ const DealsTableRow = memo(function DealsTableRow({
   const handleStopPropagation = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
   return (
-    <tr onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-slate-50">
+    <tr
+      onClick={handleRowClick}
+      className="cursor-pointer transition-colors duration-150 hover:bg-gray-50/80"
+    >
       <td className="truncate px-3 py-2">
         <span className="font-medium text-slate-900">{deal.name}</span>
       </td>
@@ -63,7 +66,7 @@ const DealsTableRow = memo(function DealsTableRow({
       <td className="overflow-hidden px-3 py-2">
         {phase && (
           <span
-            className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-md px-2 py-0.5 text-xs font-semibold"
+            className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
             style={{ backgroundColor: `${phase.color}1A`, color: phase.color }}
             title={phase.name}
           >
@@ -116,26 +119,26 @@ export default function DealsTable({
 
   if (deals.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
+      <div className="rounded-2xl border border-gray-200/80 bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
         Keine Kunden in dieser Phase.
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
       <table className="w-full min-w-[720px] table-fixed text-xs">
-        <thead className="bg-slate-50">
+        <thead className="bg-gray-50">
           <tr>
             {COLUMNS.map((col) => (
               <th
                 key={col.key}
-                className={`${col.width} ${col.visibility} px-3 py-2 text-left font-medium text-slate-500`}
+                className={`${col.width} ${col.visibility} px-3 py-2 text-left font-medium text-gray-500`}
               >
                 <button
                   type="button"
                   onClick={() => onSortChange(col.key)}
-                  className="flex min-h-[44px] w-full items-center truncate hover:text-slate-700"
+                  className="flex min-h-[44px] w-full items-center truncate hover:text-gray-700"
                 >
                   {col.label}
                 </button>
@@ -143,7 +146,7 @@ export default function DealsTable({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-gray-100">
           {deals.map((deal) => (
             <DealsTableRow
               key={deal.id}

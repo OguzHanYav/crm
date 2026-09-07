@@ -129,7 +129,7 @@ export default function ContactDetailSheet() {
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={close} />
 
-      <div className="relative flex h-full w-full max-w-full flex-col border-l border-border bg-card shadow-2xl sm:max-w-xl sm:rounded-l-2xl">
+      <div className="relative flex h-full w-full max-w-full flex-col rounded-none border-l border-border bg-card shadow-2xl sm:max-w-xl sm:rounded-l-2xl">
         {loading && !payload ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">Lädt...</div>
         ) : payload ? (
@@ -212,18 +212,20 @@ function SheetContent({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border px-2">
-        {TABS.map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`ring-focus min-h-[44px] flex-1 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-              tab === key ? "border-accent text-accent" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="no-scrollbar overflow-x-auto border-b border-border px-4 py-3">
+        <div className="flex min-h-[44px] items-center gap-1 whitespace-nowrap rounded-xl bg-muted/50 p-1">
+          {TABS.map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`ring-focus min-h-[36px] flex-1 shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                tab === key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6">
@@ -416,8 +418,24 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
+    <div className="flex flex-col gap-4 pb-2">
+      {payload.notes.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Noch keine Notizen.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {payload.notes.map((n) => (
+            <li key={n.id} className="rounded-xl border border-border p-3 text-sm">
+              <p className="text-foreground">{n.content}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {n.author ? `${n.author.first_name} ${n.author.last_name} · ` : ""}
+                {formatDateDE(n.created_at)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="sticky bottom-0 -mx-6 -mb-6 mt-2 flex gap-2 border-t border-border bg-card px-6 py-3">
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -429,22 +447,6 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
           {isPending ? "..." : "Speichern"}
         </Button>
       </div>
-
-      {payload.notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Noch keine Notizen.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {payload.notes.map((n) => (
-            <li key={n.id} className="rounded-lg border border-border p-3 text-sm">
-              <p className="text-foreground">{n.content}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {n.author ? `${n.author.first_name} ${n.author.last_name} · ` : ""}
-                {formatDateDE(n.created_at)}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 }

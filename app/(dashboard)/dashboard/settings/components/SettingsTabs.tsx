@@ -39,23 +39,25 @@ export default function SettingsTabs({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 p-1 w-fit flex-wrap">
-        {TABS.map((t) => {
-          const isActive = t.key === tab;
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`ring-focus rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-accent text-accent-foreground shadow-soft"
-                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          );
-        })}
+      <div className="no-scrollbar w-full overflow-x-auto sm:w-fit">
+        <div className="flex min-h-[44px] items-center gap-1 whitespace-nowrap rounded-xl bg-muted/50 p-1">
+          {TABS.map((t) => {
+            const isActive = t.key === tab;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`ring-focus min-h-[36px] shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                  isActive
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div>{panels[tab]}</div>
