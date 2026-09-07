@@ -52,6 +52,7 @@ export type Deal = {
   assigned_to: string | null;
   value: number;
   created_at: string;
+  country?: string | null;
   contact: Contact | null;
   assigned_profile: TeamMember | null;
 };

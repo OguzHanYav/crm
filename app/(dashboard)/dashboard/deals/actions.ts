@@ -90,7 +90,7 @@ async function bridgePipelineStageToLegacyStage(
 }
 
 const DEALS_LIST_SELECT = `
-  id, name, pipeline_id, stage_id, contact_id, value, created_at,
+  id, name, pipeline_id, stage_id, contact_id, value, created_at, country,
   contact:contacts ( id, first_name, last_name, email, phone, company, country )
 `;
 

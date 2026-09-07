@@ -51,7 +51,7 @@ const DealsTableRow = memo(function DealsTableRow({
         )}
       </td>
 
-      <td className="px-4 py-3 text-slate-600">{contact?.country ?? "—"}</td>
+      <td className="px-4 py-3 text-slate-600">{deal.country || contact?.country || "—"}</td>
 
       <td className="px-4 py-3" onClick={handleStopPropagation}>
         {contact?.phone ? (
@@ -110,7 +110,7 @@ function sortDeals(list: Deal[], key: SortKey, dir: SortDir, phases: PipelinePha
       case "company":
         return (contact?.company ?? "").toLowerCase();
       case "country":
-        return (contact?.country ?? "").toLowerCase();
+        return (deal.country || contact?.country || "").toLowerCase();
       case "phone":
         return contact?.phone ?? "";
       case "email":

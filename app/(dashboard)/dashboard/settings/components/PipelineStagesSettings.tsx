@@ -105,6 +105,8 @@ export default function PipelineStagesSettings({
     startTransition(async () => {
       const result = await moveStagePosition(stageId, direction);
       if (result.success) {
+        // Autoritativen Stand übernehmen statt dem rein optimistischen Swap zu vertrauen.
+        if (result.data) setStages(result.data);
         flashSaved(stageId);
         router.refresh();
       } else {

@@ -107,6 +107,23 @@ export const getOrCreateStandardStages = cache(async (): Promise<PipelineStage[]
     console.error("getOrCreateStandardStages stages fetch error:", stagesError.message);
   }
 
+  // Nur eine VÖLLIG leere Pipeline mit den sechs Standardphasen befüllen. Sobald
+  // irgendeine Phase existiert, gilt das Setup als erledigt — sonst würde eine in
+  // den Einstellungen bewusst gelöschte Standardphase (z. B. "Follow-up") bei
+  // jedem Seitenaufruf hier automatisch wieder auferstehen.
+  if (existingStages && existingStages.length > 0) {
+    return existingStages
+      .map((s) => ({
+        id: s.id,
+        project_id: pipelineId as string,
+        name: s.name,
+        position: s.position,
+        is_visible: true,
+        color: s.color,
+      }))
+      .sort((a, b) => a.position - b.position);
+  }
+
   const stagesByName = new Map(
     (existingStages ?? []).map((s) => [s.name.trim().toLowerCase(), s])
   );
@@ -198,7 +215,7 @@ export async function getAllDeals(limit = 100, offset = 0): Promise<Deal[]> {
     .from("deals")
     .select(
       `
-      id, name, pipeline_id, stage_id, contact_id, value, created_at,
+      id, name, pipeline_id, stage_id, contact_id, value, created_at, country,
       contact:contacts ( id, first_name, last_name, email, phone, company, country )
       `
     )

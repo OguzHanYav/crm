@@ -35,7 +35,7 @@ const TARGET_FIELDS: { value: TargetField; label: string }[] = [
 
 const AUTO_MATCH: Record<TargetField, string[]> = {
   full_name: ["name", "vorname nachname", "kunde"],
-  email: ["email", "e-mail", "mail"],
+  email: ["email", "e-mail", "e-posta", "eposta", "mail"],
   phone: ["telefon", "phone", "handy", "mobile", "tel"],
   company: ["firma", "company", "unternehmen", "organisation"],
   country: ["land", "ülke", "ulke", "country"],
@@ -54,6 +54,30 @@ function guessField(header: string): TargetField {
     }
   }
   return "ignore";
+}
+
+// Stichwörter, an denen sich die echte Header-Zeile erkennen lässt, wenn davor
+// (z. B. durch einen Titel/leere Zeilen) zusätzliche Zeilen im Sheet stehen.
+const HEADER_DETECTION_KEYWORDS = [
+  "name", "email", "e-mail", "e-posta", "eposta", "mail",
+  "telefon", "phone", "handy", "mobile", "tel",
+  "firma", "company", "unternehmen",
+  "land", "ülke", "ulke", "country",
+  "notizen", "notes", "bemerkung", "kategorie", "deal", "branş", "brans",
+];
+
+// Findet die Zeile mit den echten Spaltenüberschriften innerhalb der ersten 10
+// Zeilen (z. B. wenn Zeile 1-2 ein Titel/leer sind und die Header erst in Zeile 3
+// stehen) und liefert deren 0-basierten Index für XLSX' `range`-Option.
+function detectHeaderRowIndex(sheet: XLSX.WorkSheet): number {
+  const preview = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" });
+
+  for (let i = 0; i < Math.min(preview.length, 10); i++) {
+    const cells = (preview[i] as unknown[]).map((c) => String(c ?? "").trim().toLowerCase());
+    const matches = cells.filter((c) => HEADER_DETECTION_KEYWORDS.some((kw) => c.includes(kw))).length;
+    if (matches >= 2) return i;
+  }
+  return 0;
 }
 
 function downloadWorkbook(rows: Record<string, unknown>[], sheetName: string, filename: string) {
@@ -143,7 +167,11 @@ export default function DataManagementSettings() {
       const workbook = XLSX.read(data, { type: "array" });
       const firstSheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[firstSheetName];
-      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      const headerRowIndex = detectHeaderRowIndex(sheet);
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+        defval: "",
+        range: headerRowIndex,
+      });
 
       if (json.length === 0) {
         showToast({ type: "error", text: "Die Datei enthält keine Zeilen." });

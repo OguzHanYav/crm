@@ -55,7 +55,8 @@ export default function DealsView({
   const countryOptions = useMemo(() => {
     const set = new Set<string>();
     for (const d of localDeals) {
-      if (d.contact?.country) set.add(d.contact.country);
+      const c = d.country || d.contact?.country;
+      if (c) set.add(c);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [localDeals]);
@@ -79,7 +80,7 @@ export default function DealsView({
           contact?.email,
           contact?.company,
           contact?.phone,
-          contact?.country,
+          deal.country || contact?.country,
         ]
           .filter(Boolean)
           .join(" ")
@@ -92,7 +93,7 @@ export default function DealsView({
         const haystack = [deal.contact?.email, deal.contact?.phone].filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(contactTerm);
       })
-      .filter((deal) => !countryFilter || deal.contact?.country === countryFilter);
+      .filter((deal) => !countryFilter || (deal.country || deal.contact?.country) === countryFilter);
   }, [localDeals, activePhase, search, companyFilter, contactFilter, countryFilter]);
 
   const renderedDeals = useMemo(
