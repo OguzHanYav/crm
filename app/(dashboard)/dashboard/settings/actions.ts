@@ -54,70 +54,82 @@ async function fetchAllPaginated<T>(
 // ==================== EXPORT ====================
 
 export async function exportContacts(): Promise<ExportResult> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const { rows, error } = await fetchAllPaginated((from, to) =>
-    supabase
-      .from("contacts")
-      .select(
-        "id, first_name, last_name, email, phone, company, position, address, country, status, notes, assigned_to, last_contacted_at, created_at"
-      )
-      .order("created_at", { ascending: false })
-      .range(from, to)
-  );
+    const { rows, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from("contacts")
+        .select(
+          "id, first_name, last_name, email, phone, company, position, address, country, status, notes, assigned_to, last_contacted_at, created_at"
+        )
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    );
 
-  if (error) {
-    console.error("exportContacts Fehler:", error);
-    return { success: false, message: error };
+    if (error) {
+      console.error("exportContacts Fehler:", error);
+      return { success: false, message: error };
+    }
+
+    return { success: true, rows: rows as unknown as ExportRow[] };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("exportContacts Exception:", err);
+    return { success: false, message };
   }
-
-  return { success: true, rows: rows as unknown as ExportRow[] };
 }
 
 export async function exportDeals(): Promise<ExportResult> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const { rows, error } = await fetchAllPaginated((from, to) =>
-    supabase
-      .from("deals")
-      .select(
-        `
+    const { rows, error } = await fetchAllPaginated((from, to) =>
+      supabase
+        .from("deals")
+        .select(
+          `
         id, name, value, created_at,
         contact:contacts ( first_name, last_name, email, phone, company ),
         stage:deal_stages!deals_stage_id_fkey ( name ),
         pipeline:pipelines ( name )
         `
-      )
-      .order("created_at", { ascending: false })
-      .range(from, to)
-  );
+        )
+        .order("created_at", { ascending: false })
+        .range(from, to)
+    );
 
-  if (error) {
-    console.error("exportDeals Fehler:", error);
-    return { success: false, message: error };
+    if (error) {
+      console.error("exportDeals Fehler:", error);
+      return { success: false, message: error };
+    }
+
+    const flattened = rows.map((raw) => {
+      const d = raw as any;
+      const contact = Array.isArray(d.contact) ? d.contact[0] : d.contact;
+      const stage = Array.isArray(d.stage) ? d.stage[0] : d.stage;
+      const pipeline = Array.isArray(d.pipeline) ? d.pipeline[0] : d.pipeline;
+
+      return {
+        id: d.id,
+        deal_name: d.name,
+        pipeline: pipeline?.name ?? "",
+        stage: stage?.name ?? "",
+        contact_name: contact ? `${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() : "",
+        contact_email: contact?.email ?? "",
+        contact_phone: contact?.phone ?? "",
+        contact_company: contact?.company ?? "",
+        value: d.value,
+        created_at: d.created_at,
+      };
+    });
+
+    return { success: true, rows: flattened };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("exportDeals Exception:", err);
+    return { success: false, message };
   }
-
-  const flattened = rows.map((raw) => {
-    const d = raw as any;
-    const contact = Array.isArray(d.contact) ? d.contact[0] : d.contact;
-    const stage = Array.isArray(d.stage) ? d.stage[0] : d.stage;
-    const pipeline = Array.isArray(d.pipeline) ? d.pipeline[0] : d.pipeline;
-
-    return {
-      id: d.id,
-      deal_name: d.name,
-      pipeline: pipeline?.name ?? "",
-      stage: stage?.name ?? "",
-      contact_name: contact ? `${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() : "",
-      contact_email: contact?.email ?? "",
-      contact_phone: contact?.phone ?? "",
-      contact_company: contact?.company ?? "",
-      value: d.value,
-      created_at: d.created_at,
-    };
-  });
-
-  return { success: true, rows: flattened };
 }
 
 // ==================== IMPORT ====================
@@ -268,6 +280,7 @@ export async function importContactsWithDeals(
     };
   }
 
+  try {
   const supabase = await createClient();
   const errors: string[] = [];
   let imported = 0;
@@ -591,4 +604,15 @@ export async function importContactsWithDeals(
           }`
         : "Es konnte kein einziger Datensatz importiert werden.",
   };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("importContactsWithDeals Exception:", err);
+    return {
+      success: false,
+      message,
+      imported: 0,
+      updated: 0,
+      dealsCreated: 0,
+    };
+  }
 }

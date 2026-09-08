@@ -209,8 +209,10 @@ export default function AdminPanel() {
         <form onSubmit={handleCreateUser} className="mt-4 rounded-lg border border-border p-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Vorname</label>
+              <label htmlFor="new-user-first-name" className="mb-1 block text-xs font-medium text-muted-foreground">Vorname</label>
               <input
+                id="new-user-first-name"
+                name="firstName"
                 type="text"
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
@@ -220,8 +222,10 @@ export default function AdminPanel() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Nachname</label>
+              <label htmlFor="new-user-last-name" className="mb-1 block text-xs font-medium text-muted-foreground">Nachname</label>
               <input
+                id="new-user-last-name"
+                name="lastName"
                 type="text"
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
@@ -231,8 +235,10 @@ export default function AdminPanel() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">E-Mail</label>
+              <label htmlFor="new-user-email" className="mb-1 block text-xs font-medium text-muted-foreground">E-Mail</label>
               <input
+                id="new-user-email"
+                name="email"
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
@@ -242,8 +248,10 @@ export default function AdminPanel() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Passwort</label>
+              <label htmlFor="new-user-password" className="mb-1 block text-xs font-medium text-muted-foreground">Passwort</label>
               <input
+                id="new-user-password"
+                name="password"
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
@@ -254,8 +262,10 @@ export default function AdminPanel() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Rolle</label>
+              <label htmlFor="new-user-role" className="mb-1 block text-xs font-medium text-muted-foreground">Rolle</label>
               <select
+                id="new-user-role"
+                name="role"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as "admin" | "employee")}
                 className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -300,12 +310,18 @@ export default function AdminPanel() {
                     {isEditing ? (
                       <div className="flex gap-2">
                         <input
+                          id={`edit-first-name-${user.id}`}
+                          name="editFirstName"
+                          aria-label="Vorname"
                           value={editFirstName}
                           onChange={(e) => setEditFirstName(e.target.value)}
                           className="ring-focus w-20 rounded border border-border bg-input px-2 py-1 text-sm"
                           placeholder="Vorname"
                         />
                         <input
+                          id={`edit-last-name-${user.id}`}
+                          name="editLastName"
+                          aria-label="Nachname"
                           value={editLastName}
                           onChange={(e) => setEditLastName(e.target.value)}
                           className="ring-focus w-20 rounded border border-border bg-input px-2 py-1 text-sm"
@@ -322,6 +338,9 @@ export default function AdminPanel() {
                     {isEditing && isAdmin ? (
                       <div className="flex flex-col gap-1.5">
                         <input
+                          id={`edit-email-${user.id}`}
+                          name="editEmail"
+                          aria-label="E-Mail"
                           type="email"
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
@@ -330,6 +349,9 @@ export default function AdminPanel() {
                           required
                         />
                         <input
+                          id={`edit-password-${user.id}`}
+                          name="editPassword"
+                          aria-label="Neues Passwort"
                           type="password"
                           value={editPassword}
                           onChange={(e) => setEditPassword(e.target.value)}
@@ -345,6 +367,9 @@ export default function AdminPanel() {
                   <td className="px-4 py-3">
                     {isEditing && showRoleField ? (
                       <select
+                        id={`edit-role-${user.id}`}
+                        name="editRole"
+                        aria-label="Rolle"
                         value={editRole}
                         onChange={(e) => setEditRole(e.target.value as "admin" | "employee")}
                         className="ring-focus rounded border border-border bg-input px-2 py-1 text-sm"

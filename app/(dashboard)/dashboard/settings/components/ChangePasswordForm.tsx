@@ -75,8 +75,10 @@ export default function ChangePasswordForm({ email }: { email: string }) {
 
       <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Aktuelles Passwort</label>
+          <label htmlFor="current-password" className="mb-1 block text-xs font-medium text-muted-foreground">Aktuelles Passwort</label>
           <input
+            id="current-password"
+            name="currentPassword"
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -85,8 +87,10 @@ export default function ChangePasswordForm({ email }: { email: string }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Neues Passwort</label>
+          <label htmlFor="new-password" className="mb-1 block text-xs font-medium text-muted-foreground">Neues Passwort</label>
           <input
+            id="new-password"
+            name="newPassword"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -96,8 +100,10 @@ export default function ChangePasswordForm({ email }: { email: string }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-muted-foreground">Neues Passwort bestätigen</label>
+          <label htmlFor="confirm-password" className="mb-1 block text-xs font-medium text-muted-foreground">Neues Passwort bestätigen</label>
           <input
+            id="confirm-password"
+            name="confirmPassword"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

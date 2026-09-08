@@ -18,45 +18,77 @@ export type ActionResult<T = undefined> = {
   data?: T;
 };
 
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey) {
+    throw new Error("Server-Konfiguration unvollständig: Supabase-Umgebungsvariablen fehlen.");
+  }
+
+  return createClient(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
 // ==================== ADMIN-CHECK ====================
 
 export async function isCurrentUserAdmin(): Promise<boolean> {
-  const supabase = await createServerClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id)
-    .single();
+  try {
+    const supabase = await createServerClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", (await supabase.auth.getUser()).data.user?.id)
+      .single();
 
-  return profile?.role === "admin";
+    return profile?.role === "admin";
+  } catch (err) {
+    console.error("isCurrentUserAdmin exception:", err);
+    return false;
+  }
 }
 
 export async function getCurrentUserId(): Promise<string | null> {
-  const supabase = await createServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  try {
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch (err) {
+    console.error("getCurrentUserId exception:", err);
+    return null;
+  }
 }
 
 // ==================== BENUTZER VERWALTEN ====================
 
 export async function getUsers(): Promise<ActionResult<UserRow[]>> {
-  const supabase = await createServerClient();
-  
-  if (!await isCurrentUserAdmin()) {
-    return { success: false, message: "Nur Administratoren haben Zugriff." };
+  try {
+    const supabase = await createServerClient();
+
+    if (!await isCurrentUserAdmin()) {
+      return { success: false, message: "Nur Administratoren haben Zugriff." };
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, email, first_name, last_name, role")
+      .order("email", { ascending: true });
+
+    if (error) {
+      console.error("getUsers error:", error.message);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true, data: data as UserRow[] };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("getUsers exception:", err);
+    return { success: false, message };
   }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, email, first_name, last_name, role")
-    .order("email", { ascending: true });
-
-  if (error) {
-    console.error("getUsers error:", error.message);
-    return { success: false, message: error.message };
-  }
-
-  return { success: true, data: data as UserRow[] };
 }
 
 export async function updateUser(
@@ -65,96 +97,89 @@ export async function updateUser(
   lastName: string,
   role?: "admin" | "employee"
 ): Promise<ActionResult> {
-  const supabase = await createServerClient();
-  const currentUserId = await getCurrentUserId();
-  const isAdmin = await isCurrentUserAdmin();
-  
-  // Prüfe: Darf der User diesen Account bearbeiten?
-  // - Admin darf alle bearbeiten
-  // - User darf nur sich selbst bearbeiten
-  if (!isAdmin && currentUserId !== userId) {
-    return { success: false, message: "Du darfst nur deinen eigenen Account bearbeiten." };
-  }
+  try {
+    const currentUserId = await getCurrentUserId();
+    const isAdmin = await isCurrentUserAdmin();
 
-  // Nur Admins dürfen die Rolle ändern
-  const updateData: { first_name: string; last_name: string; role?: string } = {
-    first_name: firstName,
-    last_name: lastName,
-  };
-  
-  if (isAdmin && role) {
-    updateData.role = role;
-  }
-
-  // Admin-Client mit Service Role Key (umgeht RLS für Admins)
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    // Prüfe: Darf der User diesen Account bearbeiten?
+    // - Admin darf alle bearbeiten
+    // - User darf nur sich selbst bearbeiten
+    if (!isAdmin && currentUserId !== userId) {
+      return { success: false, message: "Du darfst nur deinen eigenen Account bearbeiten." };
     }
-  );
 
-  const { error } = await supabaseAdmin
-    .from("profiles")
-    .update(updateData)
-    .eq("id", userId);
+    // Nur Admins dürfen die Rolle ändern
+    const updateData: { first_name: string; last_name: string; role?: string } = {
+      first_name: firstName,
+      last_name: lastName,
+    };
 
-  if (error) {
-    console.error("updateUser error:", error.message);
-    return { success: false, message: error.message };
+    if (isAdmin && role) {
+      updateData.role = role;
+    }
+
+    // Admin-Client mit Service Role Key (umgeht RLS für Admins)
+    const supabaseAdmin = getAdminClient();
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update(updateData)
+      .eq("id", userId);
+
+    if (error) {
+      console.error("updateUser error:", error.message);
+      return { success: false, message: error.message };
+    }
+
+    revalidatePath("/dashboard/settings");
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("updateUser exception:", err);
+    return { success: false, message };
   }
-
-  revalidatePath("/dashboard/settings");
-  return { success: true };
 }
 
 export async function setUserRole(
   userId: string,
   newRole: "admin" | "employee"
 ): Promise<ActionResult> {
-  const supabase = await createServerClient();
-  
-  if (!await isCurrentUserAdmin()) {
-    return { success: false, message: "Nur Administratoren dürfen Rollen ändern." };
-  }
+  try {
+    const supabase = await createServerClient();
 
-  const { data: currentUser } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id)
-    .single();
-
-  if (currentUser?.id === userId) {
-    return { success: false, message: "Du kannst dir selbst nicht die Admin-Rechte entziehen!" };
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    if (!await isCurrentUserAdmin()) {
+      return { success: false, message: "Nur Administratoren dürfen Rollen ändern." };
     }
-  );
 
-  const { error } = await supabaseAdmin
-    .from("profiles")
-    .update({ role: newRole })
-    .eq("id", userId);
+    const { data: currentUser } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", (await supabase.auth.getUser()).data.user?.id)
+      .single();
 
-  if (error) {
-    console.error("setUserRole error:", error.message);
-    return { success: false, message: error.message };
+    if (currentUser?.id === userId) {
+      return { success: false, message: "Du kannst dir selbst nicht die Admin-Rechte entziehen!" };
+    }
+
+    const supabaseAdmin = getAdminClient();
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ role: newRole })
+      .eq("id", userId);
+
+    if (error) {
+      console.error("setUserRole error:", error.message);
+      return { success: false, message: error.message };
+    }
+
+    revalidatePath("/dashboard/settings");
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("setUserRole exception:", err);
+    return { success: false, message };
   }
-
-  revalidatePath("/dashboard/settings");
-  return { success: true };
 }
 
 export async function createUser(
@@ -164,164 +189,160 @@ export async function createUser(
   lastName: string,
   role: "admin" | "employee"
 ): Promise<ActionResult> {
-  if (!await isCurrentUserAdmin()) {
-    return { success: false, message: "Nur Administratoren dürfen Benutzer anlegen." };
-  }
-
-  if (!email || !password) {
-    return { success: false, message: "E-Mail und Passwort sind erforderlich." };
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+  try {
+    if (!await isCurrentUserAdmin()) {
+      return { success: false, message: "Nur Administratoren dürfen Benutzer anlegen." };
     }
-  );
 
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      first_name: firstName,
-      last_name: lastName,
-    },
-  });
+    if (!email || !password) {
+      return { success: false, message: "E-Mail und Passwort sind erforderlich." };
+    }
 
-  if (authError) {
-    console.error("createUser auth error:", authError.message);
-    return { success: false, message: `Fehler beim Anlegen: ${authError.message}` };
-  }
+    const supabaseAdmin = getAdminClient();
 
-  if (!authData.user) {
-    return { success: false, message: "Benutzer konnte nicht angelegt werden." };
-  }
-
-  const { error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .insert({
-      id: authData.user.id,
-      email: email,
-      first_name: firstName,
-      last_name: lastName,
-      role: role,
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+      },
     });
 
-  if (profileError) {
-    console.error("createUser profile error:", profileError.message);
-    return { success: false, message: `Profil konnte nicht angelegt werden: ${profileError.message}` };
-  }
+    if (authError) {
+      console.error("createUser auth error:", authError.message);
+      return { success: false, message: `Fehler beim Anlegen: ${authError.message}` };
+    }
 
-  revalidatePath("/dashboard/settings");
-  return { success: true, message: "Benutzer erfolgreich angelegt!" };
+    if (!authData.user) {
+      return { success: false, message: "Benutzer konnte nicht angelegt werden." };
+    }
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .insert({
+        id: authData.user.id,
+        email: email,
+        first_name: firstName,
+        last_name: lastName,
+        role: role,
+      });
+
+    if (profileError) {
+      console.error("createUser profile error:", profileError.message);
+      return { success: false, message: `Profil konnte nicht angelegt werden: ${profileError.message}` };
+    }
+
+    revalidatePath("/dashboard/settings");
+    return { success: true, message: "Benutzer erfolgreich angelegt!" };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("createUser exception:", err);
+    return { success: false, message };
+  }
 }
 
 export async function updateUserByAdmin(
   userId: string,
   updates: { firstName: string; lastName: string; email: string; password?: string }
 ): Promise<ActionResult> {
-  if (!(await isCurrentUserAdmin())) {
-    return { success: false, message: "Nur Administratoren dürfen Benutzer bearbeiten." };
-  }
-
-  if (!updates.email) {
-    return { success: false, message: "E-Mail ist erforderlich." };
-  }
-
-  if (updates.password && updates.password.length < 6) {
-    return { success: false, message: "Das Passwort muss mindestens 6 Zeichen lang sein." };
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+  try {
+    if (!(await isCurrentUserAdmin())) {
+      return { success: false, message: "Nur Administratoren dürfen Benutzer bearbeiten." };
     }
-  );
 
-  const authUpdate: { email: string; password?: string } = { email: updates.email };
-  if (updates.password) authUpdate.password = updates.password;
+    if (!updates.email) {
+      return { success: false, message: "E-Mail ist erforderlich." };
+    }
 
-  const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, authUpdate);
+    if (updates.password && updates.password.length < 6) {
+      return { success: false, message: "Das Passwort muss mindestens 6 Zeichen lang sein." };
+    }
 
-  if (authError) {
-    console.error("updateUserByAdmin auth error:", authError.message);
-    return { success: false, message: authError.message };
+    const supabaseAdmin = getAdminClient();
+
+    const authUpdate: { email: string; password?: string } = { email: updates.email };
+    if (updates.password) authUpdate.password = updates.password;
+
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, authUpdate);
+
+    if (authError) {
+      console.error("updateUserByAdmin auth error:", authError.message);
+      return { success: false, message: authError.message };
+    }
+
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        first_name: updates.firstName,
+        last_name: updates.lastName,
+        email: updates.email,
+      })
+      .eq("id", userId);
+
+    if (profileError) {
+      console.error("updateUserByAdmin profile error:", profileError.message);
+      return { success: false, message: profileError.message };
+    }
+
+    revalidatePath("/dashboard/settings");
+    return { success: true, message: "Benutzer erfolgreich aktualisiert." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("updateUserByAdmin exception:", err);
+    return { success: false, message };
   }
-
-  const { error: profileError } = await supabaseAdmin
-    .from("profiles")
-    .update({
-      first_name: updates.firstName,
-      last_name: updates.lastName,
-      email: updates.email,
-    })
-    .eq("id", userId);
-
-  if (profileError) {
-    console.error("updateUserByAdmin profile error:", profileError.message);
-    return { success: false, message: profileError.message };
-  }
-
-  revalidatePath("/dashboard/settings");
-  return { success: true, message: "Benutzer erfolgreich aktualisiert." };
 }
 
 export async function deleteUserByAdmin(userId: string): Promise<ActionResult> {
-  if (!(await isCurrentUserAdmin())) {
-    return { success: false, message: "Nur Administratoren dürfen Benutzer löschen." };
-  }
-
-  const currentUserId = await getCurrentUserId();
-  if (currentUserId === userId) {
-    return { success: false, message: "Du kannst deinen eigenen Account nicht löschen." };
-  }
-
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+  try {
+    if (!(await isCurrentUserAdmin())) {
+      return { success: false, message: "Nur Administratoren dürfen Benutzer löschen." };
     }
-  );
 
-  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    const currentUserId = await getCurrentUserId();
+    if (currentUserId === userId) {
+      return { success: false, message: "Du kannst deinen eigenen Account nicht löschen." };
+    }
 
-  if (authError) {
-    console.error("deleteUserByAdmin auth error:", authError.message);
-    return { success: false, message: authError.message };
+    const supabaseAdmin = getAdminClient();
+
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+    if (authError) {
+      console.error("deleteUserByAdmin auth error:", authError.message);
+      return { success: false, message: authError.message };
+    }
+
+    const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userId);
+
+    if (profileError) {
+      console.error("deleteUserByAdmin profile error:", profileError.message);
+      return { success: false, message: profileError.message };
+    }
+
+    revalidatePath("/dashboard/settings");
+    return { success: true, message: "Benutzer erfolgreich gelöscht." };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("deleteUserByAdmin exception:", err);
+    return { success: false, message };
   }
-
-  const { error: profileError } = await supabaseAdmin.from("profiles").delete().eq("id", userId);
-
-  if (profileError) {
-    console.error("deleteUserByAdmin profile error:", profileError.message);
-    return { success: false, message: profileError.message };
-  }
-
-  revalidatePath("/dashboard/settings");
-  return { success: true, message: "Benutzer erfolgreich gelöscht." };
 }
 
 export async function getCurrentUserRole(): Promise<"admin" | "employee" | null> {
-  const supabase = await createServerClient();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", (await supabase.auth.getUser()).data.user?.id)
-    .single();
+  try {
+    const supabase = await createServerClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", (await supabase.auth.getUser()).data.user?.id)
+      .single();
 
-  return profile?.role ?? null;
+    return profile?.role ?? null;
+  } catch (err) {
+    console.error("getCurrentUserRole exception:", err);
+    return null;
+  }
 }

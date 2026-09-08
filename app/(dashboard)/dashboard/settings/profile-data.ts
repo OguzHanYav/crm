@@ -8,28 +8,33 @@ export type ProfileInfo = {
 };
 
 export async function getCurrentProfile(): Promise<ProfileInfo | null> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) return null;
+    if (!user) return null;
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("first_name, last_name, role")
-    .eq("id", user.id)
-    .single();
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("first_name, last_name, role")
+      .eq("id", user.id)
+      .single();
 
-  if (error) {
-    console.error("getCurrentProfile error:", error.message);
+    if (error) {
+      console.error("getCurrentProfile error:", error.message);
+    }
+
+    return {
+      firstName: profile?.first_name ?? "",
+      lastName: profile?.last_name ?? "",
+      email: user.email ?? "",
+      role: profile?.role === "admin" ? "Administrator" : "Mitarbeiter",
+    };
+  } catch (err) {
+    console.error("getCurrentProfile exception:", err);
+    return null;
   }
-
-  return {
-    firstName: profile?.first_name ?? "",
-    lastName: profile?.last_name ?? "",
-    email: user.email ?? "",
-    role: profile?.role === "admin" ? "Administrator" : "Mitarbeiter",
-  };
 }

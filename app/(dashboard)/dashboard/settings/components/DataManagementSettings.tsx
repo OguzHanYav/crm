@@ -332,6 +332,9 @@ export default function DataManagementSettings() {
           </p>
           <p className="mt-1 text-xs text-gray-400">.xlsx, .xls oder .csv</p>
           <input
+            id="import-file"
+            name="importFile"
+            aria-label="Importdatei auswählen"
             ref={fileInputRef}
             type="file"
             accept=".xlsx,.xls,.csv"
@@ -367,7 +370,7 @@ export default function DataManagementSettings() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {headers.map((header) => (
+                    {headers.map((header, headerIndex) => (
                       <tr key={header}>
                         <td className="px-3 py-2 font-medium text-gray-800">{header}</td>
                         <td className="px-3 py-2 text-gray-500">
@@ -375,6 +378,9 @@ export default function DataManagementSettings() {
                         </td>
                         <td className="px-3 py-2">
                           <select
+                            id={`column-mapping-${headerIndex}`}
+                            name={`columnMapping-${headerIndex}`}
+                            aria-label={`Zuordnung für Spalte ${header}`}
                             value={mapping[header] ?? "ignore"}
                             onChange={(e) =>
                               setMapping((prev) => ({

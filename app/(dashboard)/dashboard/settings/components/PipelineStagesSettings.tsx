@@ -193,12 +193,18 @@ export default function PipelineStagesSettings({
             {editingId === stage.id ? (
               <>
                 <input
+                  id={`edit-stage-color-${stage.id}`}
+                  name="editStageColor"
+                  aria-label="Farbe"
                   type="color"
                   value={editColor}
                   onChange={(e) => setEditColor(e.target.value)}
                   className="h-8 w-8 shrink-0 cursor-pointer rounded border border-border bg-transparent"
                 />
                 <input
+                  id={`edit-stage-name-${stage.id}`}
+                  name="editStageName"
+                  aria-label="Name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   className="ring-focus h-9 flex-1 rounded-lg border border-border bg-input px-3 text-sm text-foreground"
@@ -289,12 +295,18 @@ export default function PipelineStagesSettings({
 
       <div className="mt-5 flex items-center gap-3 border-t border-border pt-4">
         <input
+          id="new-stage-color"
+          name="newStageColor"
+          aria-label="Farbe der neuen Phase"
           type="color"
           value={newColor}
           onChange={(e) => setNewColor(e.target.value)}
           className="h-9 w-9 shrink-0 cursor-pointer rounded border border-border bg-transparent"
         />
         <input
+          id="new-stage-name"
+          name="newStageName"
+          aria-label="Name der neuen Phase"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
