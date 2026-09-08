@@ -53,30 +53,43 @@ export const navItems = [
   { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
 ]
 
-function NavLink({ href, label, icon: Icon }: { href: string; label: string; icon: () => ReactElement }) {
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  collapsed,
+}: {
+  href: string
+  label: string
+  icon: () => ReactElement
+  collapsed: boolean
+}) {
   const pathname = usePathname()
   const isActive = pathname === href || (href === '/dashboard/deals' && pathname.startsWith('/dashboard/deals'))
 
   return (
     <Link
       href={href}
-      className={`ring-focus flex h-11 w-11 items-center justify-center rounded-lg transition-colors ${
+      className={`ring-focus flex h-11 items-center gap-3 rounded-lg transition-colors ${
+        collapsed ? 'w-11 justify-center' : 'w-full px-3'
+      } ${
         isActive
           ? 'bg-accent-soft text-accent'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
       }`}
-      title={label}
+      title={collapsed ? label : undefined}
     >
       <Icon />
+      {!collapsed && <span className="truncate text-sm font-medium">{label}</span>}
     </Link>
   )
 }
 
-export default function ClientNav() {
+export default function ClientNav({ collapsed = true }: { collapsed?: boolean }) {
   return (
-    <nav className="flex flex-col items-center gap-1">
+    <nav className={`flex flex-col gap-1 ${collapsed ? 'items-center' : 'items-stretch'}`}>
       {navItems.map((item) => (
-        <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} />
+        <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} collapsed={collapsed} />
       ))}
     </nav>
   )

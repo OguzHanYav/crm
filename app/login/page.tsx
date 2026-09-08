@@ -8,7 +8,6 @@ export default function LoginPage() {
     error: '',
   })
   const [showPassword, setShowPassword] = useState(false)
-  const [lang, setLang] = useState<'de' | 'en'>('de')
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0F1115] p-6">
@@ -145,25 +144,6 @@ export default function LoginPage() {
             oguzhan-yavuz.com
           </a>
         </p>
-
-        <div className="mt-6 flex justify-center">
-          <div className="flex overflow-hidden rounded-full border border-white/10 text-xs text-white/50">
-            <button
-              type="button"
-              onClick={() => setLang('de')}
-              className={`px-3 py-1.5 transition-colors ${lang === 'de' ? 'bg-white/10 text-white' : 'hover:text-white/80'}`}
-            >
-              Deutsch
-            </button>
-            <button
-              type="button"
-              onClick={() => setLang('en')}
-              className={`px-3 py-1.5 transition-colors ${lang === 'en' ? 'bg-white/10 text-white' : 'hover:text-white/80'}`}
-            >
-              English
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   )
