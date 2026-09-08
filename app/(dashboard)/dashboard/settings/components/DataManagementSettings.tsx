@@ -423,7 +423,7 @@ export default function DataManagementSettings() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {previewRows.map((row, i) => (
-                      <tr key={i}>
+                      <tr key={`${i}-${headers.map((h) => row[h]).join("|")}`}>
                         {headers.map((header) => (
                           <td key={header} className="px-3 py-2 text-gray-700">
                             {String(row[header] ?? "")}
@@ -466,7 +466,7 @@ export default function DataManagementSettings() {
                 {importResult.errors && importResult.errors.length > 0 && (
                   <ul className="mt-2 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-red-600">
                     {importResult.errors.map((err, i) => (
-                      <li key={i}>{err}</li>
+                      <li key={`${i}-${err}`}>{err}</li>
                     ))}
                   </ul>
                 )}

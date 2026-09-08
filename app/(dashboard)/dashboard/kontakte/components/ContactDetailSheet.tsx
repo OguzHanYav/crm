@@ -167,6 +167,10 @@ function SheetContent({
         <div className="flex flex-wrap items-center gap-2">
           {primaryDeal && stagesForPrimaryPipeline.length > 0 && (
             <Select
+              id={`primary-deal-stage-${primaryDeal.id}`}
+              name="primaryDealStage"
+              autoComplete="off"
+              aria-label="Phase des Deals"
               defaultValue={primaryDeal.stage_id}
               onChange={(e) => {
                 updateDealStage(primaryDeal.id, e.target.value).then(onRefresh);
@@ -278,15 +282,15 @@ function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefr
         <form action={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Anruf-Typ</label>
-              <Select name="call_type" className="h-8 text-sm">
+              <label htmlFor="sheet-call-type" className="mb-1 block text-xs font-medium text-muted-foreground">Anruf-Typ</label>
+              <Select id="sheet-call-type" name="call_type" autoComplete="off" className="h-8 text-sm">
                 <option value="opening_call">Opening-Call</option>
                 <option value="follow_up_call">Follow-Up</option>
               </Select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Interesse bekundet</label>
-              <Select name="interest_expressed" className="h-8 text-sm">
+              <label htmlFor="sheet-call-interest" className="mb-1 block text-xs font-medium text-muted-foreground">Interesse bekundet</label>
+              <Select id="sheet-call-interest" name="interest_expressed" autoComplete="off" className="h-8 text-sm">
                 <option value="">— unklar —</option>
                 <option value="true">Ja</option>
                 <option value="false">Nein</option>
@@ -295,18 +299,20 @@ function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefr
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Datum/Uhrzeit</label>
+            <label htmlFor="sheet-called-at" className="mb-1 block text-xs font-medium text-muted-foreground">Datum/Uhrzeit</label>
             <Input
+              id="sheet-called-at"
               type="datetime-local"
               name="called_at"
+              autoComplete="off"
               defaultValue={new Date().toISOString().slice(0, 16)}
               className="h-8 text-sm"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Notiz</label>
-            <Textarea name="summary" rows={2} required className="text-sm" />
+            <label htmlFor="sheet-call-summary" className="mb-1 block text-xs font-medium text-muted-foreground">Notiz</label>
+            <Textarea id="sheet-call-summary" name="summary" autoComplete="off" rows={2} required className="text-sm" />
           </div>
 
           <Button type="submit" disabled={isPending} size="sm" className="self-end">
@@ -321,16 +327,18 @@ function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefr
 function ActivityTab({ payload }: { payload: ContactDetailPayload }) {
   const { notes, callLogs, stageHistory } = payload;
 
-  type Item = { type: "note" | "call" | "stage"; date: string; content: React.ReactNode };
+  type Item = { id: string; type: "note" | "call" | "stage"; date: string; content: React.ReactNode };
 
   const items: Item[] = [
-    ...notes.map((n) => ({ type: "note" as const, date: n.created_at, content: n.content })),
+    ...notes.map((n) => ({ id: `note-${n.id}`, type: "note" as const, date: n.created_at, content: n.content })),
     ...callLogs.map((c) => ({
+      id: `call-${c.id}`,
       type: "call" as const,
       date: c.called_at || c.created_at,
       content: `${c.call_type}: ${c.notes || "—"}${c.interest_expressed !== null ? ` (Interesse: ${c.interest_expressed ? "Ja" : "Nein"})` : ""}`,
     })),
     ...stageHistory.map((h) => ({
+      id: `stage-${h.id}`,
       type: "stage" as const,
       date: h.changed_at,
       content: `Phase geändert: ${h.from_stage?.name ?? "—"} → ${h.to_stage?.name ?? "—"}`,
@@ -343,8 +351,8 @@ function ActivityTab({ payload }: { payload: ContactDetailPayload }) {
 
   return (
     <ul className="flex flex-col gap-3">
-      {items.map((item, i) => (
-        <li key={i} className="flex gap-3 text-sm">
+      {items.map((item) => (
+        <li key={item.id} className="flex gap-3 text-sm">
           <span className="mt-0.5">{icons[item.type]}</span>
           <div>
             <p className="text-foreground">{item.content}</p>
@@ -376,6 +384,10 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         <Input
+          id="notes-tab-new-note"
+          name="newNote"
+          autoComplete="off"
+          aria-label="Neue Notiz"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && submit()}

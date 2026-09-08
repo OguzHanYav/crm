@@ -54,7 +54,7 @@ export default function LinkDealModal({
         </div>
 
         <form action={handleSubmit} className="flex flex-col gap-3">
-          <input type="hidden" name="contact_id" value={contact.id} />
+          <input id="linkdeal-contact-id" type="hidden" name="contact_id" autoComplete="off" value={contact.id} />
 
           <div>
             <label htmlFor="linkdeal-pipeline" className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>

@@ -85,7 +85,9 @@ export default function ContactFormModal(props: Props) {
             </div>
 
             <form action={formAction} className="flex flex-col gap-3">
-              {mode === "edit" && <input type="hidden" name="contact_id" value={contact.id} />}
+              {mode === "edit" && (
+                <input id="contact-id" type="hidden" name="contact_id" autoComplete="off" value={contact.id} />
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
