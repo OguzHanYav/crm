@@ -67,15 +67,6 @@ export default function DealsView({
   const activeKey = searchParams.get("stage") ?? phases[0]?.key ?? "";
   const activePhase = useMemo(() => phases.find((p) => p.key === activeKey), [phases, activeKey]);
 
-  const countryOptions = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of localDeals) {
-      const c = d.country || d.contact?.country;
-      if (c) set.add(c);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [localDeals]);
-
   const industryOptions = useMemo(() => {
     const set = new Set<string>();
     for (const d of localDeals) {
@@ -245,6 +236,9 @@ export default function DealsView({
       {/* Suche + Filter-Popover */}
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
+          id="deals-search"
+          name="search"
+          aria-label="Volltextsuche"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Volltextsuche (Name, Kontakt, Firma, E-Mail, Telefon, Land)"
@@ -261,7 +255,6 @@ export default function DealsView({
           onContactFilterChange={setContactFilter}
           countryFilter={countryFilter}
           onCountryFilterChange={setCountryFilter}
-          countryOptions={countryOptions}
           industryFilter={industryFilter}
           onIndustryFilterChange={setIndustryFilter}
           industryOptions={industryOptions}
@@ -284,8 +277,10 @@ export default function DealsView({
             insgesamt {totalCount} Deals)
           </span>
           <div className="flex items-center gap-2">
-            <span>Render-Limit</span>
+            <label htmlFor="deals-render-limit">Render-Limit</label>
             <select
+              id="deals-render-limit"
+              name="renderLimit"
               value={renderLimit}
               onChange={(e) => setRenderLimit(Number(e.target.value))}
               className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1 text-sm transition-colors focus:border-blue-500 focus:outline-none"

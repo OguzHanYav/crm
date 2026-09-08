@@ -18,12 +18,20 @@ export type ActionResult<T = undefined> = {
   data?: T;
 };
 
+function hasServiceRoleConfig(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+// Nur für Operationen, die zwingend die Supabase Admin-API brauchen (auth.admin.*) —
+// dafür gibt es keinen Fallback, da normale Sessions diese API nicht aufrufen dürfen.
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey) {
-    throw new Error("Server-Konfiguration unvollständig: Supabase-Umgebungsvariablen fehlen.");
+    throw new Error(
+      "Diese Aktion erfordert den Supabase Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY). Bitte in den Umgebungsvariablen konfigurieren."
+    );
   }
 
   return createClient(url, serviceRoleKey, {
@@ -32,6 +40,20 @@ function getAdminClient() {
       persistSession: false,
     },
   });
+}
+
+// Für reine `profiles`-Mutationen: nutzt den Service-Role-Client (umgeht RLS), fällt
+// aber — falls der Service-Role-Key im Environment fehlt — auf den regulären,
+// session-gebundenen Server-Client zurück, statt den Admin mit einem Konfigurationsfehler
+// zu blockieren. Greift dann unter der RLS-Session des eingeloggten Admins.
+async function getProfilesClient() {
+  if (hasServiceRoleConfig()) {
+    return getAdminClient();
+  }
+  console.warn(
+    "SUPABASE_SERVICE_ROLE_KEY fehlt — falle für Profil-Mutationen auf den Standard-Server-Client zurück."
+  );
+  return createServerClient();
 }
 
 // ==================== ADMIN-CHECK ====================
@@ -118,8 +140,9 @@ export async function updateUser(
       updateData.role = role;
     }
 
-    // Admin-Client mit Service Role Key (umgeht RLS für Admins)
-    const supabaseAdmin = getAdminClient();
+    // Admin-Client mit Service Role Key (umgeht RLS für Admins) — fällt auf den
+    // regulären Server-Client zurück, falls der Service-Role-Key nicht konfiguriert ist.
+    const supabaseAdmin = await getProfilesClient();
 
     const { error } = await supabaseAdmin
       .from("profiles")
@@ -161,7 +184,7 @@ export async function setUserRole(
       return { success: false, message: "Du kannst dir selbst nicht die Admin-Rechte entziehen!" };
     }
 
-    const supabaseAdmin = getAdminClient();
+    const supabaseAdmin = await getProfilesClient();
 
     const { error } = await supabaseAdmin
       .from("profiles")
@@ -219,15 +242,21 @@ export async function createUser(
       return { success: false, message: "Benutzer konnte nicht angelegt werden." };
     }
 
+    // upsert statt insert: falls ein DB-Trigger beim Anlegen in auth.users bereits
+    // automatisch eine profiles-Zeile erstellt hat, würde ein reiner insert() mit
+    // "duplicate key value violates unique constraint profiles_pkey" fehlschlagen.
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .insert({
-        id: authData.user.id,
-        email: email,
-        first_name: firstName,
-        last_name: lastName,
-        role: role,
-      });
+      .upsert(
+        {
+          id: authData.user.id,
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          role: role,
+        },
+        { onConflict: "id" }
+      );
 
     if (profileError) {
       console.error("createUser profile error:", profileError.message);

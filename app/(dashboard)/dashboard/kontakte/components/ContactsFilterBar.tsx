@@ -123,8 +123,10 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
       {isOpen && (
         <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-card p-4 shadow-card sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <Label>Firma</Label>
+            <Label htmlFor="contacts-filter-company">Firma</Label>
             <Select
+              id="contacts-filter-company"
+              name="company"
               value={searchParams.get("company") ?? ""}
               onChange={(e) => updateParams({ company: e.target.value || null })}
             >
@@ -138,8 +140,10 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
           </div>
 
           <div>
-            <Label>Zeitraum von</Label>
+            <Label htmlFor="contacts-filter-from">Zeitraum von</Label>
             <Input
+              id="contacts-filter-from"
+              name="from"
               type="date"
               value={searchParams.get("from") ?? ""}
               onChange={(e) => updateParams({ from: e.target.value || null })}
@@ -147,8 +151,10 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
           </div>
 
           <div>
-            <Label>Zeitraum bis</Label>
+            <Label htmlFor="contacts-filter-to">Zeitraum bis</Label>
             <Input
+              id="contacts-filter-to"
+              name="to"
               type="date"
               value={searchParams.get("to") ?? ""}
               onChange={(e) => updateParams({ to: e.target.value || null })}
@@ -156,8 +162,10 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
           </div>
 
           <div>
-            <Label>Deal-Status</Label>
+            <Label htmlFor="contacts-filter-deal-status">Deal-Status</Label>
             <Select
+              id="contacts-filter-deal-status"
+              name="dealStatus"
               value={searchParams.get("dealStatus") ?? ""}
               onChange={(e) => updateParams({ dealStatus: e.target.value || null })}
             >
@@ -169,8 +177,10 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
           </div>
 
           <div>
-            <Label>Event-Kategorie</Label>
+            <Label htmlFor="contacts-filter-event">Event-Kategorie</Label>
             <Select
+              id="contacts-filter-event"
+              name="event"
               value={searchParams.get("event") ?? ""}
               onChange={(e) => updateParams({ event: e.target.value || null })}
             >

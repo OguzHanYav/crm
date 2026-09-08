@@ -31,6 +31,9 @@ export default function ContactsSearch({ defaultValue }: { defaultValue: string 
 
   return (
     <input
+      id="contacts-search"
+      name="q"
+      aria-label="Suche nach Name, E-Mail oder Firma"
       type="text"
       value={value}
       onChange={(e) => setValue(e.target.value)}

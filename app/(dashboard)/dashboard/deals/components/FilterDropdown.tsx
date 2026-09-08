@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PipelinePhase } from "../types";
+import { COUNTRIES } from "@/lib/constants/countries";
 
 export default function FilterDropdown({
   phases,
@@ -13,7 +14,6 @@ export default function FilterDropdown({
   onContactFilterChange,
   countryFilter,
   onCountryFilterChange,
-  countryOptions,
   industryFilter,
   onIndustryFilterChange,
   industryOptions,
@@ -27,7 +27,6 @@ export default function FilterDropdown({
   onContactFilterChange: (value: string) => void;
   countryFilter: string;
   onCountryFilterChange: (value: string) => void;
-  countryOptions: string[];
   industryFilter: string;
   onIndustryFilterChange: (value: string) => void;
   industryOptions: string[];
@@ -74,14 +73,16 @@ export default function FilterDropdown({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-x-4 top-20 z-20 w-auto max-w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-80">
+        <div className="fixed inset-x-4 top-20 z-50 w-auto min-w-[320px] max-w-full space-y-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[360px]">
           <div className="flex flex-col gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Phase</label>
+              <label htmlFor="filter-phase" className="mb-1 block text-xs font-medium text-gray-500">Phase</label>
               <select
+                id="filter-phase"
+                name="phase"
                 value={activeKey}
                 onChange={(e) => onActiveKeyChange(e.target.value)}
-                className="min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+                className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {phases.map((phase) => (
                   <option key={phase.key} value={phase.key}>
@@ -92,36 +93,42 @@ export default function FilterDropdown({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Firma</label>
+              <label htmlFor="filter-company" className="mb-1 block text-xs font-medium text-gray-500">Firma</label>
               <input
+                id="filter-company"
+                name="company"
                 value={companyFilter}
                 onChange={(e) => onCompanyFilterChange(e.target.value)}
                 placeholder="Firma"
-                className="min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+                className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">
+              <label htmlFor="filter-contact" className="mb-1 block text-xs font-medium text-gray-500">
                 E-Mail / Telefon / Vorwahl
               </label>
               <input
+                id="filter-contact"
+                name="contact"
                 value={contactFilter}
                 onChange={(e) => onContactFilterChange(e.target.value)}
                 placeholder="z. B. +49 oder name@firma.de"
-                className="min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"
+                className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Land</label>
+              <label htmlFor="filter-country" className="mb-1 block text-xs font-medium text-gray-500">Land</label>
               <select
+                id="filter-country"
+                name="country"
                 value={countryFilter}
                 onChange={(e) => onCountryFilterChange(e.target.value)}
-                className="min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+                className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Alle Länder</option>
-                {countryOptions.map((c) => (
+                {COUNTRIES.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -130,11 +137,13 @@ export default function FilterDropdown({
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">Branche</label>
+              <label htmlFor="filter-industry" className="mb-1 block text-xs font-medium text-gray-500">Branche</label>
               <select
+                id="filter-industry"
+                name="industry"
                 value={industryFilter}
                 onChange={(e) => onIndustryFilterChange(e.target.value)}
-                className="min-h-[44px] w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+                className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Alle Branchen</option>
                 {industryOptions.map((i) => (
