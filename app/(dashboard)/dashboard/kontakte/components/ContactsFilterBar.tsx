@@ -82,24 +82,24 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 p-1">
-          {TABS.map((tab) => {
-            const isActive = tab.key === activeTabKey;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => selectTab(tab)}
-                className={`ring-focus min-h-[44px] rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  isActive
-                    ? "bg-accent text-accent-foreground shadow-soft"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        <Select
+          id="contacts-scope-filter"
+          name="scope"
+          autoComplete="off"
+          aria-label="Ansicht"
+          value={activeTabKey}
+          onChange={(e) => {
+            const tab = TABS.find((t) => t.key === e.target.value);
+            if (tab) selectTab(tab);
+          }}
+          className="h-9 w-auto min-h-0 py-1"
+        >
+          {TABS.map((tab) => (
+            <option key={tab.key} value={tab.key}>
+              {tab.label}
+            </option>
+          ))}
+        </Select>
 
         <div className="flex items-center gap-2">
           {advancedFilterCount > 0 && (

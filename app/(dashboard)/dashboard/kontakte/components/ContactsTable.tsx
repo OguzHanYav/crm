@@ -50,7 +50,7 @@ const ContactRow = memo(function ContactRow({
 
   return (
     <tr className="group transition-colors duration-150 hover:bg-muted/40">
-      <td className="truncate px-3 py-2">
+      <td className="truncate px-3 py-2" title={`Erstellt am ${formatDateDE(contact.created_at)}`}>
         <Link
           href={contactHref}
           scroll={false}
@@ -81,15 +81,16 @@ const ContactRow = memo(function ContactRow({
         )}
       </td>
 
-      <td className="hidden truncate px-3 py-2 text-foreground/90 md:table-cell">{contact.company ?? "—"}</td>
+      <td
+        className="hidden truncate px-3 py-2 text-foreground/90 md:table-cell"
+        title={contact.industry ? `Branche: ${contact.industry}` : undefined}
+      >
+        {contact.company ?? "—"}
+      </td>
 
-      <td className="hidden truncate px-3 py-2 text-foreground/90 lg:table-cell">{contact.industry ?? "—"}</td>
-
-      <td className="hidden truncate px-3 py-2 text-foreground/90 lg:table-cell">{contact.country ?? "—"}</td>
-
-      <td className="hidden truncate px-3 py-2 text-foreground/90 xl:table-cell">{contact.address ?? "—"}</td>
-
-      <td className="hidden whitespace-nowrap px-3 py-2 text-muted-foreground lg:table-cell">{formatDateDE(contact.created_at)}</td>
+      <td className="hidden truncate px-3 py-2 text-foreground/90 lg:table-cell" title={contact.address ?? undefined}>
+        {contact.country ?? "—"}
+      </td>
 
       <td className="overflow-hidden px-3 py-2">
         {contact.currentStage ? (
@@ -109,15 +110,12 @@ const ContactRow = memo(function ContactRow({
 });
 
 const COLUMNS: { key: ContactSortKey; label: string; width: string; visibility: string }[] = [
-  { key: "name", label: "Name", width: "w-[12%]", visibility: "" },
-  { key: "phone", label: "Telefon", width: "w-[10%]", visibility: "hidden sm:table-cell" },
-  { key: "email", label: "E-Mail", width: "w-[15%]", visibility: "hidden md:table-cell" },
-  { key: "company", label: "Firma", width: "w-[11%]", visibility: "hidden md:table-cell" },
-  { key: "industry", label: "Branche", width: "w-[10%]", visibility: "hidden lg:table-cell" },
-  { key: "country", label: "Land", width: "w-[7%]", visibility: "hidden lg:table-cell" },
-  { key: "address", label: "Adresse", width: "w-[10%]", visibility: "hidden xl:table-cell" },
-  { key: "createdAt", label: "Erstellt am", width: "w-[8%]", visibility: "hidden lg:table-cell" },
-  { key: "status", label: "Status", width: "w-[17%]", visibility: "" },
+  { key: "name", label: "Name", width: "w-[18%]", visibility: "" },
+  { key: "phone", label: "Telefon", width: "w-[14%]", visibility: "hidden sm:table-cell" },
+  { key: "email", label: "E-Mail", width: "w-[22%]", visibility: "hidden md:table-cell" },
+  { key: "company", label: "Firma", width: "w-[16%]", visibility: "hidden md:table-cell" },
+  { key: "country", label: "Land", width: "w-[10%]", visibility: "hidden lg:table-cell" },
+  { key: "status", label: "Status", width: "w-[20%]", visibility: "" },
 ];
 
 export default function ContactsTable({

@@ -16,7 +16,7 @@ export default function SignOutButton() {
   return (
     <button
       onClick={handleSignOut}
-      className="ring-focus rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:border-danger/40 hover:text-danger"
+      className="ring-focus flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-danger/10 hover:text-danger"
     >
       Abmelden
     </button>

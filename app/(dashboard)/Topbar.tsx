@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
 import SignOutButton from './sign-out-button'
 
 function IconSearch() {
@@ -21,10 +22,84 @@ function IconPlus() {
   )
 }
 
+function IconChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`}
+    >
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 const CTA_BY_ROUTE: { match: string; label: string; href: string }[] = [
-  { match: '/dashboard/kontakte', label: 'Neuer Kontakt', href: '/dashboard/kontakte?new=1' },
   { match: '/dashboard/anrufe', label: 'Anruf protokollieren', href: '/dashboard/anrufe?new=1' },
 ]
+
+const USER_MENU_LINKS = [
+  { href: '/dashboard/settings', label: 'Settings' },
+  { href: '/dashboard/deals', label: 'Pipeline' },
+  { href: '/dashboard', label: 'Dashboard' },
+]
+
+function UserMenu({ displayName, role, initials }: { displayName: string; role: string; initials: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false)
+    }
+    if (isOpen) document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [isOpen])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((v) => !v)}
+        className="ring-focus flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 transition-colors hover:bg-muted/50"
+      >
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
+          {initials}
+        </div>
+        <div className="hidden flex-col items-start leading-tight sm:flex">
+          <span className="max-w-[140px] truncate text-xs font-medium text-foreground">
+            {displayName}
+          </span>
+          <span className="text-[11px] text-muted-foreground">{role}</span>
+        </div>
+        <IconChevron open={isOpen} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-card p-1.5 shadow-lg">
+          {USER_MENU_LINKS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="ring-focus flex min-h-[44px] w-full items-center gap-2 rounded-lg px-3 text-sm text-foreground transition-colors hover:bg-muted/60"
+            >
+              {item.label}
+            </Link>
+          ))}
+          <div className="my-1 border-t border-border" />
+          <SignOutButton />
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Topbar({
   displayName,
@@ -101,19 +176,7 @@ export default function Topbar({
           </button>
         )}
 
-        <div className="flex items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-xs font-semibold text-accent">
-            {initials}
-          </div>
-          <div className="hidden flex-col leading-tight sm:flex">
-            <span className="max-w-[140px] truncate text-xs font-medium text-foreground">
-              {displayName}
-            </span>
-            <span className="text-[11px] text-muted-foreground">{role}</span>
-          </div>
-        </div>
-
-        <SignOutButton />
+        <UserMenu displayName={displayName} role={role} initials={initials} />
       </div>
     </header>
   )

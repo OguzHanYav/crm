@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import type { Deal, PipelineStage } from "../types";
 import StageColumn from "./StageColumn";
+import DealsActionsBar from "./DealsActionsBar";
 import { updateDealStage } from "../actions";
 
 export default function DealsBoard({
@@ -14,6 +15,9 @@ export default function DealsBoard({
   initialDeals: Deal[];
 }) {
   const [deals, setDeals] = useState<Deal[]>(initialDeals);
+  // Inline-Suche statt Filter-Button/Popover — filtert die bereits geladenen
+  // Deals direkt im Board, kein zusätzlicher Klick nötig.
+  const [search, setSearch] = useState("");
   const [, startTransition] = useTransition();
   const router = useRouter();
   const pathname = usePathname();
@@ -22,6 +26,18 @@ export default function DealsBoard({
   useEffect(() => {
     setDeals(initialDeals);
   }, [initialDeals]);
+
+  const filteredDeals = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return deals;
+    return deals.filter((d) => {
+      const haystack = [d.name, d.contact?.first_name, d.contact?.last_name, d.contact?.company, d.contact?.email, d.contact?.phone]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [deals, search]);
 
   const moveDeal = useCallback(
     (dealId: string, newStageId: string) => {
@@ -53,20 +69,24 @@ export default function DealsBoard({
   );
 
   return (
-    <div className="flex flex-1 gap-4 overflow-x-auto pb-4">
-      {stages.map((stage) => {
-        const stageDeals = deals.filter((d) => d.stage_id === stage.id);
-        return (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            deals={stageDeals}
-            allStages={stages}
-            onDropDeal={moveDeal}
-            onOpenDeal={openDeal}
-          />
-        );
-      })}
+    <div className="flex flex-1 flex-col gap-3">
+      <DealsActionsBar search={search} onSearchChange={setSearch} />
+
+      <div className="flex flex-1 gap-3 overflow-x-auto pb-4">
+        {stages.map((stage) => {
+          const stageDeals = filteredDeals.filter((d) => d.stage_id === stage.id);
+          return (
+            <StageColumn
+              key={stage.id}
+              stage={stage}
+              deals={stageDeals}
+              allStages={stages}
+              onDropDeal={moveDeal}
+              onOpenDeal={openDeal}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
