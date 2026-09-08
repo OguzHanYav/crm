@@ -51,9 +51,11 @@ export default function LogCallModal({
           className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4 sm:flex-none"
         >
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Anruf-Typ</label>
+            <label htmlFor="call-type" className="mb-1 block text-xs font-medium text-gray-600">Anruf-Typ</label>
             <select
+              id="call-type"
               name="call_type"
+              autoComplete="off"
               required
               defaultValue="opening_call"
               className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
@@ -64,9 +66,11 @@ export default function LogCallModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Interesse bekundet</label>
+            <label htmlFor="call-interest" className="mb-1 block text-xs font-medium text-gray-600">Interesse bekundet</label>
             <select
+              id="call-interest"
               name="interest_expressed"
+              autoComplete="off"
               defaultValue=""
               className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
             >
@@ -77,10 +81,12 @@ export default function LogCallModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Datum/Uhrzeit</label>
+            <label htmlFor="call-called-at" className="mb-1 block text-xs font-medium text-gray-600">Datum/Uhrzeit</label>
             <input
+              id="call-called-at"
               name="called_at"
               type="datetime-local"
+              autoComplete="off"
               required
               defaultValue={new Date().toISOString().slice(0, 16)}
               className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
@@ -88,9 +94,11 @@ export default function LogCallModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Zusammenfassung</label>
+            <label htmlFor="call-summary" className="mb-1 block text-xs font-medium text-gray-600">Zusammenfassung</label>
             <textarea
+              id="call-summary"
               name="summary"
+              autoComplete="off"
               rows={3}
               required
               className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"

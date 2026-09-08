@@ -127,6 +127,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
             <Select
               id="contacts-filter-company"
               name="company"
+              autoComplete="off"
               value={searchParams.get("company") ?? ""}
               onChange={(e) => updateParams({ company: e.target.value || null })}
             >
@@ -144,6 +145,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
             <Input
               id="contacts-filter-from"
               name="from"
+              autoComplete="off"
               type="date"
               value={searchParams.get("from") ?? ""}
               onChange={(e) => updateParams({ from: e.target.value || null })}
@@ -155,6 +157,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
             <Input
               id="contacts-filter-to"
               name="to"
+              autoComplete="off"
               type="date"
               value={searchParams.get("to") ?? ""}
               onChange={(e) => updateParams({ to: e.target.value || null })}
@@ -166,6 +169,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
             <Select
               id="contacts-filter-deal-status"
               name="dealStatus"
+              autoComplete="off"
               value={searchParams.get("dealStatus") ?? ""}
               onChange={(e) => updateParams({ dealStatus: e.target.value || null })}
             >
@@ -181,6 +185,7 @@ export default function ContactsFilterBar({ companies }: { companies: string[] }
             <Select
               id="contacts-filter-event"
               name="event"
+              autoComplete="off"
               value={searchParams.get("event") ?? ""}
               onChange={(e) => updateParams({ event: e.target.value || null })}
             >

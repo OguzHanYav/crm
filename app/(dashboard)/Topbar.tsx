@@ -74,6 +74,10 @@ export default function Topbar({
         <div className="ring-focus flex h-11 min-h-[44px] w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors focus-within:border-accent/60">
           <IconSearch />
           <input
+            id="global-search"
+            name="globalSearch"
+            autoComplete="off"
+            aria-label="Kontakte, Deals, Firmen durchsuchen"
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

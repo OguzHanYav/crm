@@ -33,6 +33,10 @@ export default function DealsActionsBar({
       <div className="relative w-full sm:max-w-sm">
         <IconSearch />
         <input
+          id="deals-actions-search"
+          name="search"
+          autoComplete="off"
+          aria-label="Suche nach Name, E-Mail, Firma, Telefon oder Land"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Suche nach Name, E-Mail, Firma, Telefon oder Land"

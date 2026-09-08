@@ -214,6 +214,7 @@ export default function AdminPanel() {
                 id="new-user-first-name"
                 name="firstName"
                 type="text"
+                autoComplete="given-name"
                 value={newFirstName}
                 onChange={(e) => setNewFirstName(e.target.value)}
                 className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -227,6 +228,7 @@ export default function AdminPanel() {
                 id="new-user-last-name"
                 name="lastName"
                 type="text"
+                autoComplete="family-name"
                 value={newLastName}
                 onChange={(e) => setNewLastName(e.target.value)}
                 className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -240,6 +242,7 @@ export default function AdminPanel() {
                 id="new-user-email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -253,6 +256,7 @@ export default function AdminPanel() {
                 id="new-user-password"
                 name="password"
                 type="password"
+                autoComplete="new-password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -266,6 +270,7 @@ export default function AdminPanel() {
               <select
                 id="new-user-role"
                 name="role"
+                autoComplete="off"
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as "admin" | "employee")}
                 className="ring-focus w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -312,6 +317,7 @@ export default function AdminPanel() {
                         <input
                           id={`edit-first-name-${user.id}`}
                           name="editFirstName"
+                          autoComplete="given-name"
                           aria-label="Vorname"
                           value={editFirstName}
                           onChange={(e) => setEditFirstName(e.target.value)}
@@ -321,6 +327,7 @@ export default function AdminPanel() {
                         <input
                           id={`edit-last-name-${user.id}`}
                           name="editLastName"
+                          autoComplete="family-name"
                           aria-label="Nachname"
                           value={editLastName}
                           onChange={(e) => setEditLastName(e.target.value)}
@@ -340,6 +347,7 @@ export default function AdminPanel() {
                         <input
                           id={`edit-email-${user.id}`}
                           name="editEmail"
+                          autoComplete="email"
                           aria-label="E-Mail"
                           type="email"
                           value={editEmail}
@@ -351,6 +359,7 @@ export default function AdminPanel() {
                         <input
                           id={`edit-password-${user.id}`}
                           name="editPassword"
+                          autoComplete="new-password"
                           aria-label="Neues Passwort"
                           type="password"
                           value={editPassword}
@@ -369,6 +378,7 @@ export default function AdminPanel() {
                       <select
                         id={`edit-role-${user.id}`}
                         name="editRole"
+                        autoComplete="off"
                         aria-label="Rolle"
                         value={editRole}
                         onChange={(e) => setEditRole(e.target.value as "admin" | "employee")}

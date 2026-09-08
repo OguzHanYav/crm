@@ -195,6 +195,7 @@ export default function PipelineStagesSettings({
                 <input
                   id={`edit-stage-color-${stage.id}`}
                   name="editStageColor"
+                  autoComplete="off"
                   aria-label="Farbe"
                   type="color"
                   value={editColor}
@@ -204,6 +205,7 @@ export default function PipelineStagesSettings({
                 <input
                   id={`edit-stage-name-${stage.id}`}
                   name="editStageName"
+                  autoComplete="off"
                   aria-label="Name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -297,6 +299,7 @@ export default function PipelineStagesSettings({
         <input
           id="new-stage-color"
           name="newStageColor"
+          autoComplete="off"
           aria-label="Farbe der neuen Phase"
           type="color"
           value={newColor}
@@ -306,6 +309,7 @@ export default function PipelineStagesSettings({
         <input
           id="new-stage-name"
           name="newStageName"
+          autoComplete="off"
           aria-label="Name der neuen Phase"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}

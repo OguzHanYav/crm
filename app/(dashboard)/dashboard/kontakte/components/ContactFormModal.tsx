@@ -89,18 +89,22 @@ export default function ContactFormModal(props: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Vorname</label>
+                  <label htmlFor="contact-first-name" className="mb-1 block text-xs font-medium text-gray-600">Vorname</label>
                   <input
+                    id="contact-first-name"
                     name="first_name"
+                    autoComplete="given-name"
                     required
                     defaultValue={contact?.first_name}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Nachname</label>
+                  <label htmlFor="contact-last-name" className="mb-1 block text-xs font-medium text-gray-600">Nachname</label>
                   <input
+                    id="contact-last-name"
                     name="last_name"
+                    autoComplete="family-name"
                     required
                     defaultValue={contact?.last_name}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -109,10 +113,12 @@ export default function ContactFormModal(props: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">E-Mail</label>
+                <label htmlFor="contact-email" className="mb-1 block text-xs font-medium text-gray-600">E-Mail</label>
                 <input
+                  id="contact-email"
                   name="email"
                   type="email"
+                  autoComplete="email"
                   required
                   defaultValue={contact?.email}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -120,27 +126,34 @@ export default function ContactFormModal(props: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Telefonnummer</label>
+                <label htmlFor="contact-phone" className="mb-1 block text-xs font-medium text-gray-600">Telefonnummer</label>
                 <input
+                  id="contact-phone"
                   name="phone"
+                  type="tel"
+                  autoComplete="tel"
                   defaultValue={contact?.phone ?? ""}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Firma</label>
+                <label htmlFor="contact-company" className="mb-1 block text-xs font-medium text-gray-600">Firma</label>
                 <input
+                  id="contact-company"
                   name="company"
+                  autoComplete="organization"
                   defaultValue={contact?.company ?? ""}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Status</label>
+                <label htmlFor="contact-status" className="mb-1 block text-xs font-medium text-gray-600">Status</label>
                 <select
+                  id="contact-status"
                   name="status"
+                  autoComplete="off"
                   required
                   defaultValue={contact?.status ?? "Lead"}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -154,11 +167,13 @@ export default function ContactFormModal(props: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
+                <label htmlFor="contact-assigned-to" className="mb-1 block text-xs font-medium text-gray-600">
                   Zugewiesener Sales Rep
                 </label>
                 <select
+                  id="contact-assigned-to"
                   name="assigned_to"
+                  autoComplete="off"
                   defaultValue={contact?.assigned_to ?? ""}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
@@ -172,9 +187,11 @@ export default function ContactFormModal(props: Props) {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Notizen</label>
+                <label htmlFor="contact-notes" className="mb-1 block text-xs font-medium text-gray-600">Notizen</label>
                 <textarea
+                  id="contact-notes"
                   name="notes"
+                  autoComplete="off"
                   rows={3}
                   defaultValue={contact?.notes ?? ""}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"

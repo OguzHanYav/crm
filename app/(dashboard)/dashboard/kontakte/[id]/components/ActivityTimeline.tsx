@@ -83,6 +83,10 @@ export default function ActivityTimeline({
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         <input
+          id={`new-note-${contactId}`}
+          name="newNote"
+          autoComplete="off"
+          aria-label="Neue Notiz hinzufügen"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

@@ -238,6 +238,7 @@ export default function DealsView({
         <input
           id="deals-search"
           name="search"
+          autoComplete="off"
           aria-label="Volltextsuche"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -281,6 +282,7 @@ export default function DealsView({
             <select
               id="deals-render-limit"
               name="renderLimit"
+              autoComplete="off"
               value={renderLimit}
               onChange={(e) => setRenderLimit(Number(e.target.value))}
               className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1 text-sm transition-colors focus:border-blue-500 focus:outline-none"

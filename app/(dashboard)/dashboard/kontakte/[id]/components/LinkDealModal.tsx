@@ -57,9 +57,11 @@ export default function LinkDealModal({
           <input type="hidden" name="contact_id" value={contact.id} />
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>
+            <label htmlFor="linkdeal-pipeline" className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>
             <select
+              id="linkdeal-pipeline"
               name="pipeline_id"
+              autoComplete="off"
               value={selectedPipelineId}
               onChange={(e) => setSelectedPipelineId(e.target.value)}
               required
@@ -75,9 +77,11 @@ export default function LinkDealModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Phase</label>
+            <label htmlFor="linkdeal-stage" className="mb-1 block text-xs font-medium text-gray-600">Phase</label>
             <select
+              id="linkdeal-stage"
               name="stage_id"
+              autoComplete="off"
               required
               defaultValue={defaultStageId || ""}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -92,9 +96,11 @@ export default function LinkDealModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Titel</label>
+            <label htmlFor="linkdeal-title" className="mb-1 block text-xs font-medium text-gray-600">Titel</label>
             <input
+              id="linkdeal-title"
               name="title"
+              autoComplete="off"
               required
               defaultValue={`Deal – ${contact.first_name} ${contact.last_name}`}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -102,10 +108,12 @@ export default function LinkDealModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
+            <label htmlFor="linkdeal-value" className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
             <input
+              id="linkdeal-value"
               name="value"
               type="number"
+              autoComplete="off"
               min="0"
               step="0.01"
               required
@@ -114,11 +122,13 @@ export default function LinkDealModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">
+            <label htmlFor="linkdeal-assigned-to" className="mb-1 block text-xs font-medium text-gray-600">
               Zugewiesen an
             </label>
             <select
+              id="linkdeal-assigned-to"
               name="assigned_to"
+              autoComplete="off"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">— nicht zugewiesen —</option>

@@ -33,6 +33,7 @@ export default function ContactsSearch({ defaultValue }: { defaultValue: string 
     <input
       id="contacts-search"
       name="q"
+      autoComplete="off"
       aria-label="Suche nach Name, E-Mail oder Firma"
       type="text"
       value={value}

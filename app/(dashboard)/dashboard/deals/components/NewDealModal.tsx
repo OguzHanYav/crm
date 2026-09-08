@@ -87,9 +87,11 @@ export default function NewDealModal({
 
             <form action={formAction} className="flex flex-col gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Name</label>
+                <label htmlFor="newdeal-name" className="mb-1 block text-xs font-medium text-gray-600">Name</label>
                 <input
+                  id="newdeal-name"
                   name="name"
+                  autoComplete="off"
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   placeholder="z. B. Erstgespräch Müller GmbH"
@@ -97,9 +99,11 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>
+                <label htmlFor="newdeal-pipeline" className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>
                 <select
+                  id="newdeal-pipeline"
                   name="pipeline_id"
+                  autoComplete="off"
                   value={selectedPipeline}
                   onChange={(e) => setSelectedPipeline(e.target.value)}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -113,9 +117,11 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Phase</label>
+                <label htmlFor="newdeal-stage" className="mb-1 block text-xs font-medium text-gray-600">Phase</label>
                 <select
+                  id="newdeal-stage"
                   name="stage_id"
+                  autoComplete="off"
                   required
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
@@ -128,9 +134,11 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Kontakt</label>
+                <label htmlFor="newdeal-contact" className="mb-1 block text-xs font-medium text-gray-600">Kontakt</label>
                 <select
+                  id="newdeal-contact"
                   name="contact_id"
+                  autoComplete="off"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">— kein Kontakt —</option>
@@ -143,10 +151,12 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
+                <label htmlFor="newdeal-value" className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
                 <input
+                  id="newdeal-value"
                   name="value"
                   type="number"
+                  autoComplete="off"
                   min="0"
                   step="0.01"
                   required
@@ -156,9 +166,11 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Zugewiesen an</label>
+                <label htmlFor="newdeal-assigned-to" className="mb-1 block text-xs font-medium text-gray-600">Zugewiesen an</label>
                 <select
+                  id="newdeal-assigned-to"
                   name="assigned_to"
+                  autoComplete="off"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">— nicht zugewiesen —</option>

@@ -334,6 +334,7 @@ export default function DataManagementSettings() {
           <input
             id="import-file"
             name="importFile"
+            autoComplete="off"
             aria-label="Importdatei auswählen"
             ref={fileInputRef}
             type="file"
@@ -380,6 +381,7 @@ export default function DataManagementSettings() {
                           <select
                             id={`column-mapping-${headerIndex}`}
                             name={`columnMapping-${headerIndex}`}
+                            autoComplete="off"
                             aria-label={`Zuordnung für Spalte ${header}`}
                             value={mapping[header] ?? "ignore"}
                             onChange={(e) =>

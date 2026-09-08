@@ -80,6 +80,7 @@ export default function ChangePasswordForm({ email }: { email: string }) {
             id="current-password"
             name="currentPassword"
             type="password"
+            autoComplete="current-password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             className="ring-focus min-h-[44px] w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -92,6 +93,7 @@ export default function ChangePasswordForm({ email }: { email: string }) {
             id="new-password"
             name="newPassword"
             type="password"
+            autoComplete="new-password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             className="ring-focus min-h-[44px] w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"
@@ -105,6 +107,7 @@ export default function ChangePasswordForm({ email }: { email: string }) {
             id="confirm-password"
             name="confirmPassword"
             type="password"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="ring-focus min-h-[44px] w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-foreground"

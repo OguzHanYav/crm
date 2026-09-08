@@ -45,6 +45,7 @@ export default function LoginPage() {
         <form action={formAction} className="mt-8 flex flex-col gap-3">
           <div className="relative">
             <input
+              id="login-email"
               name="email"
               type="email"
               required
@@ -68,6 +69,7 @@ export default function LoginPage() {
 
           <div className="relative">
             <input
+              id="login-password"
               name="password"
               type={showPassword ? 'text' : 'password'}
               required
@@ -103,9 +105,12 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-1 flex items-center justify-between text-sm">
-            <label className="flex items-center gap-2 text-white/60">
+            <label htmlFor="login-remember" className="flex items-center gap-2 text-white/60">
               <input
+                id="login-remember"
+                name="remember"
                 type="checkbox"
+                autoComplete="off"
                 defaultChecked
                 className="h-4 w-4 rounded border-white/20 bg-[#2A2D35] accent-white"
               />

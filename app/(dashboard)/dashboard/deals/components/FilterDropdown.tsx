@@ -80,6 +80,7 @@ export default function FilterDropdown({
               <select
                 id="filter-phase"
                 name="phase"
+                autoComplete="off"
                 value={activeKey}
                 onChange={(e) => onActiveKeyChange(e.target.value)}
                 className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -97,6 +98,7 @@ export default function FilterDropdown({
               <input
                 id="filter-company"
                 name="company"
+                autoComplete="organization"
                 value={companyFilter}
                 onChange={(e) => onCompanyFilterChange(e.target.value)}
                 placeholder="Firma"
@@ -111,6 +113,7 @@ export default function FilterDropdown({
               <input
                 id="filter-contact"
                 name="contact"
+                autoComplete="off"
                 value={contactFilter}
                 onChange={(e) => onContactFilterChange(e.target.value)}
                 placeholder="z. B. +49 oder name@firma.de"
@@ -123,6 +126,7 @@ export default function FilterDropdown({
               <select
                 id="filter-country"
                 name="country"
+                autoComplete="off"
                 value={countryFilter}
                 onChange={(e) => onCountryFilterChange(e.target.value)}
                 className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -141,6 +145,7 @@ export default function FilterDropdown({
               <select
                 id="filter-industry"
                 name="industry"
+                autoComplete="off"
                 value={industryFilter}
                 onChange={(e) => onIndustryFilterChange(e.target.value)}
                 className="min-h-[42px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"

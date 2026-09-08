@@ -92,6 +92,10 @@ function DealCard({
         </div>
 
         <select
+          id={`deal-stage-${deal.id}`}
+          name="stageId"
+          autoComplete="off"
+          aria-label="Phase ändern"
           value={deal.stage_id}
           onChange={handleStageChange}
           onClick={(e) => e.stopPropagation()}

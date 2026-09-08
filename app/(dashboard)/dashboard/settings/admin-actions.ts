@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient as createServerClient } from "@/utils/supabase/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServiceRoleClient, getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 
 export type UserRow = {
@@ -18,42 +18,16 @@ export type ActionResult<T = undefined> = {
   data?: T;
 };
 
-function hasServiceRoleConfig(): boolean {
-  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-}
-
-// Nur für Operationen, die zwingend die Supabase Admin-API brauchen (auth.admin.*) —
-// dafür gibt es keinen Fallback, da normale Sessions diese API nicht aufrufen dürfen.
+// Auth-Admin-API-Operationen (createUser/updateUserById/deleteUser) brauchen zwingend
+// den Service-Role-Client — dafür gibt es keinen Fallback.
 function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!url || !serviceRoleKey) {
-    throw new Error(
-      "Diese Aktion erfordert den Supabase Service-Role-Key (SUPABASE_SERVICE_ROLE_KEY). Bitte in den Umgebungsvariablen konfigurieren."
-    );
-  }
-
-  return createClient(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
+  return getServiceRoleClient();
 }
 
-// Für reine `profiles`-Mutationen: nutzt den Service-Role-Client (umgeht RLS), fällt
-// aber — falls der Service-Role-Key im Environment fehlt — auf den regulären,
-// session-gebundenen Server-Client zurück, statt den Admin mit einem Konfigurationsfehler
-// zu blockieren. Greift dann unter der RLS-Session des eingeloggten Admins.
-async function getProfilesClient() {
-  if (hasServiceRoleConfig()) {
-    return getAdminClient();
-  }
-  console.warn(
-    "SUPABASE_SERVICE_ROLE_KEY fehlt — falle für Profil-Mutationen auf den Standard-Server-Client zurück."
-  );
-  return createServerClient();
+// Reine `profiles`-Mutationen: Service-Role-Client, mit Fallback auf den
+// regulären Server-Client, falls der Service-Role-Key fehlt (siehe lib/supabase/admin.ts).
+function getProfilesClient() {
+  return getAdminOrFallbackClient();
 }
 
 // ==================== ADMIN-CHECK ====================
