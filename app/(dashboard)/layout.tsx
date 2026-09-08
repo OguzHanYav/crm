@@ -3,6 +3,7 @@ import { createClient } from '@/utils/supabase/server'
 import ClientNav from './ClientNav'
 import MobileSidebar from './MobileSidebar'
 import Topbar from './Topbar'
+import QueryProvider from './QueryProvider'
 
 export default async function DashboardLayout({
   children,
@@ -50,7 +51,9 @@ export default async function DashboardLayout({
           role={profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'}
           mobileNav={<MobileSidebar />}
         />
-        <main className="flex-1 bg-background p-4 sm:p-6">{children}</main>
+        <main className="flex-1 bg-background p-4 sm:p-6">
+          <QueryProvider>{children}</QueryProvider>
+        </main>
       </div>
     </div>
   )

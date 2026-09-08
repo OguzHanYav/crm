@@ -24,6 +24,14 @@ const initialContactsFilters: ContactsFilterState = {
   q: "",
 };
 
+export type ContactPreview = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+};
+
 type CrmStore = {
   dealsFilters: DealsFilterState;
   setDealsFilter: <K extends keyof DealsFilterState>(key: K, value: DealsFilterState[K]) => void;
@@ -37,6 +45,13 @@ type CrmStore = {
 
   selectedDealId: string | null;
   setSelectedDealId: (id: string | null) => void;
+
+  // Aus der Tabellenzeile bereits bekannte Grunddaten des zuletzt angeklickten
+  // Kontakts — ermöglicht dem ContactDetailSheet ein sofortiges (0ms) Öffnen mit
+  // Name/E-Mail/Telefon, während die vollständigen Detaildaten im Hintergrund
+  // nachgeladen werden, statt das Sheet-Öffnen durch einen await zu blockieren.
+  contactPreview: ContactPreview | null;
+  setContactPreview: (preview: ContactPreview | null) => void;
 };
 
 // Schlanker, globaler Store für seitenübergreifenden Filter-/Auswahlzustand.
@@ -57,4 +72,7 @@ export const useCrmStore = create<CrmStore>((set) => ({
 
   selectedDealId: null,
   setSelectedDealId: (id) => set({ selectedDealId: id }),
+
+  contactPreview: null,
+  setContactPreview: (preview) => set({ contactPreview: preview }),
 }));

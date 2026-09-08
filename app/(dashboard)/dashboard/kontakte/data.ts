@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
 import type {
   Contact,
@@ -20,15 +21,18 @@ export type ContactFilters = {
   eventCategory?: string;
 };
 
-// Lädt standardmäßig nur die ersten 100 Kontakte (Performance); "Mehr laden" ruft
-// loadMoreContacts (actions.ts) mit einem höheren offset erneut auf.
+// Lädt standardmäßig nur die ersten 50 Kontakte (statt zuvor 100) — kleinerer
+// Initial-Payload verkürzt Query- und Serialisierungszeit merklich bei 1000+
+// Datensätzen; "Mehr laden" ruft loadMoreContacts (actions.ts) mit höherem
+// offset erneut auf (siehe LOAD_BATCH_SIZE in ContactsTable.tsx).
 export async function getContacts(
   filters?: ContactFilters | string,
-  limit = 100,
+  limit = 50,
   offset = 0,
   sortKey?: ContactSortKey,
   sortDir: SortDir = "asc"
 ): Promise<Contact[]> {
+  console.time(`[perf] getContacts limit=${limit} offset=${offset}`);
   const supabase = await createClient();
   const normalized: ContactFilters =
     typeof filters === "string" ? { q: filters } : filters ?? {};
@@ -106,6 +110,7 @@ export async function getContacts(
   query = query.range(offset, offset + limit - 1);
 
   const { data, error } = await query;
+  console.timeEnd(`[perf] getContacts limit=${limit} offset=${offset}`);
 
   if (error) {
     console.error("getContacts error:", error.message);
@@ -127,6 +132,7 @@ export async function getContacts(
 
 // Gesamtzahl der zu den Filtern passenden Kontakte (für "Zeige X von Y Kontakten").
 export async function getContactsTotalCount(filters?: ContactFilters | string): Promise<number> {
+  console.time("[perf] getContactsTotalCount");
   const supabase = await createClient();
   const normalized: ContactFilters =
     typeof filters === "string" ? { q: filters } : filters ?? {};
@@ -147,6 +153,7 @@ export async function getContactsTotalCount(filters?: ContactFilters | string): 
   if (normalized.dateTo) query = query.lte("created_at", `${normalized.dateTo}T23:59:59.999`);
 
   const { count, error } = await query;
+  console.timeEnd("[perf] getContactsTotalCount");
   if (error) {
     console.error("getContactsTotalCount error:", error.message);
     return 0;
@@ -154,7 +161,9 @@ export async function getContactsTotalCount(filters?: ContactFilters | string): 
   return count ?? 0;
 }
 
-export async function getContactCompanies(): Promise<string[]> {
+// cache(): dedupliziert innerhalb eines einzelnen Server-Render-Durchlaufs, falls
+// mehrere Komponenten im selben Request dieselben Referenzdaten anfragen.
+export const getContactCompanies = cache(async (): Promise<string[]> => {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -169,7 +178,7 @@ export async function getContactCompanies(): Promise<string[]> {
   }
 
   return [...new Set(data.map((row: any) => row.company).filter(Boolean))];
-}
+});
 
 export async function getCurrentUserRole(): Promise<string | null> {
   const supabase = await createClient();
@@ -193,7 +202,7 @@ export async function getCurrentUserRole(): Promise<string | null> {
   return profile?.role ?? null;
 }
 
-export async function getTeamMembers(): Promise<TeamMember[]> {
+export const getTeamMembers = cache(async (): Promise<TeamMember[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -205,7 +214,7 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
     return [];
   }
   return data ?? [];
-}
+});
 
 export async function getContactById(
   contactId: string
@@ -249,7 +258,8 @@ export async function getContactNotes(contactId: string): Promise<Note[]> {
       `
     )
     .eq("contact_id", contactId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     console.error("getContactNotes error:", error.message);
@@ -276,7 +286,8 @@ export async function getContactCallLogs(contactId: string): Promise<CallLog[]> 
       `
     )
     .eq("contact_id", contactId)
-    .order("called_at", { ascending: false });
+    .order("called_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     console.error("getContactCallLogs error:", error.message);
@@ -322,7 +333,7 @@ export async function getContactDeals(contactId: string): Promise<ContactDeal[]>
   }) as unknown as ContactDeal[];
 }
 
-export async function getPipelines() {
+export const getPipelines = cache(async () => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("pipelines")
@@ -334,7 +345,24 @@ export async function getPipelines() {
     return [];
   }
   return data ?? [];
-}
+});
+
+// Lädt alle deal_stages in einer Query statt pro Pipeline separat nachzuladen —
+// ermöglicht es Aufrufern, die Pipeline-abhängige Stage-Auswahl clientseitig zu
+// filtern, statt eine zweite, von Promise.all abhängige Query zu verketten.
+export const getAllDealStages = cache(async () => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_stages")
+    .select("id, pipeline_id, name, position, color")
+    .order("position", { ascending: true });
+
+  if (error) {
+    console.error("getAllDealStages error:", error.message);
+    return [];
+  }
+  return data ?? [];
+});
 
 export async function getStagesByPipeline(pipelineId: string) {
   const supabase = await createClient();

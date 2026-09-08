@@ -3,8 +3,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getPipelinePhases } from "@/app/(dashboard)/dashboard/deals/data";
-import { getContacts as fetchContacts } from "./data";
-import type { Contact, ContactStatus, Note, CallLog, ContactFilters, DealStatusFilter, CallType, ContactSortKey, SortDir } from "./types";
+import type { Contact, ContactStatus, Note, CallLog } from "./types";
 
 export type ActionResult<T = undefined> = {
   success: boolean;
@@ -28,116 +27,11 @@ function parseContactForm(formData: FormData) {
   };
 }
 
-async function getContactIdsByDealStatus(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  dealStatus: DealStatusFilter
-): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("deals")
-    .select("contact_id, stage:deal_stages!deals_stage_id_fkey ( name )");
-
-  if (error || !data) {
-    console.error("getContactIdsByDealStatus error:", error?.message);
-    return [];
-  }
-
-  const filtered = data.filter((row: any) => {
-    const stageRaw = Array.isArray(row.stage) ? row.stage[0] : row.stage;
-    const stageName = (stageRaw?.name ?? "").toLowerCase();
-    const isWon = stageName.includes("gewonnen") || stageName.includes("won");
-    const isLost = stageName.includes("verloren") || stageName.includes("lost");
-    if (dealStatus === "gewonnen") return isWon;
-    if (dealStatus === "verloren") return isLost;
-    return !isWon && !isLost;
-  });
-
-  return [...new Set(filtered.map((row: any) => row.contact_id).filter(Boolean))];
-}
-
-async function getContactIdsByEventCategory(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  eventCategory: CallType
-): Promise<string[]> {
-  const { data, error } = await supabase
-    .from("call_logs")
-    .select("contact_id")
-    .eq("call_type", eventCategory);
-
-  if (error || !data) {
-    console.error("getContactIdsByEventCategory error:", error?.message);
-    return [];
-  }
-
-  return [...new Set(data.map((row: any) => row.contact_id).filter(Boolean))];
-}
-
-// "Mehr laden": nächsten Batch der Kontakte-Tabelle nachladen (siehe getContacts in data.ts).
-export async function loadMoreContacts(
-  offset: number,
-  filters?: ContactFilters,
-  limit = 100,
-  sortKey?: ContactSortKey,
-  sortDir: SortDir = "asc"
-): Promise<ActionResult<Contact[]>> {
-  const data = await fetchContacts(filters, limit, offset, sortKey, sortDir);
-  return { success: true, data };
-}
-
-// ==================== DATA FETCHER (veraltet, siehe ./data.ts) ====================
-export async function getContacts(filters?: ContactFilters | string): Promise<Contact[]> {
-  const supabase = await createClient();
-  const normalized: ContactFilters =
-    typeof filters === "string" ? { q: filters } : filters ?? {};
-
-  let query = supabase
-    .from("contacts")
-    .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
-    .order("created_at", { ascending: false });
-
-  if (normalized.q && normalized.q.trim().length > 0) {
-    const term = normalized.q.trim();
-    query = query.or(
-      `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,company.ilike.%${term}%`
-    );
-  }
-
-  if (normalized.status) {
-    query = query.eq("status", normalized.status);
-  }
-
-  if (normalized.company && normalized.company.trim().length > 0) {
-    query = query.ilike("company", `%${normalized.company.trim()}%`);
-  }
-
-  if (normalized.dateFrom) {
-    query = query.gte("created_at", normalized.dateFrom);
-  }
-
-  if (normalized.dateTo) {
-    query = query.lte("created_at", `${normalized.dateTo}T23:59:59.999`);
-  }
-
-  if (normalized.dealStatus) {
-    const ids = await getContactIdsByDealStatus(supabase, normalized.dealStatus);
-    if (ids.length === 0) return [];
-    query = query.in("id", ids);
-  }
-
-  if (normalized.eventCategory) {
-    const ids = await getContactIdsByEventCategory(supabase, normalized.eventCategory);
-    if (ids.length === 0) return [];
-    query = query.in("id", ids);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("getContacts error:", error.message);
-    return [];
-  }
-
-  return (data ?? []) as Contact[];
-}
+// Hinweis: `getContacts`/`loadMoreContacts` (Server Action) lebten früher hier
+// als veraltetes Duplikat von ./data.ts — entfernt zugunsten von
+// app/api/contacts/route.ts (Edge Function), die ContactsTable.tsx jetzt direkt
+// per fetch() aufruft. Die serverseitig gerenderte erste Seite nutzt weiterhin
+// getContacts aus ./data.ts (unverändert, siehe kontakte/page.tsx).
 
 export async function getContactCompanies(): Promise<string[]> {
   const supabase = await createClient();
@@ -231,7 +125,8 @@ export async function getContactNotes(contactId: string) {
       `
     )
     .eq("contact_id", contactId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     console.error("getContactNotes error:", error.message);
@@ -258,7 +153,8 @@ export async function getContactCallLogs(contactId: string) {
       `
     )
     .eq("contact_id", contactId)
-    .order("called_at", { ascending: false });
+    .order("called_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     console.error("getContactCallLogs error:", error.message);
@@ -332,7 +228,8 @@ export async function getContactStageHistory(contactId: string) {
       `
     )
     .eq("deals.contact_id", contactId)
-    .order("changed_at", { ascending: false });
+    .order("changed_at", { ascending: false })
+    .limit(20);
 
   if (error) {
     console.error("getContactStageHistory error:", error.message);
@@ -595,7 +492,9 @@ export async function updateContactDetails(
     .from("contacts")
     .update(fields)
     .eq("id", contactId)
-    .select("*")
+    .select(
+      "id, first_name, last_name, email, phone, company, position, address, country, status, notes, assigned_to, last_contacted_at, created_at"
+    )
     .single();
 
   if (error) {
@@ -610,19 +509,21 @@ export async function updateContactDetails(
 
 // ==================== SHEET DATA FETCHER ====================
 export async function getContactDetailPayload(contactId: string) {
-  const supabase = await createClient();
-
-  const contactResult = await getContactById(contactId);
-  if (!contactResult) {
-    return { success: false, message: "Kontakt nicht gefunden." };
-  }
-
-  const [notes, callLogs, deals, stageHistory] = await Promise.all([
+  console.time(`[perf] getContactDetailPayload ${contactId}`);
+  // Alle fünf Abfragen parallel starten statt in einer Kette (contact -> Rest) —
+  // die Existenzprüfung des Kontakts blockiert die anderen Queries nicht mehr.
+  const [contactResult, notes, callLogs, deals, stageHistory] = await Promise.all([
+    getContactById(contactId),
     getContactNotes(contactId),
     getContactCallLogs(contactId),
     getContactDeals(contactId),
     getContactStageHistory(contactId),
   ]);
+  console.timeEnd(`[perf] getContactDetailPayload ${contactId}`);
+
+  if (!contactResult) {
+    return { success: false, message: "Kontakt nicht gefunden." };
+  }
 
   return {
     success: true,
@@ -631,6 +532,7 @@ export async function getContactDetailPayload(contactId: string) {
 }
 
 export async function getContactSheetBootstrap() {
+  console.time("[perf] getContactSheetBootstrap");
   const [teamMembers, pipelines, stages, phases] = await Promise.all([
     getTeamMembers(),
     getPipelines(),
@@ -649,6 +551,7 @@ export async function getContactSheetBootstrap() {
     })(),
     getPipelinePhases(),
   ]);
+  console.timeEnd("[perf] getContactSheetBootstrap");
 
   return { success: true, data: { teamMembers, pipelines, stages, phases } };
 }

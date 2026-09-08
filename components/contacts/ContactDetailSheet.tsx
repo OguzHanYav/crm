@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { getContactDetailPayload, getContactSheetBootstrap, addNoteToContact } from "@/app/(dashboard)/dashboard/kontakte/actions";
 import { updateDealStage } from "@/app/(dashboard)/dashboard/deals/actions";
@@ -8,6 +9,9 @@ import type { ContactDetailPayload, ContactSheetBootstrap } from "@/app/(dashboa
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Badge, STATUS_TONE_MAP } from "@/components/ui/Badge";
+import { useCrmStore, type ContactPreview } from "@/lib/store/useCrmStore";
+
+const FIVE_MINUTES = 5 * 60 * 1000;
 
 type Tab = "info" | "activity" | "notes";
 
@@ -83,33 +87,63 @@ export default function ContactDetailSheet() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const contactId = searchParams.get("contactId");
+  const queryClient = useQueryClient();
 
-  const [payload, setPayload] = useState<ContactDetailPayload | null>(null);
-  const [bootstrap, setBootstrap] = useState<ContactSheetBootstrap | null>(null);
-  const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("info");
+  // Aus der Tabellenzeile bekannte Grunddaten — lässt den Header sofort (0ms)
+  // mit echten Werten rendern, statt auf den vollständigen Payload zu warten.
+  const contactPreview = useCrmStore((s) => s.contactPreview);
 
   const isOpen = Boolean(contactId);
 
-  const load = useCallback(async (id: string) => {
-    setLoading(true);
-    const [detailResult, bootstrapResult] = await Promise.all([
-      getContactDetailPayload(id),
-      getContactSheetBootstrap(),
-    ]);
-    if (detailResult.success && detailResult.data) setPayload(detailResult.data);
-    if (bootstrapResult.success && bootstrapResult.data) setBootstrap(bootstrapResult.data);
-    setLoading(false);
-  }, []);
+  // 5 Minuten Cache: Wird derselbe Kontakt innerhalb dieses Fensters erneut
+  // geöffnet (z. B. Sheet schließen/wieder öffnen, oder Wechsel deals<->kontakte),
+  // liefert TanStack Query die Daten sofort aus dem Cache statt neu zu fetchen.
+  const detailQuery = useQuery({
+    queryKey: ["contact-detail", contactId],
+    queryFn: async () => {
+      const result = await getContactDetailPayload(contactId as string);
+      if (!result.success || !result.data) {
+        throw new Error(result.message ?? "Kontakt nicht gefunden.");
+      }
+      return result.data;
+    },
+    enabled: Boolean(contactId),
+    staleTime: FIVE_MINUTES,
+  });
 
+  // Team/Pipelines/Stages/Phasen ändern sich selten — ein Cache-Eintrag für alle
+  // Kontakte, ebenfalls 5 Minuten gültig.
+  const bootstrapQuery = useQuery({
+    queryKey: ["contact-sheet-bootstrap"],
+    queryFn: async () => {
+      const result = await getContactSheetBootstrap();
+      if (!result.success || !result.data) {
+        throw new Error("Bootstrap-Daten konnten nicht geladen werden.");
+      }
+      return result.data;
+    },
+    staleTime: FIVE_MINUTES,
+  });
+
+  const payload = detailQuery.data ?? null;
+  const bootstrap = bootstrapQuery.data ?? null;
+  const notFound = detailQuery.isError;
+  const payloadMatchesCurrent = Boolean(payload && contactId && payload.contact.id === contactId);
+  const preview: ContactPreview | null =
+    contactPreview && contactId && contactPreview.id === contactId ? contactPreview : null;
+
+  // Tab-Reset ist reiner UI-Zustand (kein Datenfetch) und bleibt daher als
+  // schlanker useEffect — das Laden selbst übernimmt useQuery oben.
   useEffect(() => {
-    if (contactId) {
-      setTab("info");
-      load(contactId);
-    } else {
-      setPayload(null);
-    }
-  }, [contactId, load]);
+    if (contactId) setTab("info");
+    // Kein sofortiges Entfernen des Sheets beim Schließen: Browser-Erweiterungen
+    // (Passwort-Manager/Autofill) hängen Listener an die Formularfelder im Sheet
+    // und greifen beim Aufräumen per requestIdleCallback teils erst verzögert
+    // darauf zu ("Cannot read properties of undefined (reading 'startTime')"),
+    // wenn React die Knoten synchron entfernt hat. Das Sheet bleibt daher bis zum
+    // nächsten Öffnen im DOM (nur visuell versteckt, siehe isOpen unten).
+  }, [contactId]);
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());
@@ -119,20 +153,21 @@ export default function ContactDetailSheet() {
   }
 
   function refreshPayload() {
-    if (contactId) load(contactId);
+    if (contactId) queryClient.invalidateQueries({ queryKey: ["contact-detail", contactId] });
     router.refresh();
   }
 
-  if (!isOpen) return null;
+  if (!isOpen && !payload) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div
+      className={`fixed inset-0 z-50 ${isOpen ? "flex justify-end" : "hidden"}`}
+      aria-hidden={!isOpen}
+    >
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onClick={close} />
 
       <div className="relative flex h-full w-full max-w-full flex-col rounded-none border-l border-border bg-card shadow-2xl sm:max-w-xl sm:rounded-l-2xl">
-        {loading && !payload ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">Lädt...</div>
-        ) : payload ? (
+        {payloadMatchesCurrent && payload ? (
           <SheetContent
             payload={payload}
             bootstrap={bootstrap}
@@ -141,13 +176,83 @@ export default function ContactDetailSheet() {
             onClose={close}
             onRefresh={refreshPayload}
           />
-        ) : (
+        ) : notFound ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             Kontakt nicht gefunden.
           </div>
-        )}
+        ) : isOpen ? (
+          <SheetSkeleton preview={preview} onClose={close} />
+        ) : null}
       </div>
     </div>
+  );
+}
+
+// Zeigt sofort echte Werte, wenn ein Preview aus der Tabellenzeile vorliegt
+// (Name/Telefon/E-Mail), und pulsierende Platzhalter für alles, was erst mit
+// dem vollständigen Payload nachgeladen wird — das Sheet öffnet dadurch ohne
+// Wartezeit, statt durch einen blockierenden "Lädt..."-Zustand.
+function SheetSkeleton({ preview, onClose }: { preview: ContactPreview | null; onClose: () => void }) {
+  return (
+    <>
+      <div className="flex flex-col gap-4 border-b border-border p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              {preview ? (
+                `${preview.first_name} ${preview.last_name}`
+              ) : (
+                <span className="inline-block h-5 w-32 animate-pulse rounded bg-muted align-middle" />
+              )}
+            </h2>
+            <p className="mt-1.5 h-4 w-24 animate-pulse rounded bg-muted" />
+          </div>
+          <button
+            onClick={onClose}
+            className="ring-focus flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-sm">
+          {preview?.phone && (
+            <a
+              href={`tel:${preview.phone}`}
+              className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
+            >
+              📞 {preview.phone}
+            </a>
+          )}
+          {preview?.email && (
+            <a
+              href={`mailto:${preview.email}`}
+              className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
+            >
+              ✉️ E-Mail
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div className="no-scrollbar overflow-x-auto border-b border-border px-4 py-3">
+        <div className="flex min-h-[44px] items-center gap-1 whitespace-nowrap rounded-xl bg-muted/50 p-1">
+          {TABS.map(([key, label]) => (
+            <span key={key} className="flex-1 shrink-0 rounded-lg px-3 py-1.5 text-center text-sm font-medium text-muted-foreground/40">
+              {label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-4 w-full animate-pulse rounded bg-muted" style={{ opacity: 1 - i * 0.1 }} />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

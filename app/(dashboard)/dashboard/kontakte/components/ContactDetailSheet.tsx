@@ -8,6 +8,7 @@ import type { ContactDetailPayload, ContactSheetBootstrap } from "@/app/(dashboa
 import LinkDealModal from "@/app/(dashboard)/dashboard/kontakte/components/LinkDealModal";
 import { Button } from "@/components/ui/Button";
 import { Input, Select, Textarea } from "@/components/ui/Input";
+import { useCrmStore, type ContactPreview } from "@/lib/store/useCrmStore";
 
 type Tab = "info" | "activity" | "notes";
 
@@ -33,22 +34,31 @@ export default function ContactDetailSheet() {
 
   const [payload, setPayload] = useState<ContactDetailPayload | null>(null);
   const [bootstrap, setBootstrap] = useState<ContactSheetBootstrap | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState<Tab>("info");
   const [linkDealOpen, setLinkDealOpen] = useState(false);
   const [, startTransition] = useTransition();
+  // Aus der Tabellenzeile bekannte Grunddaten — lässt den Header sofort (0ms)
+  // mit echten Werten rendern, statt auf den vollständigen Payload zu warten.
+  const contactPreview = useCrmStore((s) => s.contactPreview);
 
   const isOpen = Boolean(contactId);
+  const payloadMatchesCurrent = Boolean(payload && contactId && payload.contact.id === contactId);
+  const preview: ContactPreview | null =
+    contactPreview && contactId && contactPreview.id === contactId ? contactPreview : null;
 
   const load = useCallback(async (id: string) => {
-    setLoading(true);
+    setNotFound(false);
     const [detailResult, bootstrapResult] = await Promise.all([
       getContactDetailPayload(id),
       getContactSheetBootstrap(),
     ]);
-    if (detailResult.success && detailResult.data) setPayload(detailResult.data);
+    if (detailResult.success && detailResult.data) {
+      setPayload(detailResult.data);
+    } else {
+      setNotFound(true);
+    }
     if (bootstrapResult.success && bootstrapResult.data) setBootstrap(bootstrapResult.data);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -85,11 +95,7 @@ export default function ContactDetailSheet() {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
 
       <div className="relative flex h-full w-full max-w-xl flex-col border-l border-border bg-card shadow-2xl">
-        {loading && !payload ? (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
-            Lädt...
-          </div>
-        ) : payload ? (
+        {payloadMatchesCurrent && payload ? (
           <SheetContent
             payload={payload}
             bootstrap={bootstrap}
@@ -99,13 +105,15 @@ export default function ContactDetailSheet() {
             onRefresh={refreshPayload}
             onOpenLinkDeal={() => setLinkDealOpen(true)}
           />
-        ) : (
+        ) : notFound ? (
           <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
             Kontakt nicht gefunden.
           </div>
-        )}
+        ) : isOpen ? (
+          <SheetSkeleton preview={preview} onClose={close} />
+        ) : null}
 
-        {linkDealOpen && payload && bootstrap && (
+        {linkDealOpen && payloadMatchesCurrent && payload && bootstrap && (
           <LinkDealModal
             contact={payload.contact}
             pipelines={bootstrap.pipelines}
@@ -119,6 +127,66 @@ export default function ContactDetailSheet() {
         )}
       </div>
     </div>
+  );
+}
+
+// Zeigt sofort echte Werte, wenn ein Preview aus der Tabellenzeile vorliegt
+// (Name/Telefon/E-Mail), und pulsierende Platzhalter für alles, was erst mit
+// dem vollständigen Payload nachgeladen wird — das Sheet öffnet dadurch ohne
+// Wartezeit, statt durch einen blockierenden "Lädt..."-Zustand.
+function SheetSkeleton({ preview, onClose }: { preview: ContactPreview | null; onClose: () => void }) {
+  return (
+    <>
+      <div className="flex flex-col gap-3 border-b border-border p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              {preview ? (
+                `${preview.first_name} ${preview.last_name}`
+              ) : (
+                <span className="inline-block h-5 w-32 animate-pulse rounded bg-muted align-middle" />
+              )}
+            </h2>
+            <p className="mt-1.5 h-4 w-24 animate-pulse rounded bg-muted" />
+          </div>
+          <button
+            onClick={onClose}
+            className="ring-focus rounded p-1 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-sm">
+          {preview?.phone && (
+            <a href={`tel:${preview.phone}`} className="ring-focus rounded-lg border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-muted/50">
+              📞 {preview.phone}
+            </a>
+          )}
+          {preview?.email && (
+            <a href={`mailto:${preview.email}`} className="ring-focus rounded-lg border border-border px-3 py-1.5 text-foreground transition-colors hover:bg-muted/50">
+              ✉️ E-Mail
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div className="flex border-b border-border">
+        {["Kontakt-Info & Call Log", "Aktivitäten", "Notizen"].map((label) => (
+          <span key={label} className="flex-1 px-3 py-2.5 text-center text-sm font-medium text-muted-foreground/40">
+            {label}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-4 w-full animate-pulse rounded bg-muted" style={{ opacity: 1 - i * 0.1 }} />
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

@@ -1,14 +1,16 @@
 "use client";
 
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { Contact, ContactFilters, ContactSortKey, SortDir } from "../types";
+import type { Contact, ContactSortKey, SortDir } from "../types";
 import StatusBadge from "./StatusBadge";
 import { Card } from "@/components/ui/Card";
-import { loadMoreContacts } from "../actions";
+import { useCrmStore } from "@/lib/store/useCrmStore";
 
-const LOAD_BATCH_SIZE = 100;
+const LOAD_BATCH_SIZE = 50;
+const FIVE_MINUTES = 5 * 60 * 1000;
 
 // Dedupliziert nach id — verhindert React "duplicate key"-Fehler, wenn range()-Pagination
 // (z. B. bei instabiler Sortierung) dieselbe Zeile mehrfach zurückliefert.
@@ -32,6 +34,19 @@ const ContactRow = memo(function ContactRow({
   contactHref: string;
 }) {
   const stopPropagation = useCallback((e: React.MouseEvent<HTMLTableCellElement>) => e.stopPropagation(), []);
+  const setContactPreview = useCrmStore((s) => s.setContactPreview);
+  // Grunddaten der Zeile sofort in den Store schreiben — das ContactDetailSheet
+  // kann Name/E-Mail/Telefon dadurch ohne Wartezeit rendern, während die
+  // vollständigen Detaildaten (Deals/Notizen/Aktivitäten) im Hintergrund laden.
+  const handleClick = useCallback(() => {
+    setContactPreview({
+      id: contact.id,
+      first_name: contact.first_name,
+      last_name: contact.last_name,
+      email: contact.email,
+      phone: contact.phone,
+    });
+  }, [setContactPreview, contact.id, contact.first_name, contact.last_name, contact.email, contact.phone]);
 
   return (
     <tr className="group transition-colors duration-150 hover:bg-muted/40">
@@ -39,6 +54,7 @@ const ContactRow = memo(function ContactRow({
         <Link
           href={contactHref}
           scroll={false}
+          onClick={handleClick}
           className="block truncate font-medium text-foreground transition-colors group-hover:text-accent group-hover:underline"
         >
           {contact.first_name} {contact.last_name}
@@ -118,58 +134,72 @@ export default function ContactsTable({
   const searchParams = useSearchParams();
   const currentQuery = searchParams.get("q") || "";
 
-  const [localContacts, setLocalContacts] = useState<Contact[]>(() => dedupeById(contacts));
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  // Sortierung wird serverseitig (vor .range()) angewendet — siehe getContacts/loadMoreContacts
-  // in data.ts/actions.ts — damit "Mehr laden" den global sortierten Bestand fortsetzt.
+  // Sortierung wird serverseitig (vor .range()) angewendet — siehe getContacts in
+  // data.ts (Erststeite) bzw. app/api/contacts/route.ts (Mehr laden) — damit
+  // "Mehr laden" den global sortierten Bestand fortsetzt.
   const [sortKey, setSortKey] = useState<ContactSortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const isDefaultSort = sortKey === null && sortDir === "asc";
 
-  useEffect(() => {
-    setLocalContacts(dedupeById(contacts));
-  }, [contacts]);
+  const {
+    data,
+    fetchNextPage,
+    isFetchingNextPage,
+    isFetching,
+  } = useInfiniteQuery({
+    queryKey: ["contacts", { q: currentQuery, sortKey, sortDir }] as const,
+    initialPageParam: 0,
+    // Die erste Seite kommt bereits server-gerendert (Server Component) als
+    // `contacts`-Prop — als initialData einspeisen, damit useInfiniteQuery beim
+    // Mount NICHT sofort erneut denselben Request feuert. Gilt nur für die
+    // Standard-Sortierung, weil nur dafür `contacts` server-seitig geladen wurde.
+    initialData: isDefaultSort
+      ? () => ({ pages: [dedupeById(contacts)], pageParams: [0] })
+      : undefined,
+    // "Load More" ruft die Edge Function unter app/api/contacts/route.ts auf
+    // (statt einer Server Action) — Vorteil: kein Node.js-Lambda-Cold-Start.
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.set("offset", String(pageParam));
+      params.set("limit", String(LOAD_BATCH_SIZE));
+      if (currentQuery) params.set("q", currentQuery);
+      if (sortKey) params.set("sortKey", sortKey);
+      params.set("sortDir", sortDir);
 
+      const res = await fetch(`/api/contacts?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.message ?? "Kontakte konnten nicht geladen werden.");
+      }
+      return dedupeById(json.data as Contact[]);
+    },
+    getNextPageParam: (_lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, page) => sum + page.length, 0);
+      return loaded < totalCount ? loaded : undefined;
+    },
+    staleTime: FIVE_MINUTES,
+  });
+
+  const localContacts = useMemo(() => dedupeById((data?.pages ?? []).flat()), [data]);
   const hasMore = localContacts.length < totalCount;
 
-  // Append: neue 100 Einträge werden HINTER den bereits sichtbaren gerendert,
-  // die Tabelle wird nicht ersetzt. Gleicher sortKey/sortDir wie der bisherige Bestand.
-  const handleLoadMore = useCallback(async () => {
-    setIsLoadingMore(true);
-    const filters: ContactFilters = { q: currentQuery || undefined };
-    const result = await loadMoreContacts(localContacts.length, filters, LOAD_BATCH_SIZE, sortKey ?? undefined, sortDir);
-    if (result.success && result.data) {
-      setLocalContacts((prev) => dedupeById([...prev, ...(result.data as Contact[])]));
-    }
-    setIsLoadingMore(false);
-  }, [localContacts.length, currentQuery, sortKey, sortDir]);
+  const handleLoadMore = useCallback(() => {
+    fetchNextPage();
+  }, [fetchNextPage]);
 
-  // Sortierwechsel: von vorn (offset 0) neu und GLOBAL sortiert laden, nicht nur
-  // die bereits im Speicher befindlichen ~100 Zeilen lokal umsortieren.
-  const handleSortChange = useCallback(
-    (key: ContactSortKey) => {
-      let nextKey: ContactSortKey | null = key;
-      let nextDir: SortDir = "asc";
-      if (sortKey === key) {
-        if (sortDir === "asc") {
-          nextDir = "desc";
-        } else {
-          nextKey = null;
-        }
-      }
-      setSortKey(nextKey);
-      setSortDir(nextDir);
-      setIsLoadingMore(true);
-
-      const filters: ContactFilters = { q: currentQuery || undefined };
-      loadMoreContacts(0, filters, LOAD_BATCH_SIZE, nextKey ?? undefined, nextDir).then((result) => {
-        if (result.success && result.data) {
-          setLocalContacts(dedupeById(result.data));
-        }
-        setIsLoadingMore(false);
-      });
-    },
-    [sortKey, sortDir, currentQuery]
-  );
+  // Sortierwechsel setzt einen neuen Query-Key — useInfiniteQuery lädt Seite 0
+  // dafür automatisch neu (global sortiert), statt nur die bereits geladenen
+  // Zeilen lokal umzusortieren.
+  const handleSortChange = useCallback((key: ContactSortKey) => {
+    setSortKey((prevKey) => {
+      if (prevKey !== key) return key;
+      return sortDir === "asc" ? key : null;
+    });
+    setSortDir((prevDir) => {
+      if (sortKey !== key) return "asc";
+      return prevDir === "asc" ? "desc" : "asc";
+    });
+  }, [sortKey, sortDir]);
 
   if (localContacts.length === 0) {
     return (
@@ -181,7 +211,7 @@ export default function ContactsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Card className="overflow-x-auto">
+      <Card className={`overflow-x-auto transition-opacity ${isFetching && !isFetchingNextPage ? "opacity-60" : ""}`}>
         <table className="w-full min-w-[720px] table-fixed text-xs">
           <thead className="bg-muted/30">
             <tr>
@@ -225,10 +255,10 @@ export default function ContactsTable({
           <button
             type="button"
             onClick={handleLoadMore}
-            disabled={isLoadingMore}
+            disabled={isFetchingNextPage}
             className="ring-focus min-h-[44px] rounded-md bg-accent px-4 py-1.5 font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
           >
-            {isLoadingMore ? "Lädt…" : `Mehr laden (+${Math.min(LOAD_BATCH_SIZE, totalCount - localContacts.length)})`}
+            {isFetchingNextPage ? "Lädt…" : `Mehr laden (+${Math.min(LOAD_BATCH_SIZE, totalCount - localContacts.length)})`}
           </button>
         )}
       </div>
