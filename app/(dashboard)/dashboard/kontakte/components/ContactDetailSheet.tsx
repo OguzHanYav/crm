@@ -55,9 +55,13 @@ export default function ContactDetailSheet() {
     if (contactId) {
       setTab("info");
       load(contactId);
-    } else {
-      setPayload(null);
     }
+    // Kein sofortiges setPayload(null) beim Schließen: Browser-Erweiterungen
+    // (Passwort-Manager/Autofill) hängen Listener an die Formularfelder im Sheet
+    // und greifen beim Aufräumen per requestIdleCallback teils erst verzögert
+    // darauf zu ("Cannot read properties of undefined (reading 'startTime')"),
+    // wenn React die Knoten synchron entfernt hat. Das Sheet bleibt daher bis zum
+    // nächsten Öffnen im DOM (nur visuell versteckt, siehe isOpen/hidden unten).
   }, [contactId, load]);
 
   function close() {
@@ -71,10 +75,13 @@ export default function ContactDetailSheet() {
     if (contactId) load(contactId);
   }
 
-  if (!isOpen) return null;
+  if (!isOpen && !payload) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div
+      className={`fixed inset-0 z-50 ${isOpen ? "flex justify-end" : "hidden"}`}
+      aria-hidden={!isOpen}
+    >
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
 
       <div className="relative flex h-full w-full max-w-xl flex-col border-l border-border bg-card shadow-2xl">
@@ -170,6 +177,9 @@ function SheetContent({
               id={`primary-deal-stage-${primaryDeal.id}`}
               name="primaryDealStage"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               aria-label="Phase des Deals"
               defaultValue={primaryDeal.stage_id}
               onChange={(e) => {
@@ -279,18 +289,39 @@ function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefr
 
       <div>
         <h3 className="mb-2 text-sm font-semibold text-foreground">Anruf protokollieren</h3>
-        <form action={handleSubmit} className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-3">
+        <form
+          action={handleSubmit}
+          data-form-type="other"
+          autoComplete="off"
+          className="flex flex-col gap-3 rounded-xl border border-border bg-muted/20 p-3"
+        >
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="sheet-call-type" className="mb-1 block text-xs font-medium text-muted-foreground">Anruf-Typ</label>
-              <Select id="sheet-call-type" name="call_type" autoComplete="off" className="h-8 text-sm">
+              <Select
+                id="sheet-call-type"
+                name="call_type"
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-bwignore="true"
+                className="h-8 text-sm"
+              >
                 <option value="opening_call">Opening-Call</option>
                 <option value="follow_up_call">Follow-Up</option>
               </Select>
             </div>
             <div>
               <label htmlFor="sheet-call-interest" className="mb-1 block text-xs font-medium text-muted-foreground">Interesse bekundet</label>
-              <Select id="sheet-call-interest" name="interest_expressed" autoComplete="off" className="h-8 text-sm">
+              <Select
+                id="sheet-call-interest"
+                name="interest_expressed"
+                autoComplete="off"
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-bwignore="true"
+                className="h-8 text-sm"
+              >
                 <option value="">— unklar —</option>
                 <option value="true">Ja</option>
                 <option value="false">Nein</option>
@@ -305,6 +336,9 @@ function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefr
               type="datetime-local"
               name="called_at"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               defaultValue={new Date().toISOString().slice(0, 16)}
               className="h-8 text-sm"
             />
@@ -312,7 +346,17 @@ function InfoTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRefr
 
           <div>
             <label htmlFor="sheet-call-summary" className="mb-1 block text-xs font-medium text-muted-foreground">Notiz</label>
-            <Textarea id="sheet-call-summary" name="summary" autoComplete="off" rows={2} required className="text-sm" />
+            <Textarea
+              id="sheet-call-summary"
+              name="summary"
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
+              rows={2}
+              required
+              className="text-sm"
+            />
           </div>
 
           <Button type="submit" disabled={isPending} size="sm" className="self-end">
@@ -382,22 +426,32 @@ function NotesTab({ payload, onRefresh }: { payload: ContactDetailPayload; onRef
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2">
+      <form
+        data-form-type="other"
+        autoComplete="off"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
+        className="flex gap-2"
+      >
         <Input
           id="notes-tab-new-note"
           name="newNote"
           autoComplete="off"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
           aria-label="Neue Notiz"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="Neue Notiz..."
           className="flex-1"
         />
-        <Button onClick={submit} disabled={isPending || !text.trim()} size="sm">
+        <Button type="submit" disabled={isPending || !text.trim()} size="sm">
           {isPending ? "..." : "Speichern"}
         </Button>
-      </div>
+      </form>
 
       {payload.notes.length === 0 ? (
         <p className="text-sm text-muted-foreground">Noch keine Notizen.</p>

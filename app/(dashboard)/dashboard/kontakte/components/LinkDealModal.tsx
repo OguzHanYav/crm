@@ -51,13 +51,16 @@ export default function LinkDealModal({
           </button>
         </div>
 
-        <form action={handleSubmit} className="flex flex-col gap-3">
+        <form action={handleSubmit} data-form-type="other" autoComplete="off" className="flex flex-col gap-3">
           <div>
             <label htmlFor="deal-title" className="mb-1 block text-xs font-medium text-gray-600">Titel</label>
             <input
               id="deal-title"
               name="title"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               required
               defaultValue={`Deal – ${contact.first_name} ${contact.last_name}`}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -70,6 +73,9 @@ export default function LinkDealModal({
               id="deal-pipeline"
               name="pipeline_id"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               value={selectedPipeline}
               onChange={(e) => setSelectedPipeline(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -88,6 +94,9 @@ export default function LinkDealModal({
               id="deal-stage"
               name="stage_id"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               required
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
@@ -106,6 +115,9 @@ export default function LinkDealModal({
               name="value"
               type="number"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               min="0"
               step="0.01"
               required
@@ -120,6 +132,9 @@ export default function LinkDealModal({
               id="deal-assigned-to"
               name="assigned_to"
               autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-bwignore="true"
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               <option value="">— nicht zugewiesen —</option>
