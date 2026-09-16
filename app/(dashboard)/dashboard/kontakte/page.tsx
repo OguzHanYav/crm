@@ -4,6 +4,7 @@ import ContactsTable from "./components/ContactsTable";
 import ContactsFilterBar from "./components/ContactsFilterBar";
 import ContactFormModal from "./components/ContactFormModal";
 import ContactDetailSheet from "@/components/contacts/ContactDetailSheet";
+import ContactsActionsBar from "@/components/contacts/ContactsActionsBar";
 import type { ContactFilters, ContactStatus, CallType, DealStatusFilter } from "./types";
 
 export default async function KontaktePage({
@@ -60,6 +61,8 @@ export default async function KontaktePage({
       <ContactsFilterBar companies={companies} />
 
       <ContactsTable contacts={contacts} isAdmin={isAdmin} teamMembers={teamMembers} totalCount={totalCount} />
+
+      <ContactsActionsBar />
 
       <ContactDetailSheet />
     </div>

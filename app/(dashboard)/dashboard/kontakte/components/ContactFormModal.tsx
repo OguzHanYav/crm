@@ -200,6 +200,13 @@ export default function ContactFormModal(props: Props) {
                 />
               </div>
 
+              {mode === "create" && (
+                <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                  <input type="checkbox" name="autoSendWelcome" defaultChecked={false} className="h-4 w-4 rounded border-gray-300" />
+                  Willkommens-E-Mail/WhatsApp automatisch senden
+                </label>
+              )}
+
               {state.message && !state.success && (
                 <p className="text-xs text-red-600">{state.message}</p>
               )}

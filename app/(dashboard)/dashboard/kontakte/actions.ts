@@ -3,6 +3,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getPipelinePhases } from "@/app/(dashboard)/dashboard/deals/data";
+import { getServiceRoleClient } from "@/lib/supabase/admin";
+import { sendEmail } from "@/lib/services/email";
+import { sendWhatsAppTemplate } from "@/lib/services/whatsapp";
+import { getNotificationSettings } from "@/lib/services/notification-settings";
 import type { Contact, ContactStatus, Note, CallLog } from "./types";
 
 export type ActionResult<T = undefined> = {
@@ -247,6 +251,51 @@ export async function getContactStageHistory(contactId: string) {
   });
 }
 
+// Willkommens-Versand nach Kontakt-Erstellung (autoSendWelcome-Checkbox im
+// Anlage-Formular) — siehe app/api/notifications/send/route.ts für den
+// äquivalenten Bulk-Versand-Pfad. Loggt jedes Ergebnis als Activity, wirft aber
+// nie einen Fehler nach außen (siehe Aufrufer in createContact).
+async function sendWelcomeMessages(contact: Contact): Promise<void> {
+  const admin = getServiceRoleClient();
+  const contactName = `${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || "Kontakt";
+
+  if (contact.email) {
+    const settings = await getNotificationSettings();
+    const result = await sendEmail({
+      to: contact.email,
+      subject: `Willkommen, ${contact.first_name}!`,
+      html: `<p>Hallo ${contact.first_name},</p><p>willkommen! Wir freuen uns auf die Zusammenarbeit.</p>`,
+      text: `Hallo ${contact.first_name}, willkommen! Wir freuen uns auf die Zusammenarbeit.`,
+      fromOverride: settings.from,
+      replyTo: settings.replyTo,
+    });
+
+    await admin.from("activities").insert({
+      contact_id: contact.id,
+      type: result.success ? "email_sent" : "email_failed",
+      description: result.success
+        ? `Willkommens-E-Mail an ${contactName} gesendet.`
+        : `Willkommens-E-Mail an ${contactName} fehlgeschlagen: ${result.error}`,
+    });
+  }
+
+  if (contact.phone) {
+    const result = await sendWhatsAppTemplate({
+      to: contact.phone,
+      templateName: "welcome_message",
+      languageCode: "de",
+    });
+
+    await admin.from("activities").insert({
+      contact_id: contact.id,
+      type: result.success ? "whatsapp_sent" : "whatsapp_failed",
+      description: result.success
+        ? `Willkommens-WhatsApp-Template an ${contactName} gesendet.`
+        : `Willkommens-WhatsApp-Template an ${contactName} fehlgeschlagen: ${result.error}`,
+    });
+  }
+}
+
 // ==================== SERVER ACTIONS (CRUD) ====================
 export async function createContact(
   _prevState: ActionResult<Contact>,
@@ -274,6 +323,18 @@ export async function createContact(
   }
 
   revalidatePath(CONTACTS_PATH);
+
+  const autoSendWelcome = formData.get("autoSendWelcome") === "on";
+  if (autoSendWelcome) {
+    // Bewusst awaited (nicht "fire-and-forget" ohne await): Server Actions können
+    // nach dem Return terminieren, bevor ein nicht-awaiteter Hintergrund-Task
+    // fertig ist. Fehler werden hier abgefangen und geloggt, damit sie NIE das
+    // bereits erfolgreiche Contact-Insert als Fehlschlag erscheinen lassen.
+    await sendWelcomeMessages(data as Contact).catch((err) => {
+      console.error("sendWelcomeMessages error:", err);
+    });
+  }
+
   return { success: true, data: data as Contact };
 }
 

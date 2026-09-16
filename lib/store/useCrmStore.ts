@@ -52,6 +52,14 @@ type CrmStore = {
   // nachgeladen werden, statt das Sheet-Öffnen durch einen await zu blockieren.
   contactPreview: ContactPreview | null;
   setContactPreview: (preview: ContactPreview | null) => void;
+
+  // Mehrfachauswahl für Bulk-Aktionen (z. B. E-Mail/WhatsApp-Versand) in der
+  // Kontakte-Tabelle — bewusst NICHT von Filter-/Suchänderungen abhängig, damit
+  // die Auswahl über Filterwechsel hinweg erhalten bleibt.
+  selectedContactIds: string[];
+  toggleContactSelected: (id: string) => void;
+  setContactIdsSelected: (ids: string[], selected: boolean) => void;
+  clearContactSelection: () => void;
 };
 
 // Schlanker, globaler Store für seitenübergreifenden Filter-/Auswahlzustand.
@@ -75,4 +83,22 @@ export const useCrmStore = create<CrmStore>((set) => ({
 
   contactPreview: null,
   setContactPreview: (preview) => set({ contactPreview: preview }),
+
+  selectedContactIds: [],
+  toggleContactSelected: (id) =>
+    set((state) => ({
+      selectedContactIds: state.selectedContactIds.includes(id)
+        ? state.selectedContactIds.filter((existingId) => existingId !== id)
+        : [...state.selectedContactIds, id],
+    })),
+  setContactIdsSelected: (ids, selected) =>
+    set((state) => {
+      const nextSet = new Set(state.selectedContactIds);
+      for (const id of ids) {
+        if (selected) nextSet.add(id);
+        else nextSet.delete(id);
+      }
+      return { selectedContactIds: Array.from(nextSet) };
+    }),
+  clearContactSelection: () => set({ selectedContactIds: [] }),
 }));

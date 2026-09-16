@@ -21,13 +21,18 @@ export type ContactFilters = {
   eventCategory?: string;
 };
 
-// Lädt standardmäßig nur die ersten 50 Kontakte (statt zuvor 100) — kleinerer
+// Page-Size für die serverseitig gerenderte erste Seite der Kontakte-Tabelle —
+// dieselbe Konstante existiert (bewusst separat, kein Cross-Import in den
+// Route Handler) auch in app/api/contacts/route.ts und ContactsTable.tsx.
+export const CONTACTS_PAGE_SIZE = 100;
+
+// Lädt standardmäßig nur die erste Seite (CONTACTS_PAGE_SIZE) — kleinerer
 // Initial-Payload verkürzt Query- und Serialisierungszeit merklich bei 1000+
-// Datensätzen; "Mehr laden" ruft loadMoreContacts (actions.ts) mit höherem
-// offset erneut auf (siehe LOAD_BATCH_SIZE in ContactsTable.tsx).
+// Datensätzen; "Mehr laden"/"Alle laden" rufen app/api/contacts/route.ts mit
+// höherem offset bzw. ?all=true erneut auf.
 export async function getContacts(
   filters?: ContactFilters | string,
-  limit = 50,
+  limit = CONTACTS_PAGE_SIZE,
   offset = 0,
   sortKey?: ContactSortKey,
   sortDir: SortDir = "asc"
