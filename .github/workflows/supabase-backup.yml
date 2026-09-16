@@ -1,23 +1,16 @@
 name: Supabase Backup
 
-# Läuft täglich (Cron in UTC) + manuell auslösbar über den "Run workflow"-Button.
-# Ersetzt einen bezahlten Supabase-PITR-Plan durch tägliche Dumps als
-# GitHub Artifact (30 Tage Retention) für den Free-Plan.
 on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch: {}
 
-# contents: write wird für den optionalen Push in den backups-Branch benötigt.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   backup:
     runs-on: ubuntu-latest
-    # BACKUP_ENABLED (Repository Variable) erlaubt, den Cron ohne Code-Änderung
-    # zu pausieren (z. B. während einer Migration) — Default: läuft, außer
-    # explizit auf "false" gesetzt.
     if: vars.BACKUP_ENABLED != 'false'
     steps:
       - name: Repository auschecken
@@ -45,29 +38,16 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: supabase db dump --db-url "$SUPABASE_DB_URL" --data-only -f ".backups/data-${{ steps.ts.outputs.value }}.sql"
 
+      - name: Debug — .backups prüfen
+        run: |
+          echo "--- ls -la .backups/ ---"
+          ls -la .backups/
+          echo "--- Dateigrößen ---"
+          du -h .backups/*.sql
+
       - name: Backup als Artifact hochladen
         uses: actions/upload-artifact@v4
         with:
           name: supabase-backup-${{ steps.ts.outputs.value }}
           path: .backups/*.sql
           retention-days: 30
-
-      # Optional: zusätzlich in einen separaten Branch committen, damit
-      # Backups auch ohne Artifact-Zugriff über die Git-Historie einsehbar sind.
-      # Die *.sql-Dateien liegen als untracked Files im Workspace (aus den
-      # Dump-Steps oben) und überleben den Branch-Wechsel unten unverändert,
-      # da "git checkout" bestehende untracked Files nicht anfasst.
-      - name: In backups-Branch committen
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin backups || true
-          if git show-ref --verify --quiet refs/remotes/origin/backups; then
-            git checkout -B backups origin/backups
-          else
-            git checkout --orphan backups
-            git rm -rf . > /dev/null 2>&1 || true
-          fi
-          git add .backups
-          git commit -m "Backup ${{ steps.ts.outputs.value }}" || echo "Nichts zu committen"
-          git push origin backups
