@@ -25,13 +25,20 @@ export async function proxy(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
   const { pathname } = request.nextUrl
   const isAuthRoute = pathname.startsWith('/login')
   const isProtectedRoute = pathname === '/' || pathname.startsWith('/dashboard')
+
+  // Fail-closed: schlägt die Session-Validierung selbst fehl (Netzwerkfehler,
+  // Supabase down, kaputtes Cookie), wird das wie "kein User" behandelt statt
+  // die Anfrage unauthentifiziert durchzulassen oder mit 500 abzubrechen.
+  let user = null
+  try {
+    const result = await supabase.auth.getUser()
+    user = result.data.user
+  } catch (err) {
+    console.error('proxy: getUser() failed, failing closed:', err)
+  }
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()

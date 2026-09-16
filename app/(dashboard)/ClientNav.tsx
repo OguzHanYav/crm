@@ -36,6 +36,15 @@ function IconCalls(): ReactElement {
   )
 }
 
+function IconNotifications(): ReactElement {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function IconSettings(): ReactElement {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
@@ -50,6 +59,7 @@ export const navItems = [
   { href: '/dashboard/deals', label: 'Pipelines', icon: IconPipeline },
   { href: '/dashboard/kontakte', label: 'Kontakte', icon: IconContacts },
   { href: '/dashboard/anrufe', label: 'Anrufe', icon: IconCalls },
+  { href: '/dashboard/notifications', label: 'Benachrichtigungen', icon: IconNotifications },
   { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
 ]
 

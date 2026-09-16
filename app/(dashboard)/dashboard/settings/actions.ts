@@ -57,6 +57,13 @@ export async function exportContacts(): Promise<ExportResult> {
   try {
     const supabase = await createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
+
     const { rows, error } = await fetchAllPaginated((from, to) =>
       supabase
         .from("contacts")
@@ -83,6 +90,13 @@ export async function exportContacts(): Promise<ExportResult> {
 export async function exportDeals(): Promise<ExportResult> {
   try {
     const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
 
     const { rows, error } = await fetchAllPaginated((from, to) =>
       supabase
@@ -282,6 +296,14 @@ export async function importContactsWithDeals(
 
   try {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet.", imported: 0, updated: 0, dealsCreated: 0 };
+  }
+
   const errors: string[] = [];
   let imported = 0;
   let updated = 0;

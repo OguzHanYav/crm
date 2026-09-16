@@ -351,6 +351,14 @@ export async function updateContact(
   formData: FormData
 ): Promise<ActionResult<Contact>> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
+
   const contactId = formData.get("contact_id") as string;
   const fields = parseContactForm(formData);
 
@@ -531,6 +539,14 @@ export async function updateContactDetails(
   formData: FormData
 ): Promise<ActionResult<Contact>> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
+
   const contactId = formData.get("contact_id") as string;
 
   if (!contactId) {

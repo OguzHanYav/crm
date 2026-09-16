@@ -127,6 +127,13 @@ export async function toggleStageActive(
   try {
     const supabase = await createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
+
     const { data: stage, error: lookupError } = await supabase
       .from("deal_stages")
       .select("name")
@@ -171,6 +178,13 @@ export async function createPipelineStage(
     }
 
     const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
 
     const { data: existing } = await supabase
       .from("deal_stages")
@@ -220,6 +234,13 @@ export async function updatePipelineStage(
 
     const supabase = await createClient();
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
+
     const { data: current, error: lookupError } = await supabase
       .from("deal_stages")
       .select("name")
@@ -255,6 +276,13 @@ export async function updatePipelineStage(
 export async function deletePipelineStage(stageId: string): Promise<PipelineActionResult> {
   try {
     const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
 
     const { data: stage, error: lookupError } = await supabase
       .from("deal_stages")
@@ -328,6 +356,13 @@ export async function moveStagePosition(
     const current = rows[index];
     const target = rows[swapIndex];
     const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: "Nicht angemeldet." };
+    }
 
     // Cascade: Positions-Swap gilt für ALLE Zeilen beider Phasen (alle Pipelines),
     // damit die Reihenfolge überall (Tabs, Filter, Modals) synchron bleibt.
