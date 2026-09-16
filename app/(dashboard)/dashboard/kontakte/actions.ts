@@ -302,6 +302,14 @@ export async function createContact(
   formData: FormData
 ): Promise<ActionResult<Contact>> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
+
   const fields = parseContactForm(formData);
 
   if (!fields.first_name || !fields.last_name || !fields.email || !fields.status) {

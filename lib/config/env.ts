@@ -10,6 +10,11 @@ const notificationsEnvSchema = z.object({
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY fehlt."),
   RESEND_FROM_EMAIL: z.string().email("RESEND_FROM_EMAIL muss eine gültige E-Mail-Adresse sein.").optional(),
   RESEND_REPLY_TO: z.string().email("RESEND_REPLY_TO muss eine gültige E-Mail-Adresse sein.").optional(),
+  // Der Webhook (app/api/webhooks/resend/route.ts) funktioniert auch OHNE dieses
+  // Secret (dann unsigniert, mit Konsolenwarnung) — mit Secret wird die
+  // Svix-Signatur validiert, siehe lib/services/resend-webhook.ts. In
+  // Produktion ist das Secret Pflicht, um gefälschte Bounce-Events zu verhindern.
+  RESEND_WEBHOOK_SECRET: z.string().min(1, "RESEND_WEBHOOK_SECRET darf nicht leer sein.").optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().min(1, "WHATSAPP_PHONE_NUMBER_ID fehlt."),
   WHATSAPP_ACCESS_TOKEN: z.string().min(1, "WHATSAPP_ACCESS_TOKEN fehlt."),
   WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().min(1, "WHATSAPP_BUSINESS_ACCOUNT_ID fehlt."),

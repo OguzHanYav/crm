@@ -85,7 +85,20 @@ type ContactRow = {
   phone: string | null;
   email_opt_in: boolean | null;
   whatsapp_opt_in: boolean | null;
+  email_bounced_at: string | null;
 };
+
+// Ein Bounce vor >30 Tagen (z. B. weil das Postfach damals voll war) soll
+// keine dauerhafte Sperre sein — der Kontakt bekommt beim nächsten Versand
+// wieder eine Chance. Bounct er erneut, markiert ihn der Resend-Webhook
+// (app/api/webhooks/resend/route.ts) sofort wieder frisch. email_opt_in bleibt
+// davon unberührt Pflicht (siehe Prüfung unten) — dieser Check ist zusätzlich.
+const RECENT_BOUNCE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isRecentlyBounced(contact: ContactRow): boolean {
+  if (!contact.email_bounced_at) return false;
+  return Date.now() - new Date(contact.email_bounced_at).getTime() < RECENT_BOUNCE_WINDOW_MS;
+}
 
 function plainTextToHtml(body: string): string {
   const escaped = body.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -115,7 +128,7 @@ export async function createJob(input: CreateJobInput): Promise<{ jobId: string;
 
   const { data: contacts, error: contactsError } = await admin
     .from("contacts")
-    .select("id, email, phone, email_opt_in, whatsapp_opt_in")
+    .select("id, email, phone, email_opt_in, whatsapp_opt_in, email_bounced_at")
     .in("id", input.contactIds);
 
   if (contactsError) {
@@ -169,6 +182,14 @@ export async function createJob(input: CreateJobInput): Promise<{ jobId: string;
         items.push({ job_id: jobId, contact_id: contactId, channel: "email", status: "skipped_no_consent", error: null });
       } else if (!contact.email) {
         items.push({ job_id: jobId, contact_id: contactId, channel: "email", status: "failed", error: "Keine E-Mail-Adresse." });
+      } else if (isRecentlyBounced(contact)) {
+        items.push({
+          job_id: jobId,
+          contact_id: contactId,
+          channel: "email",
+          status: "failed",
+          error: "E-Mail-Adresse ist innerhalb der letzten 30 Tage gebounced.",
+        });
       } else {
         items.push({ job_id: jobId, contact_id: contactId, channel: "email", status: "pending", error: null });
       }

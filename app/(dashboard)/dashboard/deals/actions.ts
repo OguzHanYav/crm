@@ -104,6 +104,17 @@ export async function loadMoreDeals(
   sortDir: SortDir = "asc"
 ): Promise<ActionResult<Deal[]>> {
   const supabase = await createClient();
+
+  // Server Actions sind über ihre Action-ID direkt POST-bar, unabhängig von der
+  // Middleware/dem Dashboard-Layout, das die Seite ursprünglich gerendert hat —
+  // daher hier eine eigene Auth-Prüfung statt sich auf proxy.ts zu verlassen.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
+
   const ascending = sortDir === "asc";
 
   let query = supabase.from("deals").select(DEALS_LIST_SELECT);
@@ -155,6 +166,13 @@ export async function updateDealStage(
   newStageId: string
 ): Promise<ActionResult<Deal>> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
 
   const { data: stageRow, error: stageError } = await supabase
     .from("deal_stages")
@@ -211,6 +229,13 @@ export async function updateDealPipelineStage(
 ): Promise<ActionResult<Deal>> {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
+
   const [{ data: dealBefore }, { data: newStage, error: stageError }] = await Promise.all([
     supabase.from("deals").select("pipeline_id, contact_id").eq("id", dealId).maybeSingle(),
     supabase.from("pipeline_stages").select("name").eq("id", newPipelineStageId).maybeSingle(),
@@ -260,6 +285,13 @@ export async function createDeal(
   formData: FormData
 ): Promise<CreateDealState> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
 
   const name = (formData.get("title") as string)?.trim();
   const pipelineId = formData.get("pipeline_id") as string;
