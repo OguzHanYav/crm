@@ -205,12 +205,13 @@ export default function ContactsTable({
   const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [loadAllError, setLoadAllError] = useState<string | null>(null);
 
-  // Neue Suche/Sortierung macht eine zuvor geladene "Alle"-Liste ungültig —
-  // sonst würde eine gefilterte Suche weiterhin die alte Vollständig-Liste zeigen.
+  // Neue Suche/Sortierung (oder eine geänderte Gesamtzahl, z. B. nach dem Löschen)
+  // macht eine zuvor geladene "Alle"-Liste ungültig — sonst würde sie veraltete
+  // bzw. bereits gelöschte Kontakte weiter anzeigen.
   useEffect(() => {
     setAllOverride(null);
     setLoadAllError(null);
-  }, [currentQuery, sortKey, sortDir]);
+  }, [currentQuery, sortKey, sortDir, totalCount]);
 
   const displayedContacts = allOverride ? allOverride.contacts : localContacts;
   const effectiveTotalCount = allOverride ? allOverride.total : totalCount;

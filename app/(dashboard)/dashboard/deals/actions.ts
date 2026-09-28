@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { getActiveProjectId } from "@/utils/projects/active-project";
 import type { Deal, DealSortKey, SortDir } from "./types";
 import { countryIlikePatterns } from "@/lib/i18n/multilingual";
+import { applyDealsSort } from "./data";
+import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
+import { deleteDealsWithDependents } from "@/lib/supabase/admin-delete";
+import { isCurrentUserAdmin } from "@/app/(dashboard)/dashboard/settings/admin-actions";
 
 export type ActionResult<T = undefined> = {
   success: boolean;
@@ -116,43 +120,9 @@ export async function loadMoreDeals(
     return { success: false, message: "Nicht angemeldet." };
   }
 
-  const ascending = sortDir === "asc";
+  const query = applyDealsSort(supabase.from("deals").select(DEALS_LIST_SELECT), sortKey, sortDir);
 
-  let query = supabase.from("deals").select(DEALS_LIST_SELECT);
-
-  switch (sortKey) {
-    case "name":
-      query = query.order("name", { ascending });
-      break;
-    case "company":
-      query = query.order("company", { ascending, referencedTable: "contacts" });
-      break;
-    case "country":
-      query = query.order("country", { ascending, referencedTable: "contacts" });
-      break;
-    case "phone":
-      query = query.order("phone", { ascending, referencedTable: "contacts" });
-      break;
-    case "email":
-      query = query.order("email", { ascending, referencedTable: "contacts" });
-      break;
-    case "address":
-      query = query.order("address", { ascending, referencedTable: "contacts" });
-      break;
-    case "industry":
-      query = query.order("industry", { ascending, referencedTable: "contacts" });
-      break;
-    case "status":
-      query = query.order("stage_id", { ascending });
-      break;
-    case "createdAt":
-      query = query.order("created_at", { ascending });
-      break;
-    default:
-      query = query.order("created_at", { ascending: false });
-  }
-
-  const { data, error } = await query.order("id", { ascending: true }).range(offset, offset + limit - 1);
+  const { data, error } = await query.range(offset, offset + limit - 1);
 
   if (error) {
     console.error("loadMoreDeals error:", error.message);
@@ -219,6 +189,32 @@ export async function loadDealsByCountry(country: string): Promise<ActionResult<
     console.error("loadDealsByCountry error:", message);
     return { success: false, message };
   }
+}
+
+// Admin-only: entfernt Deals aus der Pipeline (inkl. Phasen-Historie). Der
+// verknüpfte Kontakt bleibt bestehen.
+export async function deleteDealsByAdmin(dealIds: string[]): Promise<ActionResult<{ deleted: number }>> {
+  if (!(await isCurrentUserAdmin())) {
+    return { success: false, message: "Keine Berechtigung: Nur Admins dürfen Deals löschen." };
+  }
+
+  const ids = Array.from(new Set(dealIds.filter(Boolean)));
+  if (ids.length === 0) {
+    return { success: false, message: "Keine Deals ausgewählt." };
+  }
+
+  try {
+    const client = await getAdminOrFallbackClient();
+    await deleteDealsWithDependents(client, ids);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("deleteDealsByAdmin error:", message);
+    return { success: false, message: `Löschen fehlgeschlagen: ${message}` };
+  }
+
+  revalidatePath("/dashboard/deals");
+  revalidatePath("/dashboard/kontakte");
+  return { success: true, data: { deleted: ids.length } };
 }
 
 export async function updateDealStage(

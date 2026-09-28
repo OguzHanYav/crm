@@ -62,7 +62,7 @@ export default async function KontaktePage({
 
       <ContactsTable contacts={contacts} isAdmin={isAdmin} teamMembers={teamMembers} totalCount={totalCount} />
 
-      <ContactsActionsBar />
+      <ContactsActionsBar isAdmin={isAdmin} />
 
       <ContactDetailSheet />
     </div>

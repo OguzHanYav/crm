@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
 import DealsTable from "./DealsTable";
 import FilterDropdown from "./FilterDropdown";
-import { loadMoreDeals, loadDealsByCountry } from "../actions";
+import { loadMoreDeals, loadDealsByCountry, deleteDealsByAdmin } from "../actions";
 import { useCrmStore } from "@/lib/store/useCrmStore";
 import {
   foldText,
@@ -59,12 +59,14 @@ export default function DealsView({
   deals,
   totalCount,
   phaseCounts,
+  isAdmin = false,
 }: {
   projectName: string;
   phases: PipelinePhase[];
   deals: Deal[];
   totalCount: number;
   phaseCounts: Record<string, number>;
+  isAdmin?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -196,9 +198,13 @@ export default function DealsView({
   const sortedDeals = useMemo(() => {
     if (!countryDeals || !sortKey) return dealsForActiveStage;
     const factor = sortDir === "asc" ? 1 : -1;
-    return [...dealsForActiveStage].sort(
-      (a, b) => factor * sortValue(a, sortKey).localeCompare(sortValue(b, sortKey), "de", { numeric: true })
-    );
+    return [...dealsForActiveStage].sort((a, b) => {
+      const va = sortValue(a, sortKey).trim();
+      const vb = sortValue(b, sortKey).trim();
+      // Leere Werte in beiden Richtungen ans Ende — wie serverseitig (nullsFirst: false).
+      if (!va || !vb) return va === vb ? 0 : va ? -1 : 1;
+      return factor * va.localeCompare(vb, "de", { numeric: true, sensitivity: "base" });
+    });
   }, [dealsForActiveStage, countryDeals, sortKey, sortDir]);
 
   // Keine zusätzliche Anzeige-Kappung mehr — alles, was geladen und gefiltert
@@ -250,6 +256,54 @@ export default function DealsView({
     },
     [sortKey, sortDir, countryDeals]
   );
+
+  // ==================== ADMIN: DEALS LÖSCHEN ====================
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback((ids: string[], selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of ids) {
+        if (selected) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleDeleteSelected = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    const confirmed = window.confirm(
+      `${ids.length} Deal${ids.length === 1 ? "" : "s"} wirklich aus der Pipeline löschen?\n\n` +
+        "Die verknüpften Kontakte bleiben erhalten. Das kann nicht rückgängig gemacht werden."
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    const result = await deleteDealsByAdmin(ids);
+    setIsDeleting(false);
+    if (!result.success) {
+      alert(result.message ?? "Löschen fehlgeschlagen.");
+      return;
+    }
+    // Sofort lokal entfernen (auch aus dem Land-Modus); router.refresh() aktualisiert
+    // danach Gesamtzahl und Phasen-Zähler vom Server.
+    const deleted = new Set(ids);
+    setLocalDeals((prev) => prev.filter((d) => !deleted.has(d.id)));
+    setCountryDeals((prev) => (prev ? prev.filter((d) => !deleted.has(d.id)) : prev));
+    setSelectedIds(new Set());
+    router.refresh();
+  }, [selectedIds, router]);
 
   const setActiveStage = useCallback(
     (stageKey: string) => {
@@ -359,7 +413,35 @@ export default function DealsView({
         sortKey={sortKey}
         sortDir={sortDir}
         onSortChange={handleSortChange}
+        selectedIds={isAdmin ? selectedIds : undefined}
+        onToggleSelected={isAdmin ? toggleSelected : undefined}
+        onToggleSelectAll={isAdmin ? toggleSelectAll : undefined}
       />
+
+      {isAdmin && selectedIds.size > 0 && (
+        <div className="sticky bottom-4 z-30 mt-4 flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg">
+          <span className="text-sm font-medium text-slate-900">
+            {selectedIds.size} Deal{selectedIds.size === 1 ? "" : "s"} ausgewählt
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50"
+            >
+              Auswahl aufheben
+            </button>
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              disabled={isDeleting}
+              className="min-h-[40px] rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:opacity-50"
+            >
+              {isDeleting ? "Wird gelöscht…" : "Löschen"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
         <div className="flex items-center gap-4">

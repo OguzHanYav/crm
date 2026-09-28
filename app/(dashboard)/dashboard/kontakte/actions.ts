@@ -3,7 +3,9 @@
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getPipelinePhases } from "@/app/(dashboard)/dashboard/deals/data";
-import { getServiceRoleClient } from "@/lib/supabase/admin";
+import { getServiceRoleClient, getAdminOrFallbackClient } from "@/lib/supabase/admin";
+import { deleteContactsWithDependents } from "@/lib/supabase/admin-delete";
+import { isCurrentUserAdmin } from "@/app/(dashboard)/dashboard/settings/admin-actions";
 import { sendEmail } from "@/lib/services/email";
 import { sendWhatsAppTemplate } from "@/lib/services/whatsapp";
 import { getNotificationSettings } from "@/lib/services/notification-settings";
@@ -390,39 +392,35 @@ export async function updateContact(
 }
 
 export async function deleteContact(contactId: string): Promise<ActionResult> {
-  const supabase = await createClient();
+  const { success, message } = await deleteContactsByAdmin([contactId]);
+  return { success, message };
+}
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, message: "Nicht angemeldet." };
+// Admin-only: löscht Kontakte inkl. zugehöriger Deals, Notizen, Anrufe usw.
+// (siehe lib/supabase/admin-delete.ts). Läuft nach dem Admin-Check über den
+// Service-Role-Client, damit RLS-Löschrechte nicht pro Tabelle nötig sind.
+export async function deleteContactsByAdmin(contactIds: string[]): Promise<ActionResult<{ deleted: number }>> {
+  if (!(await isCurrentUserAdmin())) {
+    return { success: false, message: "Keine Berechtigung: Nur Admins dürfen Kontakte löschen." };
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || profile?.role !== "admin") {
-    return {
-      success: false,
-      message: "Keine Berechtigung: Nur Admins dürfen Kontakte löschen.",
-    };
+  const ids = Array.from(new Set(contactIds.filter(Boolean)));
+  if (ids.length === 0) {
+    return { success: false, message: "Keine Kontakte ausgewählt." };
   }
 
-  const { error } = await supabase.from("contacts").delete().eq("id", contactId);
-
-  if (error) {
-    console.error("deleteContact error:", error.message);
-    return { success: false, message: error.message };
+  try {
+    const client = await getAdminOrFallbackClient();
+    await deleteContactsWithDependents(client, ids);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unbekannter Fehler";
+    console.error("deleteContactsByAdmin error:", message);
+    return { success: false, message: `Löschen fehlgeschlagen: ${message}` };
   }
 
   revalidatePath(CONTACTS_PATH);
   revalidatePath("/dashboard/deals");
-  return { success: true };
+  return { success: true, data: { deleted: ids.length } };
 }
 
 export async function addNoteToContact(

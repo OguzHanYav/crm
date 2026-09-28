@@ -7,42 +7,39 @@ const DEALS_SELECT = `
   contact:contacts ( id, first_name, last_name, email, phone, company, country, address, industry )
 `;
 
-// Wendet den gewählten Sortierschlüssel serverseitig an (inkl. Sortierung nach
-// eingebetteten contacts-Feldern) und hängt "id" als stabilen Tiebreaker an, damit
-// range()-Pagination über mehrere "Mehr laden"-Aufrufe hinweg konsistent bleibt.
-function applyDealsSort(query: any, sortKey: DealSortKey | undefined, sortDir: SortDir) {
-  const ascending = sortDir === "asc";
+// Spalten, die in der Tabelle aus dem verknüpften Kontakt angezeigt werden.
+// Sortiert wird über "contact(<spalte>)" — das ordnet die DEAL-Zeilen nach dem
+// Kontaktfeld. (Das frühere { referencedTable: "contacts" } sortierte nur die
+// eingebettete Kontaktzeile selbst und ließ die Deal-Reihenfolge unverändert.)
+// Achtung: PostgREST sortiert nur nach Spalten, die im contact:contacts(...)-Select
+// enthalten sind (DEALS_SELECT hier bzw. DEALS_LIST_SELECT in actions.ts).
+const CONTACT_SORT_COLUMNS: Partial<Record<DealSortKey, string>> = {
+  company: "company",
+  country: "country",
+  phone: "phone",
+  email: "email",
+  address: "address",
+  industry: "industry",
+};
 
-  switch (sortKey) {
-    case "name":
-      query = query.order("name", { ascending });
-      break;
-    case "company":
-      query = query.order("company", { ascending, referencedTable: "contacts" });
-      break;
-    case "country":
-      query = query.order("country", { ascending, referencedTable: "contacts" });
-      break;
-    case "phone":
-      query = query.order("phone", { ascending, referencedTable: "contacts" });
-      break;
-    case "email":
-      query = query.order("email", { ascending, referencedTable: "contacts" });
-      break;
-    case "address":
-      query = query.order("address", { ascending, referencedTable: "contacts" });
-      break;
-    case "industry":
-      query = query.order("industry", { ascending, referencedTable: "contacts" });
-      break;
-    case "status":
-      query = query.order("stage_id", { ascending });
-      break;
-    case "createdAt":
-      query = query.order("created_at", { ascending });
-      break;
-    default:
-      query = query.order("created_at", { ascending: false });
+// Wendet den gewählten Sortierschlüssel serverseitig an und hängt "id" als stabilen
+// Tiebreaker an, damit range()-Pagination über mehrere "Mehr laden"-Aufrufe hinweg
+// konsistent bleibt. Leere Werte stehen in beiden Richtungen am Ende.
+// Wird von getAllDeals (Erstseite) UND loadMoreDeals (actions.ts) genutzt.
+export function applyDealsSort(query: any, sortKey: DealSortKey | undefined, sortDir: SortDir) {
+  const ascending = sortDir === "asc";
+  const contactColumn = sortKey ? CONTACT_SORT_COLUMNS[sortKey] : undefined;
+
+  if (contactColumn) {
+    query = query.order(`contact(${contactColumn})`, { ascending, nullsFirst: false });
+  } else if (sortKey === "name") {
+    query = query.order("name", { ascending, nullsFirst: false });
+  } else if (sortKey === "status") {
+    query = query.order("stage_id", { ascending });
+  } else if (sortKey === "createdAt") {
+    query = query.order("created_at", { ascending });
+  } else {
+    query = query.order("created_at", { ascending: false });
   }
 
   return query.order("id", { ascending: true });

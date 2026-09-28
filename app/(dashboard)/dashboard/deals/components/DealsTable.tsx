@@ -15,20 +15,38 @@ const DealsTableRow = memo(function DealsTableRow({
   deal,
   phase,
   onRowClick,
+  selectable,
+  isSelected,
+  onToggleSelected,
 }: {
   deal: Deal;
   phase: PipelinePhase | undefined;
   onRowClick: (deal: Deal) => void;
+  selectable: boolean;
+  isSelected: boolean;
+  onToggleSelected?: (id: string) => void;
 }) {
   const contact = deal.contact;
   const handleRowClick = useCallback(() => onRowClick(deal), [onRowClick, deal]);
   const handleStopPropagation = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
+  const handleToggle = useCallback(() => onToggleSelected?.(deal.id), [onToggleSelected, deal.id]);
 
   return (
     <tr
       onClick={handleRowClick}
-      className="cursor-pointer transition-colors duration-150 hover:bg-gray-50/80"
+      className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50/80 ${isSelected ? "bg-blue-50/60" : ""}`}
     >
+      {selectable && (
+        <td className="px-3 py-2" onClick={handleStopPropagation}>
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={handleToggle}
+            aria-label={`${deal.name} auswählen`}
+            className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+          />
+        </td>
+      )}
       <td className="truncate px-3 py-2">
         <span className="font-medium text-slate-900">{deal.name}</span>
       </td>
@@ -97,6 +115,9 @@ export default function DealsTable({
   sortKey,
   sortDir,
   onSortChange,
+  selectedIds,
+  onToggleSelected,
+  onToggleSelectAll,
 }: {
   deals: Deal[];
   phases: PipelinePhase[];
@@ -104,7 +125,15 @@ export default function DealsTable({
   sortKey: DealSortKey | null;
   sortDir: SortDir;
   onSortChange: (key: DealSortKey) => void;
+  // Nur für Admins gesetzt — blendet die Auswahl-Checkboxen (Löschen) ein.
+  selectedIds?: Set<string>;
+  onToggleSelected?: (id: string) => void;
+  onToggleSelectAll?: (ids: string[], selected: boolean) => void;
 }) {
+  const selectable = Boolean(selectedIds && onToggleSelected);
+  const visibleSelectedCount = selectedIds ? deals.filter((d) => selectedIds.has(d.id)).length : 0;
+  const isAllSelected = deals.length > 0 && visibleSelectedCount === deals.length;
+
   // Vermeidet O(n*m) phases.find(...) pro Zeile bei jedem Render — stattdessen
   // einmalige O(m) Map-Erstellung, danach O(1) Lookup pro Deal.
   const phaseByStageId = useMemo(() => {
@@ -130,6 +159,20 @@ export default function DealsTable({
       <table className="w-full min-w-[720px] table-fixed text-xs">
         <thead className="bg-gray-50">
           <tr>
+            {selectable && (
+              <th className="w-[4%] px-3 py-2 text-left font-medium text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = visibleSelectedCount > 0 && !isAllSelected;
+                  }}
+                  onChange={() => onToggleSelectAll?.(deals.map((d) => d.id), !isAllSelected)}
+                  aria-label="Alle sichtbaren Deals auswählen"
+                  className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+                />
+              </th>
+            )}
             {COLUMNS.map((col) => (
               <th
                 key={col.key}
@@ -153,6 +196,9 @@ export default function DealsTable({
               deal={deal}
               phase={phaseByStageId.get(deal.stage_id)}
               onRowClick={onRowClick}
+              selectable={selectable}
+              isSelected={selectedIds?.has(deal.id) ?? false}
+              onToggleSelected={onToggleSelected}
             />
           ))}
         </tbody>
