@@ -8,6 +8,15 @@ import DealsTable from "./DealsTable";
 import FilterDropdown from "./FilterDropdown";
 import { loadMoreDeals } from "../actions";
 import { useCrmStore } from "@/lib/store/useCrmStore";
+import {
+  foldText,
+  countryKey,
+  countrySearchTerms,
+  industryKey,
+  industryLabel,
+  industrySearchTerms,
+  matchesSearch,
+} from "@/lib/i18n/multilingual";
 
 const LOAD_BATCH_SIZE = 100;
 const RENDER_LIMIT_OPTIONS = [25, 50, 100];
@@ -67,51 +76,69 @@ export default function DealsView({
   const activeKey = searchParams.get("stage") ?? phases[0]?.key ?? "";
   const activePhase = useMemo(() => phases.find((p) => p.key === activeKey), [phases, activeKey]);
 
+  // Branchen sprachunabhängig gruppiert: "Döner Üretimi" und "Döner Produktion"
+  // landen in EINER Option (value = sprachneutraler Schlüssel, label = Deutsch).
   const industryOptions = useMemo(() => {
-    const set = new Set<string>();
+    const byKey = new Map<string, string>();
     for (const d of localDeals) {
       const i = d.industry || d.contact?.industry;
-      if (i) set.add(i);
+      if (!i) continue;
+      const key = industryKey(i);
+      if (!byKey.has(key)) byKey.set(key, industryLabel(i));
     }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return Array.from(byKey, ([value, label]) => ({ value, label })).sort((a, b) =>
+      a.label.localeCompare(b.label, "de")
+    );
   }, [localDeals]);
 
-  // Alle Filter (Tab-Phase, Volltextsuche, Firma, E-Mail/Telefon/Vorwahl, Land) werden UND-verknüpft.
-  const dealsForActiveStage = useMemo(() => {
-    if (!activePhase) return [];
-    const term = search.trim().toLowerCase();
-    const company = companyFilter.trim().toLowerCase();
-    const contactTerm = contactFilter.trim().toLowerCase();
-
-    return localDeals
-      .filter((deal) => activePhase.stageIds.includes(deal.stage_id))
-      .filter((deal) => {
-        if (!term) return true;
-        const contact = deal.contact;
-        const haystack = [
+  // Vorberechnete, sprachneutrale Vergleichswerte je Deal (nur bei geänderten
+  // Daten neu), damit Tippen in der Suche nicht jedes Mal alles neu übersetzt.
+  const searchIndex = useMemo(() => {
+    const index = new Map<string, { haystack: string; country: string; industry: string }>();
+    for (const deal of localDeals) {
+      const contact = deal.contact;
+      const country = deal.country || contact?.country;
+      const industry = deal.industry || contact?.industry;
+      const haystack = foldText(
+        [
           deal.name,
           contact?.first_name,
           contact?.last_name,
           contact?.email,
           contact?.company,
           contact?.phone,
-          deal.country || contact?.country,
-          deal.industry || contact?.industry,
+          ...countrySearchTerms(country),
+          ...industrySearchTerms(industry),
         ]
           .filter(Boolean)
           .join(" ")
-          .toLowerCase();
-        return haystack.includes(term);
-      })
-      .filter((deal) => !company || (deal.contact?.company ?? "").toLowerCase().includes(company))
+      );
+      index.set(deal.id, { haystack, country: countryKey(country), industry: industryKey(industry) });
+    }
+    return index;
+  }, [localDeals]);
+
+  // Alle Filter (Tab-Phase, Volltextsuche, Firma, E-Mail/Telefon/Vorwahl, Land, Branche) werden UND-verknüpft.
+  // Land/Branche/Suche vergleichen sprachunabhängig (Deutsch <-> Türkisch), siehe lib/i18n/multilingual.ts.
+  const dealsForActiveStage = useMemo(() => {
+    if (!activePhase) return [];
+    const term = search.trim();
+    const company = foldText(companyFilter);
+    const contactTerm = contactFilter.trim().toLowerCase();
+    const country = countryKey(countryFilter);
+
+    return localDeals
+      .filter((deal) => activePhase.stageIds.includes(deal.stage_id))
+      .filter((deal) => !term || matchesSearch(searchIndex.get(deal.id)?.haystack ?? "", term))
+      .filter((deal) => !company || foldText(deal.contact?.company ?? "").includes(company))
       .filter((deal) => {
         if (!contactTerm) return true;
         const haystack = [deal.contact?.email, deal.contact?.phone].filter(Boolean).join(" ").toLowerCase();
         return haystack.includes(contactTerm);
       })
-      .filter((deal) => !countryFilter || (deal.country || deal.contact?.country) === countryFilter)
-      .filter((deal) => !industryFilter || (deal.industry || deal.contact?.industry) === industryFilter);
-  }, [localDeals, activePhase, search, companyFilter, contactFilter, countryFilter, industryFilter]);
+      .filter((deal) => !country || searchIndex.get(deal.id)?.country === country)
+      .filter((deal) => !industryFilter || searchIndex.get(deal.id)?.industry === industryFilter);
+  }, [localDeals, searchIndex, activePhase, search, companyFilter, contactFilter, countryFilter, industryFilter]);
 
   // Keine zusätzliche Anzeige-Kappung mehr — alles, was geladen und gefiltert
   // wurde, wird auch angezeigt. renderLimit bestimmt nur die Nachlade-Schrittweite.

@@ -29,7 +29,7 @@ export default function FilterDropdown({
   onCountryFilterChange: (value: string) => void;
   industryFilter: string;
   onIndustryFilterChange: (value: string) => void;
-  industryOptions: string[];
+  industryOptions: { value: string; label: string }[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -152,8 +152,8 @@ export default function FilterDropdown({
               >
                 <option value="">Alle Branchen</option>
                 {industryOptions.map((i) => (
-                  <option key={i} value={i}>
-                    {i}
+                  <option key={i.value} value={i.value}>
+                    {i.label}
                   </option>
                 ))}
               </select>
