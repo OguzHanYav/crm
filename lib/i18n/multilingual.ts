@@ -47,6 +47,24 @@ export function countrySearchTerms(value: string | null | undefined): string[] {
   return de ? COUNTRY_NAME_GROUPS[de] : [value];
 }
 
+// ILIKE-Muster für die serverseitige Vorauswahl (Postgres kennt foldText nicht):
+// Sonderzeichen und i/I (wegen İ/ı) werden zum Einzelzeichen-Joker "_", damit
+// "Türkiye", "Turkiye" und "TÜRKİYE" alle über "%t_rk__ye%" gefunden werden.
+// Bewusst etwas zu großzügig — der Client prüft danach exakt per countryKey().
+export function countryIlikePatterns(value: string): string[] {
+  const de = countryByFolded.get(foldText(value));
+  const names = de ? COUNTRY_NAME_GROUPS[de] : [value.trim()];
+  return Array.from(
+    new Set(
+      names.map((name) => {
+        const pattern = name.trim().replace(/[^A-Za-z0-9 ]|[iI]/g, "_");
+        // Kürzel wie "DE"/"TR"/"ABD" exakt, sonst träfe "%de%" fast jedes Land.
+        return pattern.length <= 3 ? pattern : `%${pattern}%`;
+      })
+    )
+  );
+}
+
 // ==================== BRANCHEN ====================
 
 const stopwords = new Set(INDUSTRY_STOPWORDS.map(foldText));

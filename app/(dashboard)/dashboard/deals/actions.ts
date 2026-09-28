@@ -4,6 +4,7 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getActiveProjectId } from "@/utils/projects/active-project";
 import type { Deal, DealSortKey, SortDir } from "./types";
+import { countryIlikePatterns } from "@/lib/i18n/multilingual";
 
 export type ActionResult<T = undefined> = {
   success: boolean;
@@ -159,6 +160,65 @@ export async function loadMoreDeals(
   }
 
   return { success: true, data: (data ?? []) as unknown as Deal[] };
+}
+
+const COUNTRY_FILTER_PAGE_SIZE = 1000;
+const COUNTRY_FILTER_MAX_ROWS = 10000;
+
+// Lädt ALLE Deals eines Landes (nicht nur die ersten 100), damit der Land-Filter
+// auch Deals findet, die noch nicht im Browser geladen sind. Sprachunabhängig:
+// "Deutschland" findet auch "Almanya"/"Germany" (siehe countryIlikePatterns).
+// PostgREST kann kein OR über deals.country UND contacts.country in einem Query,
+// daher zwei Abfragen — analog zur Anzeige-Logik "deal.country || contact.country".
+export async function loadDealsByCountry(country: string): Promise<ActionResult<Deal[]>> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Nicht angemeldet." };
+  }
+
+  const orFilter = countryIlikePatterns(country)
+    .map((p) => `country.ilike."${p}"`)
+    .join(",");
+
+  async function fetchAll(build: () => any): Promise<Deal[]> {
+    const rows: Deal[] = [];
+    for (let offset = 0; offset < COUNTRY_FILTER_MAX_ROWS; offset += COUNTRY_FILTER_PAGE_SIZE) {
+      const { data, error } = await build()
+        .order("id", { ascending: true })
+        .range(offset, offset + COUNTRY_FILTER_PAGE_SIZE - 1);
+      if (error) throw error;
+      rows.push(...((data ?? []) as Deal[]));
+      if (!data || data.length < COUNTRY_FILTER_PAGE_SIZE) break;
+    }
+    return rows;
+  }
+
+  try {
+    const [byDealCountry, byContactCountry] = await Promise.all([
+      // 1) Land direkt am Deal gepflegt
+      fetchAll(() => supabase.from("deals").select(DEALS_LIST_SELECT).or(orFilter)),
+      // 2) Deal ohne eigenes Land -> Land des verknüpften Kontakts
+      fetchAll(() =>
+        supabase
+          .from("deals")
+          .select(DEALS_LIST_SELECT.replace("contact:contacts (", "contact:contacts!inner ("))
+          .or('country.is.null,country.eq.""')
+          .or(orFilter, { referencedTable: "contact" })
+      ),
+    ]);
+
+    const merged = new Map<string, Deal>();
+    for (const deal of [...byDealCountry, ...byContactCountry]) merged.set(deal.id, deal);
+    return { success: true, data: Array.from(merged.values()) };
+  } catch (err) {
+    const message = (err as { message?: string }).message ?? "Unbekannter Fehler";
+    console.error("loadDealsByCountry error:", message);
+    return { success: false, message };
+  }
 }
 
 export async function updateDealStage(

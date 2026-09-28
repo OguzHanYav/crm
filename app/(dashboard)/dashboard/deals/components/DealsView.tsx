@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
 import DealsTable from "./DealsTable";
 import FilterDropdown from "./FilterDropdown";
-import { loadMoreDeals } from "../actions";
+import { loadMoreDeals, loadDealsByCountry } from "../actions";
 import { useCrmStore } from "@/lib/store/useCrmStore";
 import {
   foldText,
@@ -25,6 +25,32 @@ const RENDER_LIMIT_OPTIONS = [25, 50, 100];
 // (z. B. bei instabiler Sortierung) dieselbe Zeile mehrfach zurückliefert.
 function dedupeById<T extends { id: string }>(items: T[]): T[] {
   return Array.from(new Map(items.map((item) => [item.id, item])).values());
+}
+
+// Sortierwert je Spalte — nur für den Land-Filter-Modus, in dem ALLE Deals des
+// Landes bereits im Speicher liegen und daher lokal sortiert werden können.
+function sortValue(deal: Deal, key: DealSortKey): string {
+  const c = deal.contact;
+  switch (key) {
+    case "name":
+      return deal.name ?? "";
+    case "company":
+      return c?.company ?? "";
+    case "country":
+      return deal.country || c?.country || "";
+    case "phone":
+      return c?.phone ?? "";
+    case "email":
+      return c?.email ?? "";
+    case "address":
+      return deal.address || c?.address || "";
+    case "industry":
+      return deal.industry || c?.industry || "";
+    case "status":
+      return deal.stage_id;
+    case "createdAt":
+      return deal.created_at;
+  }
 }
 
 export default function DealsView({
@@ -73,6 +99,31 @@ export default function DealsView({
     setLocalDeals(dedupeById(deals));
   }, [deals]);
 
+  // Land-Filter: Sobald ein Land gewählt ist, werden ALLE passenden Deals (in jeder
+  // Sprache, z. B. "Almanya" für "Deutschland") vom Server geladen — sonst würde
+  // nur unter den ersten ~100 geladenen Deals gesucht. null = kein Land-Modus.
+  const [countryDeals, setCountryDeals] = useState<Deal[] | null>(null);
+  const [isCountryLoading, setIsCountryLoading] = useState(false);
+  const countryRequestRef = useRef(0);
+
+  useEffect(() => {
+    const requestId = ++countryRequestRef.current;
+    if (!countryFilter) {
+      setCountryDeals(null);
+      setIsCountryLoading(false);
+      return;
+    }
+    setIsCountryLoading(true);
+    loadDealsByCountry(countryFilter).then((result) => {
+      // Ältere Antworten ignorieren, falls inzwischen ein anderes Land gewählt wurde.
+      if (requestId !== countryRequestRef.current) return;
+      setCountryDeals(result.success && result.data ? dedupeById(result.data) : null);
+      setIsCountryLoading(false);
+    });
+  }, [countryFilter, deals]);
+
+  const baseDeals = countryDeals ?? localDeals;
+
   const activeKey = searchParams.get("stage") ?? phases[0]?.key ?? "";
   const activePhase = useMemo(() => phases.find((p) => p.key === activeKey), [phases, activeKey]);
 
@@ -80,7 +131,7 @@ export default function DealsView({
   // landen in EINER Option (value = sprachneutraler Schlüssel, label = Deutsch).
   const industryOptions = useMemo(() => {
     const byKey = new Map<string, string>();
-    for (const d of localDeals) {
+    for (const d of baseDeals) {
       const i = d.industry || d.contact?.industry;
       if (!i) continue;
       const key = industryKey(i);
@@ -89,13 +140,13 @@ export default function DealsView({
     return Array.from(byKey, ([value, label]) => ({ value, label })).sort((a, b) =>
       a.label.localeCompare(b.label, "de")
     );
-  }, [localDeals]);
+  }, [baseDeals]);
 
   // Vorberechnete, sprachneutrale Vergleichswerte je Deal (nur bei geänderten
   // Daten neu), damit Tippen in der Suche nicht jedes Mal alles neu übersetzt.
   const searchIndex = useMemo(() => {
     const index = new Map<string, { haystack: string; country: string; industry: string }>();
-    for (const deal of localDeals) {
+    for (const deal of baseDeals) {
       const contact = deal.contact;
       const country = deal.country || contact?.country;
       const industry = deal.industry || contact?.industry;
@@ -116,7 +167,7 @@ export default function DealsView({
       index.set(deal.id, { haystack, country: countryKey(country), industry: industryKey(industry) });
     }
     return index;
-  }, [localDeals]);
+  }, [baseDeals]);
 
   // Alle Filter (Tab-Phase, Volltextsuche, Firma, E-Mail/Telefon/Vorwahl, Land, Branche) werden UND-verknüpft.
   // Land/Branche/Suche vergleichen sprachunabhängig (Deutsch <-> Türkisch), siehe lib/i18n/multilingual.ts.
@@ -127,7 +178,7 @@ export default function DealsView({
     const contactTerm = contactFilter.trim().toLowerCase();
     const country = countryKey(countryFilter);
 
-    return localDeals
+    return baseDeals
       .filter((deal) => activePhase.stageIds.includes(deal.stage_id))
       .filter((deal) => !term || matchesSearch(searchIndex.get(deal.id)?.haystack ?? "", term))
       .filter((deal) => !company || foldText(deal.contact?.company ?? "").includes(company))
@@ -138,13 +189,23 @@ export default function DealsView({
       })
       .filter((deal) => !country || searchIndex.get(deal.id)?.country === country)
       .filter((deal) => !industryFilter || searchIndex.get(deal.id)?.industry === industryFilter);
-  }, [localDeals, searchIndex, activePhase, search, companyFilter, contactFilter, countryFilter, industryFilter]);
+  }, [baseDeals, searchIndex, activePhase, search, companyFilter, contactFilter, countryFilter, industryFilter]);
+
+  // Im Land-Modus lokal sortieren (vollständige Menge liegt vor); sonst kommt die
+  // Reihenfolge bereits sortiert vom Server.
+  const sortedDeals = useMemo(() => {
+    if (!countryDeals || !sortKey) return dealsForActiveStage;
+    const factor = sortDir === "asc" ? 1 : -1;
+    return [...dealsForActiveStage].sort(
+      (a, b) => factor * sortValue(a, sortKey).localeCompare(sortValue(b, sortKey), "de", { numeric: true })
+    );
+  }, [dealsForActiveStage, countryDeals, sortKey, sortDir]);
 
   // Keine zusätzliche Anzeige-Kappung mehr — alles, was geladen und gefiltert
   // wurde, wird auch angezeigt. renderLimit bestimmt nur die Nachlade-Schrittweite.
-  const renderedDeals = dealsForActiveStage;
+  const renderedDeals = sortedDeals;
 
-  const hasMore = localDeals.length < totalCount;
+  const hasMore = !countryDeals && localDeals.length < totalCount;
 
   // Append: der nächste Batch (Größe = renderLimit) wird HINTER die bereits
   // geladenen Deals gehängt, die Tabelle wird nicht ersetzt. renderLimit selbst
@@ -176,6 +237,8 @@ export default function DealsView({
       }
       setSortKey(nextKey);
       setSortDir(nextDir);
+      // Land-Modus: alle Treffer sind geladen und werden lokal sortiert (sortedDeals).
+      if (countryDeals) return;
       setIsLoadingMore(true);
       loadMoreDeals(0, LOAD_BATCH_SIZE, nextKey ?? undefined, nextDir).then((result) => {
         if (result.success && result.data) {
@@ -185,7 +248,7 @@ export default function DealsView({
         setIsLoadingMore(false);
       });
     },
-    [sortKey, sortDir]
+    [sortKey, sortDir, countryDeals]
   );
 
   const setActiveStage = useCallback(
@@ -301,8 +364,11 @@ export default function DealsView({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
         <div className="flex items-center gap-4">
           <span>
-            Zeige {renderedDeals.length} von {dealsForActiveStage.length} geladen ({fetchLimit} angefragt,
-            insgesamt {totalCount} Deals)
+            {isCountryLoading
+              ? "Lade alle Deals für das gewählte Land…"
+              : countryDeals
+                ? `Zeige ${renderedDeals.length} Deals (${countryDeals.length} im gewählten Land, insgesamt ${totalCount} Deals)`
+                : `Zeige ${renderedDeals.length} von ${dealsForActiveStage.length} geladen (${fetchLimit} angefragt, insgesamt ${totalCount} Deals)`}
           </span>
           <div className="flex items-center gap-2">
             <label htmlFor="deals-render-limit">Render-Limit</label>
