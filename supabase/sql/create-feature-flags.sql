@@ -21,5 +21,5 @@ CREATE POLICY "Authenticated users can read feature flags"
 -- Keine INSERT/UPDATE/DELETE-Policy: Änderungen nur über den Service-Role-Client.
 
 INSERT INTO public.feature_flags (key, enabled)
-VALUES ('calls', false)
+VALUES ('calls', false), ('notifications', false)
 ON CONFLICT (key) DO NOTHING;

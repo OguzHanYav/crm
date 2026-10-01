@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 type JobChannel = "email" | "whatsapp" | "both";
@@ -43,6 +43,19 @@ const FILTERS: { key: "all" | JobItemStatus; label: string }[] = [
   { key: "skipped_no_consent", label: "Übersprungen" },
 ];
 
+const ITEM_STATUS_LABEL: Record<JobItemStatus, string> = {
+  pending: "Ausstehend",
+  sent: "Gesendet",
+  failed: "Fehlgeschlagen",
+  skipped_no_consent: "Übersprungen (keine Einwilligung)",
+};
+
+function channelLabel(channel: JobChannel) {
+  if (channel === "email") return "E-Mail";
+  if (channel === "whatsapp") return "WhatsApp";
+  return "E-Mail + WhatsApp";
+}
+
 function formatDateDE(dateString: string) {
   return new Date(dateString).toLocaleString("de-DE", {
     day: "2-digit",
@@ -67,11 +80,17 @@ export default function JobDetailSheet() {
   const [loading, setLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Nur die Antwort der jeweils letzten Anfrage übernehmen — sonst kann ein
+  // langsamer "Alle"-Request die Liste eines späteren Filters überschreiben.
+  const requestRef = useRef(0);
 
   const isOpen = Boolean(jobId);
 
   const load = useCallback(async (id: string, statusFilter: string, pageIndex: number) => {
+    const requestId = ++requestRef.current;
     setLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
@@ -80,13 +99,20 @@ export default function JobDetailSheet() {
 
       const res = await fetch(`/api/notifications/jobs/${id}/items?${params.toString()}`);
       const json = await res.json();
+      if (requestId !== requestRef.current) return;
       if (res.ok && json.success) {
         setJob(json.job);
         setItems(json.items);
         setTotal(json.total);
+      } else {
+        setItems([]);
+        setTotal(0);
+        setLoadError(json.message ?? "Empfänger-Logs konnten nicht geladen werden.");
       }
+    } catch {
+      if (requestId === requestRef.current) setLoadError("Empfänger-Logs konnten nicht geladen werden (Netzwerkfehler).");
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
   }, []);
 
@@ -97,6 +123,7 @@ export default function JobDetailSheet() {
       setFilter("all");
       setPage(0);
       setFeedback(null);
+      setLoadError(null);
       return;
     }
     load(jobId, filter, page);
@@ -211,8 +238,59 @@ export default function JobDetailSheet() {
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {job && (
+            <section className="mb-5 flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="rounded-full bg-accent-soft px-2.5 py-0.5 font-medium text-accent">
+                  {channelLabel(job.channel)}
+                </span>
+                {job.emailIsHtml && job.channel !== "whatsapp" && (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 font-medium text-muted-foreground">HTML</span>
+                )}
+              </div>
+
+              {job.channel !== "whatsapp" && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Betreff</p>
+                  <p className="text-sm font-medium text-foreground">{job.emailSubject || "—"}</p>
+                  <p className="mt-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Gesendete Nachricht</p>
+                  {job.emailBody ? (
+                    job.emailIsHtml ? (
+                      // HTML-Mails in isoliertem iframe (sandbox ohne Rechte: keine Skripte, keine Links nach außen).
+                      <iframe
+                        title="Gesendete E-Mail"
+                        sandbox=""
+                        srcDoc={job.emailBody}
+                        className="h-72 w-full rounded-lg border border-border bg-white"
+                      />
+                    ) : (
+                      <div className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-slate-100 p-3 text-sm text-slate-800 dark:bg-zinc-800/60 dark:text-zinc-200">
+                        {job.emailBody}
+                      </div>
+                    )
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Kein Nachrichtentext gespeichert.</p>
+                  )}
+                </div>
+              )}
+
+              {job.channel !== "email" && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">WhatsApp-Vorlage</p>
+                  <div className="rounded-lg bg-slate-100 p-3 text-sm text-slate-800 dark:bg-zinc-800/60 dark:text-zinc-200">
+                    {job.whatsappTemplateName || "—"}
+                    {job.whatsappLanguageCode && (
+                      <span className="text-muted-foreground"> · Sprache: {job.whatsappLanguageCode}</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {job && (
             <>
-              <p className="text-sm font-medium text-foreground">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Empfänger</p>
+              <p className="mt-1 text-sm font-medium text-foreground">
                 ✅ {job.sent} gesendet · ❌ {job.failed} fehlgeschlagen · ⏭️ {job.skipped} übersprungen
               </p>
 
@@ -232,13 +310,13 @@ export default function JobDetailSheet() {
             </>
           )}
 
-          <div className="mt-4 flex gap-1 rounded-xl bg-muted/50 p-1 w-fit">
+          <div className="no-scrollbar mt-4 flex w-full max-w-full gap-1 overflow-x-auto rounded-xl bg-muted/50 p-1 sm:w-fit">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 type="button"
                 onClick={() => changeFilter(f.key)}
-                className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
                   filter === f.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -248,8 +326,24 @@ export default function JobDetailSheet() {
           </div>
 
           <ul className={`mt-4 flex flex-col gap-2 transition-opacity ${loading ? "opacity-50" : ""}`}>
-            {items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine Einträge.</p>
+            {loadError ? (
+              <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{loadError}</p>
+            ) : items.length === 0 ? (
+              loading ? (
+                <p className="text-sm text-muted-foreground">Lädt…</p>
+              ) : filter === "all" && job && job.total > 0 ? (
+                // Items hängen per ON DELETE CASCADE an den Kontakten: wurden die
+                // Empfänger gelöscht, sind auch ihre Log-Einträge weg — die Zähler
+                // am Job bleiben aber erhalten.
+                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-sm text-muted-foreground">
+                  Für diesen Job sind keine Empfänger-Einträge mehr vorhanden. Die betroffenen Kontakte wurden
+                  vermutlich inzwischen gelöscht – die Zähler oben stammen aus dem ursprünglichen Versand.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Keine Einträge{filter !== "all" ? ` mit Status „${FILTERS.find((f) => f.key === filter)?.label}“` : ""}.
+                </p>
+              )
             ) : (
               items.map((item) => (
                 <li
@@ -262,9 +356,15 @@ export default function JobDetailSheet() {
                         : "border-danger/30 bg-danger/10"
                   }`}
                 >
-                  <p className="font-medium text-foreground">
-                    {item.contactName} · {item.channel === "email" ? "E-Mail" : "WhatsApp"}
-                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5">
+                    <p className="font-medium text-foreground">
+                      {item.contactName} · {item.channel === "email" ? "E-Mail" : "WhatsApp"}
+                    </p>
+                    <span className="text-xs text-muted-foreground">
+                      {ITEM_STATUS_LABEL[item.status]}
+                      {item.processedAt ? ` · ${formatDateDE(item.processedAt)}` : ""}
+                    </span>
+                  </div>
                   {item.error && <p className="mt-0.5 text-xs text-danger">{item.error}</p>}
                 </li>
               ))

@@ -10,12 +10,17 @@ export const MEMBER_FEATURES = {
     description: "Menüpunkt „Anrufe“ und Anrufen direkt aus dem Browser.",
     href: "/dashboard/anrufe",
   },
+  notifications: {
+    label: "Benachrichtigungen & Log-Übersicht",
+    description: "Menüpunkt „Benachrichtigungen“ mit Versand-Jobs, Inhalten und Empfänger-Logs.",
+    href: "/dashboard/notifications",
+  },
 } as const;
 
 export type FeatureKey = keyof typeof MEMBER_FEATURES;
 export type FeatureFlags = Record<FeatureKey, boolean>;
 
-const DEFAULT_FLAGS: FeatureFlags = { calls: false };
+const DEFAULT_FLAGS: FeatureFlags = { calls: false, notifications: false };
 
 // Pro Request einmal geladen (Layout, Seiten und API teilen sich das Ergebnis).
 // Fehlt die Tabelle noch (SQL nicht ausgeführt), gelten die Standardwerte (aus).

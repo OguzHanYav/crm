@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { jobIdParamSchema } from "@/lib/validation/notifications";
 import { getNotificationJobDetail, getNotificationJobItems } from "@/app/(dashboard)/dashboard/notifications/data";
+import { currentUserCanUseFeature } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ job
 
   if (!user) {
     return NextResponse.json({ success: false, message: "Nicht angemeldet." }, { status: 401 });
+  }
+
+  if (!(await currentUserCanUseFeature("notifications"))) {
+    return NextResponse.json({ success: false, message: "Keine Berechtigung." }, { status: 403 });
   }
 
   const { jobId: rawJobId } = await context.params;
