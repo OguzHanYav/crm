@@ -28,15 +28,15 @@ export default function ContactHeader({
   const [callOpen, setCallOpen] = useState(false);
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-gray-900">
+          <h1 className="text-xl font-semibold text-foreground">
             {contact.first_name} {contact.last_name}
           </h1>
           <StatusBadge status={contact.status} />
         </div>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-muted-foreground">
           {[contact.position, contact.company].filter(Boolean).join(" bei ") || "—"}
         </p>
       </div>
@@ -44,13 +44,13 @@ export default function ContactHeader({
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setCallOpen(true)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-lg border border-border-strong px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted/40"
         >
           Anruf protokollieren
         </button>
         <button
           onClick={() => setDealOpen(true)}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-lg border border-border-strong px-3 py-2 text-sm font-medium text-foreground/80 hover:bg-muted/40"
         >
           Neuen Deal verknüpfen
         </button>

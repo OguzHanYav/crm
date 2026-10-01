@@ -74,12 +74,12 @@ export default function NewDealModal({
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Neuen Deal anlegen</h2>
+              <h2 className="text-lg font-semibold text-foreground">Neuen Deal anlegen</h2>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground hover:text-foreground/70"
               >
                 ✕
               </button>
@@ -87,26 +87,26 @@ export default function NewDealModal({
 
             <form action={formAction} className="flex flex-col gap-3">
               <div>
-                <label htmlFor="newdeal-name" className="mb-1 block text-xs font-medium text-gray-600">Name</label>
+                <label htmlFor="newdeal-name" className="mb-1 block text-xs font-medium text-foreground/70">Name</label>
                 <input
                   id="newdeal-name"
                   name="name"
                   autoComplete="off"
                   required
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
                   placeholder="z. B. Erstgespräch Müller GmbH"
                 />
               </div>
 
               <div>
-                <label htmlFor="newdeal-pipeline" className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>
+                <label htmlFor="newdeal-pipeline" className="mb-1 block text-xs font-medium text-foreground/70">Pipeline</label>
                 <select
                   id="newdeal-pipeline"
                   name="pipeline_id"
                   autoComplete="off"
                   value={selectedPipeline}
                   onChange={(e) => setSelectedPipeline(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
                 >
                   {pipelines.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -117,13 +117,13 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label htmlFor="newdeal-stage" className="mb-1 block text-xs font-medium text-gray-600">Phase</label>
+                <label htmlFor="newdeal-stage" className="mb-1 block text-xs font-medium text-foreground/70">Phase</label>
                 <select
                   id="newdeal-stage"
                   name="stage_id"
                   autoComplete="off"
                   required
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
                 >
                   {availableStages.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -134,12 +134,12 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label htmlFor="newdeal-contact" className="mb-1 block text-xs font-medium text-gray-600">Kontakt</label>
+                <label htmlFor="newdeal-contact" className="mb-1 block text-xs font-medium text-foreground/70">Kontakt</label>
                 <select
                   id="newdeal-contact"
                   name="contact_id"
                   autoComplete="off"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
                 >
                   <option value="">— kein Kontakt —</option>
                   {contacts.map((c) => (
@@ -151,7 +151,7 @@ export default function NewDealModal({
               </div>
 
               <div>
-                <label htmlFor="newdeal-value" className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
+                <label htmlFor="newdeal-value" className="mb-1 block text-xs font-medium text-foreground/70">Wert (€)</label>
                 <input
                   id="newdeal-value"
                   name="value"
@@ -160,18 +160,18 @@ export default function NewDealModal({
                   min="0"
                   step="0.01"
                   required
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
                   placeholder="5000"
                 />
               </div>
 
               <div>
-                <label htmlFor="newdeal-assigned-to" className="mb-1 block text-xs font-medium text-gray-600">Zugewiesen an</label>
+                <label htmlFor="newdeal-assigned-to" className="mb-1 block text-xs font-medium text-foreground/70">Zugewiesen an</label>
                 <select
                   id="newdeal-assigned-to"
                   name="assigned_to"
                   autoComplete="off"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
                 >
                   <option value="">— nicht zugewiesen —</option>
                   {teamMembers.map((m) => (
@@ -190,7 +190,7 @@ export default function NewDealModal({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-foreground/80 hover:bg-muted/40"
                 >
                   Abbrechen
                 </button>

@@ -35,7 +35,7 @@ const DealsTableRow = memo(function DealsTableRow({
   return (
     <tr
       onClick={handleRowClick}
-      className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50/80 ${isSelected ? "bg-blue-50/60" : ""}`}
+      className={`cursor-pointer transition-colors duration-150 hover:bg-muted/50 ${isSelected ? "bg-blue-50/60" : ""}`}
     >
       {selectable && (
         <td className="px-2 py-2 sm:px-3" onClick={handleStopPropagation}>
@@ -44,12 +44,12 @@ const DealsTableRow = memo(function DealsTableRow({
             checked={isSelected}
             onChange={handleToggle}
             aria-label={`${deal.name} auswählen`}
-            className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+            className="h-4 w-4 rounded border-border-strong accent-blue-600"
           />
         </td>
       )}
       <td className="truncate px-2 py-2 sm:px-3">
-        <span className="font-medium text-slate-900">{deal.name}</span>
+        <span className="font-medium text-foreground">{deal.name}</span>
       </td>
 
       <td className="hidden truncate px-2 py-2 sm:px-3 sm:table-cell" onClick={handleStopPropagation}>
@@ -57,32 +57,32 @@ const DealsTableRow = memo(function DealsTableRow({
           <CallLink
             phone={contact.phone}
             label={contact.company || `${contact.first_name} ${contact.last_name}`.trim() || deal.name}
-            className="text-slate-600 hover:text-slate-900 hover:underline"
+            className="text-foreground/70 hover:text-foreground hover:underline"
           />
         ) : (
-          <span className="text-slate-300">—</span>
+          <span className="text-muted-foreground/50">—</span>
         )}
       </td>
 
       <td className="hidden truncate px-2 py-2 sm:px-3 md:table-cell" onClick={handleStopPropagation}>
         {contact?.email ? (
-          <a href={`mailto:${contact.email}`} className="text-slate-600 hover:text-slate-900 hover:underline">
+          <a href={`mailto:${contact.email}`} className="text-foreground/70 hover:text-foreground hover:underline">
             {contact.email}
           </a>
         ) : (
-          <span className="text-slate-300">—</span>
+          <span className="text-muted-foreground/50">—</span>
         )}
       </td>
 
-      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-700 md:table-cell">{contact?.company ?? "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-foreground/80 md:table-cell">{contact?.company ?? "—"}</td>
 
-      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-600 lg:table-cell">{deal.industry || contact?.industry || "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-foreground/70 lg:table-cell">{deal.industry || contact?.industry || "—"}</td>
 
-      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-600 lg:table-cell">{deal.country || contact?.country || "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-foreground/70 lg:table-cell">{deal.country || contact?.country || "—"}</td>
 
-      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-600 xl:table-cell">{deal.address || contact?.address || "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-foreground/70 xl:table-cell">{deal.address || contact?.address || "—"}</td>
 
-      <td className="hidden whitespace-nowrap px-2 py-2 sm:px-3 text-slate-500 lg:table-cell">{formatDateDE(deal.created_at)}</td>
+      <td className="hidden whitespace-nowrap px-2 py-2 sm:px-3 text-muted-foreground lg:table-cell">{formatDateDE(deal.created_at)}</td>
 
       <td className="overflow-hidden px-2 py-2 sm:px-3">
         {phase && (
@@ -151,19 +151,19 @@ export default function DealsTable({
 
   if (deals.length === 0) {
     return (
-      <div className="rounded-2xl border border-gray-200/80 bg-white p-10 text-center text-sm text-gray-400 shadow-sm">
+      <div className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground shadow-sm">
         Keine Kunden in dieser Phase.
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-gray-200/80 bg-white shadow-sm sm:rounded-2xl">
+    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-border bg-card shadow-sm sm:rounded-2xl">
       <table className="w-full min-w-[720px] table-fixed text-xs">
-        <thead className="bg-gray-50">
+        <thead className="bg-muted/40">
           <tr>
             {selectable && (
-              <th className="w-[4%] px-2 py-2 sm:px-3 text-left font-medium text-gray-500">
+              <th className="w-[4%] px-2 py-2 sm:px-3 text-left font-medium text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={isAllSelected}
@@ -172,19 +172,19 @@ export default function DealsTable({
                   }}
                   onChange={() => onToggleSelectAll?.(deals.map((d) => d.id), !isAllSelected)}
                   aria-label="Alle sichtbaren Deals auswählen"
-                  className="h-4 w-4 rounded border-gray-300 accent-blue-600"
+                  className="h-4 w-4 rounded border-border-strong accent-blue-600"
                 />
               </th>
             )}
             {COLUMNS.map((col) => (
               <th
                 key={col.key}
-                className={`${col.width} ${col.visibility} px-2 py-2 sm:px-3 text-left font-medium text-gray-500`}
+                className={`${col.width} ${col.visibility} px-2 py-2 sm:px-3 text-left font-medium text-muted-foreground`}
               >
                 <button
                   type="button"
                   onClick={() => onSortChange(col.key)}
-                  className="flex min-h-[44px] w-full items-center truncate hover:text-gray-700"
+                  className="flex min-h-[44px] w-full items-center truncate hover:text-foreground/80"
                 >
                   {col.label}
                 </button>
@@ -192,7 +192,7 @@ export default function DealsTable({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-border/60">
           {deals.map((deal) => (
             <DealsTableRow
               key={deal.id}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import ClientNav from './ClientNav'
+import Logo from '@/components/Logo'
 
 const STORAGE_KEY = 'sidebar-collapsed'
 const EXPANDED_WIDTH = 220
@@ -70,9 +71,7 @@ export default function Sidebar({
       >
         <div className={`flex flex-col gap-6 ${collapsed ? 'items-center' : 'items-stretch px-3'}`}>
           <div className={`flex items-center ${collapsed ? 'flex-col gap-3' : 'justify-between px-1'}`}>
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">
-              Y
-            </div>
+            <Logo variant={collapsed ? 'collapsed' : 'full'} />
             <button
               type="button"
               onClick={toggle}

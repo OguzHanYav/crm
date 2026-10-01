@@ -25,8 +25,8 @@ export default function StageTabs({
             onClick={() => onSelect(stage.id)}
             className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
               isActive
-                ? "border-gray-900 bg-gray-900 text-white"
-                : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-card text-foreground/70 hover:bg-muted/40"
             }`}
           >
             {stage.name}

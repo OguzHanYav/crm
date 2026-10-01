@@ -327,17 +327,17 @@ export default function DealsView({
   );
 
   return (
-    <div className="w-full min-w-0 max-w-full bg-white p-3 max-sm:pb-0 sm:min-h-screen sm:p-6">
+    <div className="w-full min-w-0 max-w-full bg-card p-3 max-sm:pb-0 sm:min-h-screen sm:p-6">
       {/* Kopfzeile */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{projectName}</h1>
-          <p className="text-sm text-slate-500">{totalCount.toLocaleString("de-DE")} Deals insgesamt</p>
+          <h1 className="text-2xl font-semibold text-foreground">{projectName}</h1>
+          <p className="text-sm text-muted-foreground">{totalCount.toLocaleString("de-DE")} Deals insgesamt</p>
         </div>
 
         <Link
           href="/dashboard/settings?tab=pipeline"
-          className="flex min-h-[40px] items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 active:scale-[0.98]"
+          className="flex min-h-[40px] items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition-all hover:bg-muted/40 active:scale-[0.98]"
         >
           Pipeline-Einstellungen
         </Link>
@@ -346,7 +346,7 @@ export default function DealsView({
       {/* Phasen-Tab-Leiste als Segmented Control — inaktive Tabs bleiben dezent-neutral,
           erst der ausgewählte Tab nimmt die Hex-Farbe der Phase als Hintergrund an. */}
       <div className="no-scrollbar mb-4 w-full max-w-full overflow-x-auto">
-        <div className="flex min-h-[44px] w-fit items-center gap-1 whitespace-nowrap rounded-xl bg-gray-100 p-1">
+        <div className="flex min-h-[44px] w-fit items-center gap-1 whitespace-nowrap rounded-xl bg-muted p-1">
           {phases.map((phase) => {
             const isSelected = phase.key === activeKey;
             const count = phaseCounts[phase.key] ?? 0;
@@ -360,13 +360,13 @@ export default function DealsView({
                   backgroundColor: isSelected ? phase.color : undefined,
                 }}
                 className={`flex min-h-[36px] shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
-                  isSelected ? "text-white shadow-sm" : "text-gray-500 hover:text-gray-900"
+                  isSelected ? "text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {phase.name}
                 <span
                   className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
-                    isSelected ? "bg-white/25 text-white" : "bg-gray-200/70 text-gray-500"
+                    isSelected ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"
                   }`}
                 >
                   {count}
@@ -387,7 +387,7 @@ export default function DealsView({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Volltextsuche (Name, Kontakt, Firma, E-Mail, Telefon, Land)"
-          className="min-h-[40px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 placeholder:text-gray-400 transition-colors focus:border-blue-500 focus:outline-none"
+          className="min-h-[40px] flex-1 rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground/80 placeholder:text-muted-foreground transition-colors focus:border-blue-500 focus:outline-none"
         />
 
         <FilterDropdown
@@ -419,15 +419,15 @@ export default function DealsView({
       />
 
       {isAdmin && selectedIds.size > 0 && (
-        <div className="sticky bottom-4 z-30 mt-4 flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg max-sm:static max-sm:mt-3">
-          <span className="text-sm font-medium text-slate-900">
+        <div className="sticky bottom-4 z-30 mt-4 flex items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-lg max-sm:static max-sm:mt-3">
+          <span className="text-sm font-medium text-foreground">
             {selectedIds.size} Deal{selectedIds.size === 1 ? "" : "s"} ausgewählt
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50"
+              className="min-h-[40px] rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground/80 transition-all hover:bg-muted/40"
             >
               Auswahl aufheben
             </button>
@@ -443,7 +443,7 @@ export default function DealsView({
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3 max-sm:gap-2 max-sm:border-t max-sm:border-gray-200 max-sm:bg-white/95 max-sm:px-3 max-sm:pb-14 max-sm:pt-2 max-sm:text-xs max-sm:backdrop-blur">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-foreground/70 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3 max-sm:gap-2 max-sm:border-t max-sm:border-border max-sm:bg-card/95 max-sm:px-3 max-sm:pb-14 max-sm:pt-2 max-sm:text-xs max-sm:backdrop-blur">
         <div className="flex items-center gap-4">
           <span>
             {isCountryLoading
@@ -460,7 +460,7 @@ export default function DealsView({
               autoComplete="off"
               value={renderLimit}
               onChange={(e) => setRenderLimit(Number(e.target.value))}
-              className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-2 py-1 text-sm transition-colors focus:border-blue-500 focus:outline-none"
+              className="min-h-[40px] rounded-xl border border-border bg-card px-2 py-1 text-sm transition-colors focus:border-blue-500 focus:outline-none"
             >
               {RENDER_LIMIT_OPTIONS.map((n) => (
                 <option key={n} value={n}>

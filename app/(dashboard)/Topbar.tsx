@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 import SignOutButton from './sign-out-button'
 
 function IconSearch() {
@@ -93,6 +94,11 @@ function UserMenu({ displayName, role, initials }: { displayName: string; role: 
               {item.label}
             </Link>
           ))}
+          <div className="my-1 border-t border-border" />
+          <div className="px-2 py-1.5">
+            <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Darstellung</p>
+            <ThemeToggle />
+          </div>
           <div className="my-1 border-t border-border" />
           <SignOutButton />
         </div>

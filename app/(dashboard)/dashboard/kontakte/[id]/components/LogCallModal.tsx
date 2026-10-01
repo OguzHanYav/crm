@@ -34,12 +34,12 @@ export default function LogCallModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="flex h-full w-full max-w-full flex-col rounded-none bg-white shadow-xl sm:h-auto sm:max-w-sm sm:rounded-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 sm:border-b-0 sm:pb-0">
-          <h2 className="text-lg font-semibold text-gray-900">Anruf protokollieren</h2>
+      <div className="flex h-full w-full max-w-full flex-col rounded-none bg-card shadow-xl sm:h-auto sm:max-w-sm sm:rounded-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4 sm:border-b-0 sm:pb-0">
+          <h2 className="text-lg font-semibold text-foreground">Anruf protokollieren</h2>
           <button
             onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground/70"
           >
             ✕
           </button>
@@ -51,14 +51,14 @@ export default function LogCallModal({
           className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4 sm:flex-none"
         >
           <div>
-            <label htmlFor="call-type" className="mb-1 block text-xs font-medium text-gray-600">Anruf-Typ</label>
+            <label htmlFor="call-type" className="mb-1 block text-xs font-medium text-foreground/70">Anruf-Typ</label>
             <select
               id="call-type"
               name="call_type"
               autoComplete="off"
               required
               defaultValue="opening_call"
-              className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
+              className="min-h-[44px] w-full rounded-xl border border-border px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
             >
               <option value="opening_call">Opening-Call</option>
               <option value="follow_up_call">Follow-Up</option>
@@ -66,13 +66,13 @@ export default function LogCallModal({
           </div>
 
           <div>
-            <label htmlFor="call-interest" className="mb-1 block text-xs font-medium text-gray-600">Interesse bekundet</label>
+            <label htmlFor="call-interest" className="mb-1 block text-xs font-medium text-foreground/70">Interesse bekundet</label>
             <select
               id="call-interest"
               name="interest_expressed"
               autoComplete="off"
               defaultValue=""
-              className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
+              className="min-h-[44px] w-full rounded-xl border border-border px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
             >
               <option value="">— unklar —</option>
               <option value="true">Ja</option>
@@ -81,7 +81,7 @@ export default function LogCallModal({
           </div>
 
           <div>
-            <label htmlFor="call-called-at" className="mb-1 block text-xs font-medium text-gray-600">Datum/Uhrzeit</label>
+            <label htmlFor="call-called-at" className="mb-1 block text-xs font-medium text-foreground/70">Datum/Uhrzeit</label>
             <input
               id="call-called-at"
               name="called_at"
@@ -89,30 +89,30 @@ export default function LogCallModal({
               autoComplete="off"
               required
               defaultValue={new Date().toISOString().slice(0, 16)}
-              className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
+              className="min-h-[44px] w-full rounded-xl border border-border px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
             />
           </div>
 
           <div>
-            <label htmlFor="call-summary" className="mb-1 block text-xs font-medium text-gray-600">Zusammenfassung</label>
+            <label htmlFor="call-summary" className="mb-1 block text-xs font-medium text-foreground/70">Zusammenfassung</label>
             <textarea
               id="call-summary"
               name="summary"
               autoComplete="off"
               rows={3}
               required
-              className="min-h-[44px] w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
+              className="min-h-[44px] w-full rounded-xl border border-border px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none"
               placeholder="Worüber wurde gesprochen?"
             />
           </div>
         </form>
 
         {/* Sticky-Footer: Speichern/Abbrechen bleiben auf Mobile über der Tastatur sichtbar. */}
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-100 bg-white px-6 py-4">
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-card px-6 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[40px] rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-all hover:bg-gray-50 active:scale-[0.98]"
+            className="min-h-[40px] rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground/80 transition-all hover:bg-muted/40 active:scale-[0.98]"
           >
             Abbrechen
           </button>

@@ -93,7 +93,7 @@ export default function ActivityTimeline({
             if (e.key === "Enter") submitNote();
           }}
           placeholder="Neue Notiz hinzufügen..."
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+          className="flex-1 rounded-md border border-border-strong px-3 py-2 text-sm"
         />
         <button
           onClick={submitNote}
@@ -105,7 +105,7 @@ export default function ActivityTimeline({
       </div>
 
       {items.length === 0 ? (
-        <p className="text-sm text-gray-400">Noch keine Aktivitäten.</p>
+        <p className="text-sm text-muted-foreground">Noch keine Aktivitäten.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
@@ -114,23 +114,23 @@ export default function ActivityTimeline({
               <div className="min-w-0">
                 {item.type === "call" ? (
                   <>
-                    <p className="text-gray-800">
+                    <p className="text-foreground">
                       <span className="font-medium">
                         {CALL_TYPE_LABELS[item.call_type] || item.call_type}
                       </span>
                       {item.interest_expressed !== null && (
-                        <span className="ml-2 text-gray-600">
+                        <span className="ml-2 text-foreground/70">
                           Interesse: {item.interest_expressed ? "✅ Ja" : "❌ Nein"}
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-gray-500">{formatDateDE(item.called_at)}</p>
-                    {item.notes && <p className="mt-1 text-gray-600">{item.notes}</p>}
+                    <p className="text-xs text-muted-foreground">{formatDateDE(item.called_at)}</p>
+                    {item.notes && <p className="mt-1 text-foreground/70">{item.notes}</p>}
                   </>
                 ) : (
-                  <p className="text-gray-800">{item.content}</p>
+                  <p className="text-foreground">{item.content}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {item.author ? `${item.author.first_name} ${item.author.last_name} · ` : ""}
                   {formatDateDE(item.created_at)}
                 </p>

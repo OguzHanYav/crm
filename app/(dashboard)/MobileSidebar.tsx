@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { navItems } from './ClientNav'
+import Logo from '@/components/Logo'
 
 export default function MobileSidebar({ hiddenNavHrefs = [] }: { hiddenNavHrefs?: string[] }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -49,9 +50,7 @@ export default function MobileSidebar({ hiddenNavHrefs = [] }: { hiddenNavHrefs?
 
           <div className="mobile-sheet-in relative flex h-auto max-h-[85dvh] w-full max-w-full flex-col overflow-y-auto rounded-b-2xl border-b border-border bg-card px-3 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-xl sm:max-w-xs">
             <div className="mb-3 flex items-center justify-between px-1">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground">
-                Y
-              </div>
+              <Logo variant="full" />
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}

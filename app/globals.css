@@ -1,6 +1,9 @@
 /* app/globals.css */
 @import "tailwindcss";
 
+/* Dark Mode per Klasse auf <html> (ThemeProvider), nicht nur per System-Einstellung. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #F8FAFC;
   --foreground: #0F172A;
@@ -39,6 +42,47 @@
   --shadow-soft: 0 1px 2px 0 rgba(15, 23, 42, 0.06);
   --shadow-card: 0 4px 24px -8px rgba(15, 23, 42, 0.12);
   --shadow-glow: 0 0 0 1px var(--accent-glow), 0 8px 24px -8px var(--accent-glow);
+
+  color-scheme: light;
+}
+
+/* Dark Theme (zinc-Palette, gleicher blauer Akzent) */
+.dark {
+  --background: #09090B;
+  --foreground: #F4F4F5;
+
+  --card: #18181B;
+  --card-foreground: #F4F4F5;
+
+  --popover: #18181B;
+  --popover-foreground: #F4F4F5;
+
+  --muted: #27272A;
+  --muted-foreground: #A1A1AA;
+
+  --border: #27272A;
+  --border-strong: #3F3F46;
+  --input: #1F1F23;
+  --ring: #3B82F680;
+
+  --accent: #2563EB;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: #3B82F626;
+  --accent-glow: #3B82F640;
+
+  --success: #22C55E;
+  --success-soft: #22C55E26;
+  --warning: #F59E0B;
+  --warning-soft: #F59E0B26;
+  --danger: #EF4444;
+  --danger-soft: #EF444426;
+  --info: #38BDF8;
+  --info-soft: #38BDF826;
+
+  --shadow-soft: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 24px -8px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -54,6 +98,7 @@
   --color-muted-foreground: var(--muted-foreground);
 
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
 

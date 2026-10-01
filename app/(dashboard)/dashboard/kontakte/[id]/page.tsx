@@ -48,7 +48,7 @@ export default async function ContactDetailPage({
     <div className="flex flex-col gap-6 p-6">
       <Link
         href="/dashboard/kontakte"
-        className="w-fit text-sm text-gray-500 hover:text-gray-800"
+        className="w-fit text-sm text-muted-foreground hover:text-foreground"
       >
         ← Zurück zu Kontakten
       </Link>
@@ -69,22 +69,22 @@ export default async function ContactDetailPage({
         </div>
 
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-800">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
               Aktivitäten & Notizen
             </h3>
             <ActivityTimeline contactId={id} notes={notes} callLogs={callLogs} />
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-800">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
               Verknüpfte Deals
             </h3>
             <DealsList deals={deals} />
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-800">
+          <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h3 className="mb-3 text-sm font-semibold text-foreground">
               Anrufe (Call History)
             </h3>
             <CallHistoryList callLogs={callLogs} />

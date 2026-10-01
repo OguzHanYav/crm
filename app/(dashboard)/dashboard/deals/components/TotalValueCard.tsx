@@ -13,9 +13,9 @@ export default function TotalValueCard({
   currency: string;
 }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
-      <p className="text-xs font-medium text-gray-500">Gesamtwert der Pipeline</p>
-      <p className="text-lg font-semibold text-gray-900">{formatEuro(totalValue)}</p>
+    <div className="rounded-lg border border-border bg-card px-4 py-2 shadow-sm">
+      <p className="text-xs font-medium text-muted-foreground">Gesamtwert der Pipeline</p>
+      <p className="text-lg font-semibold text-foreground">{formatEuro(totalValue)}</p>
     </div>
   );
 }

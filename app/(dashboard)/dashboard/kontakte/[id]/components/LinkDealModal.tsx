@@ -45,10 +45,10 @@ export default function LinkDealModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Neuen Deal verknüpfen</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 className="text-lg font-semibold text-foreground">Neuen Deal verknüpfen</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground/70">
             ✕
           </button>
         </div>
@@ -57,7 +57,7 @@ export default function LinkDealModal({
           <input id="linkdeal-contact-id" type="hidden" name="contact_id" autoComplete="off" value={contact.id} />
 
           <div>
-            <label htmlFor="linkdeal-pipeline" className="mb-1 block text-xs font-medium text-gray-600">Pipeline</label>
+            <label htmlFor="linkdeal-pipeline" className="mb-1 block text-xs font-medium text-foreground/70">Pipeline</label>
             <select
               id="linkdeal-pipeline"
               name="pipeline_id"
@@ -65,7 +65,7 @@ export default function LinkDealModal({
               value={selectedPipelineId}
               onChange={(e) => setSelectedPipelineId(e.target.value)}
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
             >
               <option value="">— Pipeline wählen —</option>
               {pipelines.map((p) => (
@@ -77,14 +77,14 @@ export default function LinkDealModal({
           </div>
 
           <div>
-            <label htmlFor="linkdeal-stage" className="mb-1 block text-xs font-medium text-gray-600">Phase</label>
+            <label htmlFor="linkdeal-stage" className="mb-1 block text-xs font-medium text-foreground/70">Phase</label>
             <select
               id="linkdeal-stage"
               name="stage_id"
               autoComplete="off"
               required
               defaultValue={defaultStageId || ""}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
             >
               <option value="">— Phase wählen —</option>
               {availableStages.map((s) => (
@@ -96,19 +96,19 @@ export default function LinkDealModal({
           </div>
 
           <div>
-            <label htmlFor="linkdeal-title" className="mb-1 block text-xs font-medium text-gray-600">Titel</label>
+            <label htmlFor="linkdeal-title" className="mb-1 block text-xs font-medium text-foreground/70">Titel</label>
             <input
               id="linkdeal-title"
               name="title"
               autoComplete="off"
               required
               defaultValue={`Deal – ${contact.first_name} ${contact.last_name}`}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
             />
           </div>
 
           <div>
-            <label htmlFor="linkdeal-value" className="mb-1 block text-xs font-medium text-gray-600">Wert (€)</label>
+            <label htmlFor="linkdeal-value" className="mb-1 block text-xs font-medium text-foreground/70">Wert (€)</label>
             <input
               id="linkdeal-value"
               name="value"
@@ -117,19 +117,19 @@ export default function LinkDealModal({
               min="0"
               step="0.01"
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
             />
           </div>
 
           <div>
-            <label htmlFor="linkdeal-assigned-to" className="mb-1 block text-xs font-medium text-gray-600">
+            <label htmlFor="linkdeal-assigned-to" className="mb-1 block text-xs font-medium text-foreground/70">
               Zugewiesen an
             </label>
             <select
               id="linkdeal-assigned-to"
               name="assigned_to"
               autoComplete="off"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-md border border-border-strong px-3 py-2 text-sm"
             >
               <option value="">— nicht zugewiesen —</option>
               {teamMembers.map((m) => (
@@ -146,7 +146,7 @@ export default function LinkDealModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-foreground/80 hover:bg-muted/40"
             >
               Abbrechen
             </button>

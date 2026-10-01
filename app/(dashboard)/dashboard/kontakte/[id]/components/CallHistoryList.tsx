@@ -17,18 +17,18 @@ const CALL_TYPE_LABELS: Record<string, string> = {
 
 export default function CallHistoryList({ callLogs }: { callLogs: CallLog[] }) {
   if (callLogs.length === 0) {
-    return <p className="text-sm text-gray-400">Noch keine Anrufe protokolliert.</p>;
+    return <p className="text-sm text-muted-foreground">Noch keine Anrufe protokolliert.</p>;
   }
 
   return (
     <ul className="flex flex-col gap-2">
       {callLogs.map((call) => (
-        <li key={call.id} className="rounded-md border border-gray-200 px-3 py-2 text-sm">
+        <li key={call.id} className="rounded-md border border-border px-3 py-2 text-sm">
           <div className="flex items-center justify-between">
-            <p className="font-medium text-gray-800">
+            <p className="font-medium text-foreground">
               {call.author ? `${call.author.first_name} ${call.author.last_name}` : "Unbekannt"}
             </p>
-            <span className="text-xs text-gray-400">{formatDateDE(call.called_at)}</span>
+            <span className="text-xs text-muted-foreground">{formatDateDE(call.called_at)}</span>
           </div>
           <div className="mt-1 flex flex-wrap gap-2">
             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
@@ -40,8 +40,8 @@ export default function CallHistoryList({ callLogs }: { callLogs: CallLog[] }) {
               </span>
             )}
           </div>
-          {call.notes && <p className="mt-1 text-gray-600">{call.notes}</p>}
-          <p className="mt-1 text-xs text-gray-400">{formatDateDE(call.created_at)}</p>
+          {call.notes && <p className="mt-1 text-foreground/70">{call.notes}</p>}
+          <p className="mt-1 text-xs text-muted-foreground">{formatDateDE(call.created_at)}</p>
         </li>
       ))}
     </ul>

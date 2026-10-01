@@ -262,23 +262,23 @@ export default function DataManagementSettings() {
       )}
 
       {/* Vorlage */}
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-gray-900">Muster-Vorlage</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground">Muster-Vorlage</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Lädt eine Beispieldatei mit den korrekt benannten Spalten für den Import herunter.
         </p>
         <button
           onClick={downloadTemplate}
-          className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="mt-4 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-foreground/80 hover:bg-muted/40"
         >
           Muster-Importvorlage herunterladen (.xlsx)
         </button>
       </section>
 
       {/* Export */}
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-gray-900">Daten exportieren</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground">Daten exportieren</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Lädt alle aktuellen Datensätze als Excel-Datei (.xlsx) herunter.
         </p>
 
@@ -304,9 +304,9 @@ export default function DataManagementSettings() {
       </section>
 
       {/* Import */}
-      <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-gray-900">Daten importieren</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground">Daten importieren</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
           Unterstützt .xlsx und .csv. Für jeden Kontakt wird automatisch ein Deal angelegt, sofern
           noch keiner existiert — die Ziel-Pipeline wird über das Feld &quot;Deal&quot; bestimmt
           (z. B. &quot;Neukunde&quot; oder eine Pipeline-Bezeichnung wie &quot;Döner&quot;),
@@ -324,13 +324,13 @@ export default function DataManagementSettings() {
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
           className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
-            isDragOver ? "border-indigo-400 bg-indigo-50" : "border-gray-300 bg-gray-50"
+            isDragOver ? "border-indigo-400 bg-indigo-50" : "border-border-strong bg-muted/40"
           }`}
         >
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium text-foreground/80">
             Datei hierher ziehen oder klicken zum Auswählen
           </p>
-          <p className="mt-1 text-xs text-gray-400">.xlsx, .xls oder .csv</p>
+          <p className="mt-1 text-xs text-muted-foreground">.xlsx, .xls oder .csv</p>
           <input
             id="import-file"
             name="importFile"
@@ -346,35 +346,35 @@ export default function DataManagementSettings() {
 
         {fileName && headers.length > 0 && (
           <div className="mt-5 flex flex-col gap-4">
-            <p className="text-sm font-medium text-gray-700">
-              Datei: <span className="font-normal text-gray-500">{fileName}</span> ·{" "}
+            <p className="text-sm font-medium text-foreground/80">
+              Datei: <span className="font-normal text-muted-foreground">{fileName}</span> ·{" "}
               {rawRows.length} Zeile(n) erkannt
             </p>
 
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Spalten-Zuordnung
               </h3>
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-muted/40">
                     <tr>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">
                         Spalte in Datei
                       </th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">
                         Beispielwert
                       </th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-500">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">
                         Zuordnung
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-border/60">
                     {headers.map((header, headerIndex) => (
                       <tr key={header}>
-                        <td className="px-3 py-2 font-medium text-gray-800">{header}</td>
-                        <td className="px-3 py-2 text-gray-500">
+                        <td className="px-3 py-2 font-medium text-foreground">{header}</td>
+                        <td className="px-3 py-2 text-muted-foreground">
                           {String(rawRows[0]?.[header] ?? "")}
                         </td>
                         <td className="px-3 py-2">
@@ -390,7 +390,7 @@ export default function DataManagementSettings() {
                                 [header]: e.target.value as TargetField,
                               }))
                             }
-                            className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                            className="rounded-md border border-border-strong px-2 py-1 text-sm"
                           >
                             {TARGET_FIELDS.map((field) => (
                               <option key={field.value} value={field.value}>
@@ -407,25 +407,25 @@ export default function DataManagementSettings() {
             </div>
 
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Vorschau (erste {previewRows.length} Zeile{previewRows.length !== 1 ? "n" : ""})
               </h3>
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200 text-sm">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-muted/40">
                     <tr>
                       {headers.map((header) => (
-                        <th key={header} className="px-3 py-2 text-left font-medium text-gray-500">
+                        <th key={header} className="px-3 py-2 text-left font-medium text-muted-foreground">
                           {header}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-border/60">
                     {previewRows.map((row, i) => (
                       <tr key={`${i}-${headers.map((h) => row[h]).join("|")}`}>
                         {headers.map((header) => (
-                          <td key={header} className="px-3 py-2 text-gray-700">
+                          <td key={header} className="px-3 py-2 text-foreground/80">
                             {String(row[header] ?? "")}
                           </td>
                         ))}
@@ -454,15 +454,15 @@ export default function DataManagementSettings() {
               <button
                 onClick={resetImport}
                 disabled={isImporting}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-foreground/80 hover:bg-muted/40 disabled:opacity-50"
               >
                 Zurücksetzen
               </button>
             </div>
 
             {importResult && (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
-                <p className="font-medium text-gray-800">{importResult.message}</p>
+              <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+                <p className="font-medium text-foreground">{importResult.message}</p>
                 {importResult.errors && importResult.errors.length > 0 && (
                   <ul className="mt-2 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-xs text-red-600">
                     {importResult.errors.map((err, i) => (

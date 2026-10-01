@@ -39,7 +39,7 @@ export default function ContactsSearch({ defaultValue }: { defaultValue: string 
       value={value}
       onChange={(e) => setValue(e.target.value)}
       placeholder="Suche..."
-      className="h-9 w-full rounded-lg border border-gray-300 px-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:w-52"
+      className="h-9 w-full rounded-lg border border-border-strong px-2.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:w-52"
     />
   );
 }
