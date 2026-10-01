@@ -198,9 +198,22 @@ export async function deleteDealsByAdmin(dealIds: string[]): Promise<ActionResul
     return { success: false, message: "Keine Berechtigung: Nur Admins dürfen Deals löschen." };
   }
 
-  const ids = Array.from(new Set(dealIds.filter(Boolean)));
-  if (ids.length === 0) {
+  const requested = Array.from(new Set(dealIds.filter(Boolean)));
+  if (requested.length === 0) {
     return { success: false, message: "Keine Deals ausgewählt." };
+  }
+
+  // Gelöscht wird per Service-Role (umgeht RLS) — vorher per Session (RLS) auf
+  // Deals des eigenen Mandanten einschränken.
+  const supabase = await createClient();
+  const ids: string[] = [];
+  for (let i = 0; i < requested.length; i += 100) {
+    const { data, error } = await supabase.from("deals").select("id").in("id", requested.slice(i, i + 100));
+    if (error) return { success: false, message: error.message };
+    ids.push(...(data ?? []).map((r: { id: string }) => r.id));
+  }
+  if (ids.length === 0) {
+    return { success: false, message: "Keine Deals gefunden." };
   }
 
   try {

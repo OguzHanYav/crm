@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { jobIdParamSchema } from "@/lib/validation/notifications";
+import { canAccessJob } from "@/lib/services/job-access";
 import { getNotificationSettings } from "@/lib/services/notification-settings";
 import {
   acquireJobLock,
@@ -47,6 +48,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ jo
   }
 
   const { jobId } = paramResult.data;
+
+  if (!(await canAccessJob(jobId))) {
+    return NextResponse.json({ success: false, message: "Job nicht gefunden." }, { status: 404 });
+  }
 
   // Verhindert, dass zwei parallele /process-Calls (z. B. der initiale Trigger
   // und ein Self-Trigger-Retry nach Tab-Wechsel) gleichzeitig dieselben

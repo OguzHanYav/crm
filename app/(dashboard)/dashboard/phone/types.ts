@@ -8,7 +8,7 @@ export const PHONE_STATUS_LABELS: Record<PhoneStatus, string> = {
 
 export type PhoneNumber = {
   id: string;
-  org_id: string | null;
+  tenant_id?: string | null;
   number: string;
   label: string | null;
   assigned_user_id: string | null;

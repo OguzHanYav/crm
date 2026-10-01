@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 import { createClient } from "@/utils/supabase/server";
 import { currentUserCanUseFeature } from "@/lib/features";
+import { getCurrentTenant, PLAN_LABELS, TENANT_FEATURE_LABELS, type TenantFeatureKey } from "@/lib/tenant";
 import {
   DASHBOARD_TIME_ZONE,
   getActivityStream,
@@ -108,7 +109,33 @@ function KpiCard({ label, value, icon, href }: { label: string; value: number; i
   );
 }
 
-export default async function DashboardPage() {
+// Hinweis nach Umleitung durch einen Feature-Guard (requireFeature in lib/features.ts).
+function AccessBanner({ upgrade, denied, planLabel }: { upgrade?: string; denied?: string; planLabel: string }) {
+  const key = (upgrade ?? denied) as TenantFeatureKey | undefined;
+  if (!key || !(key in TENANT_FEATURE_LABELS)) return null;
+  const feature = TENANT_FEATURE_LABELS[key];
+  return upgrade ? (
+    <div role="status" className="flex flex-col gap-1 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-foreground">
+        <span className="font-semibold">Upgrade erforderlich:</span> „{feature}“ ist im Paket {planLabel} nicht enthalten.
+      </p>
+      <span className="text-xs text-muted-foreground">Für ein Upgrade bitte an den Anbieter wenden.</span>
+    </div>
+  ) : (
+    <div role="status" className="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground">
+      <span className="font-semibold">Keine Berechtigung:</span> „{feature}“ wurde für dein Konto noch nicht freigeschaltet.
+      Bitte wende dich an einen Administrator.
+    </div>
+  );
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgrade?: string; denied?: string }>;
+}) {
+  const { upgrade, denied } = await searchParams;
+  const tenant = await getCurrentTenant();
   const supabase = await createClient();
   const {
     data: { user },
@@ -135,6 +162,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex min-w-0 flex-col gap-5 max-sm:pb-16 sm:gap-6">
+      <AccessBanner upgrade={upgrade} denied={denied} planLabel={PLAN_LABELS[tenant.plan]} />
+
       {/* Begrüßung + Schnellaktionen */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">

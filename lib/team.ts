@@ -1,4 +1,5 @@
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
+import { currentTenantId, scopeToTenant } from "@/lib/tenant";
 
 export type TeamMemberRow = {
   id: string;
@@ -15,10 +16,11 @@ export function memberDisplayName(m: Pick<TeamMemberRow, "first_name" | "last_na
 // Alle Team-Mitglieder für Admin-Seiten. Aufrufer MUSS vorher die Admin-Rolle prüfen.
 export async function getTeamMembersForAdmin(): Promise<TeamMemberRow[]> {
   const client = await getAdminOrFallbackClient();
-  const { data, error } = await client
-    .from("profiles")
-    .select("id, email, first_name, last_name, role")
-    .order("first_name", { ascending: true });
+  const tenantId = await currentTenantId();
+  const { data, error } = await scopeToTenant(
+    client.from("profiles").select("id, email, first_name, last_name, role"),
+    tenantId
+  ).order("first_name", { ascending: true });
   if (error) {
     console.error("getTeamMembersForAdmin error:", error.message);
     return [];

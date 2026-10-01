@@ -3,6 +3,7 @@
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { getServiceRoleClient, getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
+import { currentTenantId } from "@/lib/tenant";
 
 export type UserRow = {
   id: string;
@@ -47,6 +48,17 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
     return false;
   }
 }
+
+// Mandanten-Schutz für Admin-Aktionen mit Service-Role (umgeht RLS): Der
+// Ziel-Benutzer muss zum Mandanten des Admins gehören. Die Abfrage läuft mit der
+// Session des Admins, RLS liefert daher nur Profile des eigenen Mandanten.
+async function isUserInCurrentTenant(userId: string): Promise<boolean> {
+  const supabase = await createServerClient();
+  const { data } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle();
+  return Boolean(data);
+}
+
+const OTHER_TENANT_MESSAGE = "Dieser Benutzer gehört nicht zu deiner Organisation.";
 
 export async function getCurrentUserId(): Promise<string | null> {
   try {
@@ -114,6 +126,10 @@ export async function updateUser(
       updateData.role = role;
     }
 
+    if (currentUserId !== userId && !(await isUserInCurrentTenant(userId))) {
+      return { success: false, message: OTHER_TENANT_MESSAGE };
+    }
+
     // Admin-Client mit Service Role Key (umgeht RLS für Admins) — fällt auf den
     // regulären Server-Client zurück, falls der Service-Role-Key nicht konfiguriert ist.
     const supabaseAdmin = await getProfilesClient();
@@ -156,6 +172,10 @@ export async function setUserRole(
 
     if (currentUser?.id === userId) {
       return { success: false, message: "Du kannst dir selbst nicht die Admin-Rechte entziehen!" };
+    }
+
+    if (!(await isUserInCurrentTenant(userId))) {
+      return { success: false, message: OTHER_TENANT_MESSAGE };
     }
 
     const supabaseAdmin = await getProfilesClient();
@@ -219,6 +239,9 @@ export async function createUser(
     // upsert statt insert: falls ein DB-Trigger beim Anlegen in auth.users bereits
     // automatisch eine profiles-Zeile erstellt hat, würde ein reiner insert() mit
     // "duplicate key value violates unique constraint profiles_pkey" fehlschlagen.
+    // Neuer Benutzer gehört zum Mandanten des anlegenden Admins (der DB-Trigger
+    // würde ohne Session sonst den Standard-Mandanten setzen).
+    const tenantId = await currentTenantId();
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .upsert(
@@ -228,6 +251,7 @@ export async function createUser(
           first_name: firstName,
           last_name: lastName,
           role: role,
+          ...(tenantId ? { tenant_id: tenantId } : {}),
         },
         { onConflict: "id" }
       );
@@ -261,6 +285,10 @@ export async function updateUserByAdmin(
 
     if (updates.password && updates.password.length < 6) {
       return { success: false, message: "Das Passwort muss mindestens 6 Zeichen lang sein." };
+    }
+
+    if (!(await isUserInCurrentTenant(userId))) {
+      return { success: false, message: OTHER_TENANT_MESSAGE };
     }
 
     const supabaseAdmin = getAdminClient();
@@ -307,6 +335,10 @@ export async function deleteUserByAdmin(userId: string): Promise<ActionResult> {
     const currentUserId = await getCurrentUserId();
     if (currentUserId === userId) {
       return { success: false, message: "Du kannst deinen eigenen Account nicht löschen." };
+    }
+
+    if (!(await isUserInCurrentTenant(userId))) {
+      return { success: false, message: OTHER_TENANT_MESSAGE };
     }
 
     const supabaseAdmin = getAdminClient();

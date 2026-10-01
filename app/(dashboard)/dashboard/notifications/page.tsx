@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { currentUserCanUseFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/features";
 import { getNotificationJobs, type JobChannel } from "./data";
 import { Card } from "@/components/ui/Card";
 import { Badge, type BadgeProps } from "@/components/ui/Badge";
@@ -50,10 +49,8 @@ export default async function NotificationsPage({
 }: {
   searchParams: Promise<{ status?: string; jobId?: string }>;
 }) {
-  // Mitglieder nur mit Freigabe (Features → „Benachrichtigungen & Log-Übersicht“).
-  if (!(await currentUserCanUseFeature("notifications"))) {
-    redirect("/dashboard");
-  }
+  // Paket ohne Benachrichtigungen -> "Upgrade erforderlich"; Mitglied ohne Freigabe -> "Keine Berechtigung".
+  await requireFeature("notifications");
 
   const { status } = await searchParams;
   const { jobs, total } = await getNotificationJobs({ limit: 20, offset: 0, status });

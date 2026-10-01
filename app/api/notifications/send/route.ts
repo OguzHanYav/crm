@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { sendNotificationSchema } from "@/lib/validation/notifications";
 import { createJob } from "@/lib/services/notification-queue";
+import { getCurrentTenant, PLAN_LABELS, tenantHasFeature } from "@/lib/tenant";
 
 // Legt nur noch den Job + die Job-Items an und antwortet sofort — der
 // eigentliche Versand läuft asynchron über app/api/notifications/jobs/[jobId]/
@@ -28,7 +29,36 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { contactIds, type, emailPayload, whatsappPayload } = parsed.data;
+  const { contactIds: requestedIds, type, emailPayload, whatsappPayload } = parsed.data;
+
+  // Paket-Prüfung: Versand gehört zum Feature "notifications", WhatsApp zusätzlich zu "whatsapp".
+  const tenant = await getCurrentTenant();
+  if (!tenantHasFeature(tenant, "notifications")) {
+    return NextResponse.json(
+      { success: false, message: `Upgrade erforderlich: Benachrichtigungen sind im Paket ${PLAN_LABELS[tenant.plan]} nicht enthalten.` },
+      { status: 403 }
+    );
+  }
+  if (type !== "email" && !tenantHasFeature(tenant, "whatsapp")) {
+    return NextResponse.json(
+      { success: false, message: `Upgrade erforderlich: WhatsApp-Versand ist im Paket ${PLAN_LABELS[tenant.plan]} nicht enthalten.` },
+      { status: 403 }
+    );
+  }
+
+  // Die Queue liest Kontakte per Service-Role (ohne RLS) — daher nur Kontakte
+  // übernehmen, die der Nutzer per Session (RLS, eigener Mandant) sehen darf.
+  const contactIds: string[] = [];
+  for (let i = 0; i < requestedIds.length; i += 100) {
+    const { data, error } = await supabase.from("contacts").select("id").in("id", requestedIds.slice(i, i + 100));
+    if (error) {
+      return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    }
+    contactIds.push(...(data ?? []).map((r: { id: string }) => r.id));
+  }
+  if (contactIds.length === 0) {
+    return NextResponse.json({ success: false, message: "Keine gültigen Empfänger ausgewählt." }, { status: 400 });
+  }
 
   try {
     const { jobId, totalItems } = await createJob({

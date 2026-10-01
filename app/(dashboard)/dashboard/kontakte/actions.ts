@@ -391,6 +391,17 @@ export async function updateContact(
   return { success: true, data: data as Contact };
 }
 
+async function visibleIds(table: "contacts" | "deals", ids: string[]): Promise<string[]> {
+  const supabase = await createClient();
+  const visible: string[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await supabase.from(table).select("id").in("id", ids.slice(i, i + 100));
+    if (error) throw new Error(error.message);
+    visible.push(...(data ?? []).map((r: { id: string }) => r.id));
+  }
+  return visible;
+}
+
 export async function deleteContact(contactId: string): Promise<ActionResult> {
   const { success, message } = await deleteContactsByAdmin([contactId]);
   return { success, message };
@@ -404,9 +415,16 @@ export async function deleteContactsByAdmin(contactIds: string[]): Promise<Actio
     return { success: false, message: "Keine Berechtigung: Nur Admins dürfen Kontakte löschen." };
   }
 
-  const ids = Array.from(new Set(contactIds.filter(Boolean)));
-  if (ids.length === 0) {
+  const requested = Array.from(new Set(contactIds.filter(Boolean)));
+  if (requested.length === 0) {
     return { success: false, message: "Keine Kontakte ausgewählt." };
+  }
+
+  // Gelöscht wird per Service-Role (umgeht RLS) — daher vorher mit der Session
+  // auf die Kontakte des eigenen Mandanten einschränken.
+  const ids = await visibleIds("contacts", requested);
+  if (ids.length === 0) {
+    return { success: false, message: "Keine Kontakte gefunden." };
   }
 
   try {

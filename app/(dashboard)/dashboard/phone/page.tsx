@@ -3,6 +3,7 @@ import { currentUserIsAdmin } from "@/lib/features";
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { getTeamMembersForAdmin, memberDisplayName } from "@/lib/team";
 import { isSipConfigured } from "@/lib/sip/server-config";
+import { currentTenantId, scopeToTenant } from "@/lib/tenant";
 import PhoneStatusCard from "./components/PhoneStatusCard";
 import PhoneNumbersManager from "./components/PhoneNumbersManager";
 import type { PhoneNumber } from "./types";
@@ -14,10 +15,10 @@ export default async function PhonePage() {
 
   const client = await getAdminOrFallbackClient();
   const [{ data: numbers, error }, members] = await Promise.all([
-    client
-      .from("phone_numbers")
-      .select("id, org_id, number, label, assigned_user_id, status, created_at")
-      .order("created_at", { ascending: true }),
+    scopeToTenant(
+      client.from("phone_numbers").select("*"),
+      await currentTenantId()
+    ).order("created_at", { ascending: true }),
     getTeamMembersForAdmin(),
   ]);
 

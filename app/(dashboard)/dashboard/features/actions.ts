@@ -8,15 +8,19 @@ import { isCurrentUserAdmin } from "../settings/admin-actions";
 
 type ActionResult = { success: boolean; message?: string };
 
-async function guard(key: FeatureKey): Promise<string | null> {
+async function guard(key: FeatureKey, userId: string): Promise<string | null> {
   if (!(await isCurrentUserAdmin())) return "Keine Berechtigung: Nur Admins dürfen Features freischalten.";
   if (!(key in MEMBER_FEATURES)) return "Unbekanntes Feature.";
+  // Session-Abfrage (RLS): sichtbar sind nur Profile des eigenen Mandanten.
+  const supabase = await createClient();
+  const { data } = await supabase.from("profiles").select("id").eq("id", userId).maybeSingle();
+  if (!data) return "Dieser Benutzer gehört nicht zu deiner Organisation.";
   return null;
 }
 
 // Feature für EIN Mitglied explizit freischalten (true) oder sperren (false).
 export async function setUserFeatureFlag(userId: string, key: FeatureKey, enabled: boolean): Promise<ActionResult> {
-  const denied = await guard(key);
+  const denied = await guard(key, userId);
   if (denied) return { success: false, message: denied };
 
   const supabase = await createClient();
@@ -46,7 +50,7 @@ export async function setUserFeatureFlag(userId: string, key: FeatureKey, enable
 
 // Individuelle Einstellung entfernen -> Mitglied folgt wieder dem globalen Standard.
 export async function resetUserFeatureFlag(userId: string, key: FeatureKey): Promise<ActionResult> {
-  const denied = await guard(key);
+  const denied = await guard(key, userId);
   if (denied) return { success: false, message: denied };
 
   const client = await getAdminOrFallbackClient();

@@ -7,6 +7,8 @@ import QueryProvider from './QueryProvider'
 import { SipPhoneProvider } from '@/components/phone/SipPhoneProvider'
 import PhoneWidget from '@/components/phone/PhoneWidget'
 import { canUseFeature, getFeatureFlags, getUserFeatureOverrides, hiddenHrefsFor } from '@/lib/features'
+import { getCurrentTenant } from '@/lib/tenant'
+import { TenantProvider } from '@/components/tenant/TenantProvider'
 
 export default async function DashboardLayout({
   children,
@@ -33,16 +35,20 @@ export default async function DashboardLayout({
   const roleLabel = profile?.role === 'admin' ? 'Administrator' : 'Mitarbeiter'
 
   // Feature-Freigaben: Admins sehen alles, Mitglieder nur freigeschaltete Features.
-  const [featureFlags, featureOverrides] = await Promise.all([
+  // Mandant (Paket) + Feature-Freigaben: Menüpunkte und Telefonie nur, wenn das
+  // Feature im Paket enthalten UND für den Nutzer freigegeben ist.
+  const [featureFlags, featureOverrides, tenant] = await Promise.all([
     getFeatureFlags(),
     getUserFeatureOverrides(user.id),
+    getCurrentTenant(),
   ])
-  const hiddenNavHrefs = hiddenHrefsFor(profile?.role, featureFlags, featureOverrides)
-  const callsEnabled = canUseFeature(profile?.role, featureFlags, 'calls', featureOverrides)
+  const hiddenNavHrefs = hiddenHrefsFor(profile?.role, featureFlags, featureOverrides, tenant)
+  const callsEnabled = canUseFeature(profile?.role, featureFlags, 'calls', featureOverrides, tenant)
 
   // SipPhoneProvider umschließt das gesamte Dashboard, damit Registrierung und
   // laufende Gespräche beim Seitenwechsel innerhalb des Dashboards erhalten bleiben.
   return (
+    <TenantProvider tenant={tenant}>
     <SipPhoneProvider enabled={callsEnabled}>
       <Sidebar role={roleLabel} hiddenNavHrefs={hiddenNavHrefs}>
         <Topbar displayName={displayName} role={roleLabel} mobileNav={<MobileSidebar hiddenNavHrefs={hiddenNavHrefs} />} />
@@ -52,5 +58,6 @@ export default async function DashboardLayout({
       </Sidebar>
       <PhoneWidget />
     </SipPhoneProvider>
+    </TenantProvider>
   )
 }

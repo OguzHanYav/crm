@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { jobIdParamSchema } from "@/lib/validation/notifications";
+import { canAccessJob } from "@/lib/services/job-access";
 import { getJobStatus, getJobItems } from "@/lib/services/notification-queue";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ job
   }
 
   const { jobId } = paramResult.data;
+
+  if (!(await canAccessJob(jobId))) {
+    return NextResponse.json({ success: false, message: "Job nicht gefunden." }, { status: 404 });
+  }
 
   const [job, failedItems] = await Promise.all([getJobStatus(jobId), getJobItems(jobId, { status: "failed" })]);
 

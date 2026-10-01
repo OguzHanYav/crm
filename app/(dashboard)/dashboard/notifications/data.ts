@@ -1,4 +1,5 @@
 import { getServiceRoleClient } from "@/lib/supabase/admin";
+import { currentTenantId, scopeToTenant } from "@/lib/tenant";
 
 // Eigene, schreibgeschützte Queries für die Job-Historie-Ansicht — bewusst
 // NICHT über lib/services/notification-queue.ts (Queue-Logik bleibt unberührt),
@@ -80,13 +81,18 @@ export async function getNotificationJobs({
   total: number;
 }> {
   const admin = getServiceRoleClient();
+  // Service-Role umgeht RLS -> Mandant hier explizit filtern.
+  const tenantId = await currentTenantId();
 
-  let query = admin
-    .from("notification_jobs")
-    .select(
-      "id, status, channel, email_subject, whatsapp_template_name, total_items, sent_items, failed_items, skipped_items, processed_items, created_at, updated_at",
-      { count: "exact" }
-    )
+  let query = scopeToTenant(
+    admin
+      .from("notification_jobs")
+      .select(
+        "id, status, channel, email_subject, whatsapp_template_name, total_items, sent_items, failed_items, skipped_items, processed_items, created_at, updated_at",
+        { count: "exact" }
+      ),
+    tenantId
+  )
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -148,13 +154,16 @@ export async function getNotificationJobs({
 
 export async function getNotificationJobDetail(jobId: string): Promise<NotificationJobDetail | null> {
   const admin = getServiceRoleClient();
-  const { data, error } = await admin
-    .from("notification_jobs")
-    .select(
-      "id, status, channel, email_subject, email_body, email_is_html, whatsapp_template_name, whatsapp_language_code, total_items, sent_items, failed_items, skipped_items, processed_items, created_at, updated_at"
-    )
-    .eq("id", jobId)
-    .maybeSingle();
+  const tenantId = await currentTenantId();
+  const { data, error } = await scopeToTenant(
+    admin
+      .from("notification_jobs")
+      .select(
+        "id, status, channel, email_subject, email_body, email_is_html, whatsapp_template_name, whatsapp_language_code, total_items, sent_items, failed_items, skipped_items, processed_items, created_at, updated_at"
+      )
+      .eq("id", jobId),
+    tenantId
+  ).maybeSingle();
 
   if (error || !data) {
     if (error) console.error("getNotificationJobDetail error:", error.message);
@@ -185,13 +194,17 @@ export async function getNotificationJobItems(
   { status, limit = 50, offset = 0 }: { status?: string; limit?: number; offset?: number } = {}
 ): Promise<{ items: NotificationJobItemRow[]; total: number }> {
   const admin = getServiceRoleClient();
+  const tenantId = await currentTenantId();
 
-  let query = admin
-    .from("notification_job_items")
-    .select("id, contact_id, channel, status, error, processed_at, contact:contacts ( first_name, last_name )", {
-      count: "exact",
-    })
-    .eq("job_id", jobId)
+  let query = scopeToTenant(
+    admin
+      .from("notification_job_items")
+      .select("id, contact_id, channel, status, error, processed_at, contact:contacts ( first_name, last_name )", {
+        count: "exact",
+      })
+      .eq("job_id", jobId),
+    tenantId
+  )
     .order("created_at", { ascending: true })
     .range(offset, offset + limit - 1);
 

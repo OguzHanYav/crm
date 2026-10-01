@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { jobIdParamSchema } from "@/lib/validation/notifications";
+import { canAccessJob } from "@/lib/services/job-access";
 import { getNotificationJobDetail, getNotificationJobItems } from "@/app/(dashboard)/dashboard/notifications/data";
 import { currentUserCanUseFeature } from "@/lib/features";
 
@@ -31,6 +32,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ job
   }
 
   const { jobId } = paramResult.data;
+
+  if (!(await canAccessJob(jobId))) {
+    return NextResponse.json({ success: false, message: "Job nicht gefunden." }, { status: 404 });
+  }
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") ?? undefined;

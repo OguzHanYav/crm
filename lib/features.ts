@@ -1,5 +1,7 @@
 import { cache } from "react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { getCurrentTenant, tenantHasFeature, type TenantInfo } from "@/lib/tenant";
 
 // Features, die Admins für Mitglieder (role = 'employee') freischalten können.
 // Admins haben immer Zugriff. Neue Features: hier ergänzen + Zeile in
@@ -43,14 +45,17 @@ export type UserFeatureOverrides = Partial<Record<FeatureKey, boolean>>;
 // Nur für Admins: Bereiche, die Mitglieder nie sehen (Navigation + Seiten-Guard).
 export const ADMIN_ONLY_HREFS = ["/dashboard/phone", "/dashboard/features"];
 
-// Wirksamer Zugriff: Admins immer; Mitglieder nach eigener Freigabe
-// (user_feature_flags), sonst nach globalem Standard (feature_flags).
+// Wirksamer Zugriff: Zuerst muss das Feature im Paket des Mandanten enthalten
+// sein (lib/tenant.ts). Dann: Admins immer; Mitglieder nach eigener Freigabe
+// (user_feature_flags), sonst nach Standard des Mandanten (feature_flags).
 export function canUseFeature(
   role: string | null | undefined,
   flags: FeatureFlags,
   key: FeatureKey,
-  overrides: UserFeatureOverrides = {}
+  overrides: UserFeatureOverrides = {},
+  tenant?: Pick<TenantInfo, "features">
 ): boolean {
+  if (tenant && !tenantHasFeature(tenant, key)) return false;
   if (role === "admin") return true;
   return overrides[key] ?? flags[key];
 }
@@ -92,18 +97,31 @@ export async function currentUserIsAdmin(): Promise<boolean> {
 
 // Für Seiten/API-Routen: darf der eingeloggte Nutzer dieses Feature nutzen?
 export async function currentUserCanUseFeature(key: FeatureKey): Promise<boolean> {
-  const [{ role, overrides }, flags] = await Promise.all([getCurrentUserAccess(), getFeatureFlags()]);
-  return canUseFeature(role, flags, key, overrides);
+  const [{ role, overrides }, flags, tenant] = await Promise.all([
+    getCurrentUserAccess(),
+    getFeatureFlags(),
+    getCurrentTenant(),
+  ]);
+  return canUseFeature(role, flags, key, overrides, tenant);
+}
+
+// Seiten-Guard: Paket ohne Feature -> "Upgrade erforderlich"; Paket ok, aber
+// Mitglied ohne Freigabe -> "Keine Berechtigung". Beides mit Hinweis auf /dashboard.
+export async function requireFeature(key: FeatureKey): Promise<void> {
+  const tenant = await getCurrentTenant();
+  if (!tenantHasFeature(tenant, key)) redirect(`/dashboard?upgrade=${key}`);
+  if (!(await currentUserCanUseFeature(key))) redirect(`/dashboard?denied=${key}`);
 }
 
 // Navigationsziele, die der Nutzer nicht sehen soll (gesperrte Features + Admin-Bereiche).
 export function hiddenHrefsFor(
   role: string | null | undefined,
   flags: FeatureFlags,
-  overrides: UserFeatureOverrides = {}
+  overrides: UserFeatureOverrides = {},
+  tenant?: Pick<TenantInfo, "features">
 ): string[] {
   const hidden = (Object.keys(MEMBER_FEATURES) as FeatureKey[])
-    .filter((key) => !canUseFeature(role, flags, key, overrides))
+    .filter((key) => !canUseFeature(role, flags, key, overrides, tenant))
     .map((key) => MEMBER_FEATURES[key].href);
   return role === "admin" ? hidden : [...hidden, ...ADMIN_ONLY_HREFS];
 }
