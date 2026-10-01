@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/utils/supabase/server";
+import { tenantFields } from "@/lib/tenant";
 import type { Pipeline, DealStage, PipelineStage, PipelinePhase, Deal, Contact, TeamMember, DealSortKey, SortDir } from "./types";
 
 const DEALS_SELECT = `
@@ -129,7 +130,7 @@ export const getOrCreateStandardStages = cache(async (): Promise<PipelineStage[]
   if (!pipelineId) {
     const { data: newPipeline, error: createPipelineError } = await supabase
       .from("pipelines")
-      .insert({ name: "Standard-Pipeline" })
+      .insert({ name: "Standard-Pipeline", ...(await tenantFields()) })
       .select("id")
       .single();
 
@@ -182,7 +183,7 @@ export const getOrCreateStandardStages = cache(async (): Promise<PipelineStage[]
     if (!stage) {
       const { data: created, error: createStageError } = await supabase
         .from("deal_stages")
-        .insert({ pipeline_id: pipelineId, name: def.name, position: i, color: def.color })
+        .insert({ pipeline_id: pipelineId, name: def.name, position: i, color: def.color, ...(await tenantFields()) })
         .select("id, name, position, color")
         .single();
 

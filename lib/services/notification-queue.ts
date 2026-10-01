@@ -77,6 +77,8 @@ type CreateJobInput = {
   emailPayload?: { subject: string; body: string; isHtml?: boolean };
   whatsappPayload?: { templateName: string; languageCode?: string };
   userId?: string | null;
+  // Mandant des Jobs (vom Aufrufer, bei Impersonation der geöffnete Kunde)
+  tenantId?: string | null;
 };
 
 type ContactRow = {
@@ -148,6 +150,7 @@ export async function createJob(input: CreateJobInput): Promise<{ jobId: string;
       whatsapp_template_name: input.whatsappPayload?.templateName ?? null,
       whatsapp_language_code: input.whatsappPayload?.languageCode ?? null,
       created_by: input.userId ?? null,
+      ...(input.tenantId ? { tenant_id: input.tenantId } : {}),
     })
     .select("id")
     .single();
@@ -208,7 +211,8 @@ export async function createJob(input: CreateJobInput): Promise<{ jobId: string;
 
   const INSERT_CHUNK_SIZE = 500;
   for (let i = 0; i < items.length; i += INSERT_CHUNK_SIZE) {
-    const { error: itemsError } = await admin.from("notification_job_items").insert(items.slice(i, i + INSERT_CHUNK_SIZE));
+    const chunk = items.slice(i, i + INSERT_CHUNK_SIZE).map((item) => (input.tenantId ? { ...item, tenant_id: input.tenantId } : item));
+    const { error: itemsError } = await admin.from("notification_job_items").insert(chunk);
     if (itemsError) {
       throw new Error(itemsError.message);
     }

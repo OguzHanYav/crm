@@ -1,6 +1,7 @@
 "use server";
 
 import { resolveNewCustomerStage } from "@/app/(dashboard)/dashboard/deals/new-customer-stage";
+import { tenantFields } from "@/lib/tenant";
 import { randomUUID } from "crypto";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -275,6 +276,9 @@ export async function importContactsWithDeals(
   let updated = 0;
   let dealsCreated = 0;
 
+  // Aktiver Mandant (bei Impersonation der geöffnete Kunde) für alle Inserts.
+  const tenantScope = await tenantFields();
+
   // ---- Standard-Pipeline / Stage ermitteln ----
   const defaultStage = await resolveDefaultStageId(supabase);
   if (!defaultStage) {
@@ -452,6 +456,7 @@ export async function importContactsWithDeals(
       country: p.country,
       status: p.status,
       notes: p.notesSuffix,
+      ...tenantScope,
     }));
 
     try {
@@ -488,6 +493,7 @@ export async function importContactsWithDeals(
         country: p.country,
         status: p.status,
         notes: mergedNotes,
+        ...tenantScope,
       };
     });
 
@@ -550,6 +556,7 @@ export async function importContactsWithDeals(
         stage_id: defaultStage.stageId,
         contact_id: contactId,
         value: p.dealValue,
+        ...tenantScope,
       },
     });
   }

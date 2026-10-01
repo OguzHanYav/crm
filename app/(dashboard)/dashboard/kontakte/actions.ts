@@ -9,7 +9,7 @@ import { isCurrentUserAdmin } from "@/app/(dashboard)/dashboard/settings/admin-a
 import { sendEmail } from "@/lib/services/email";
 import { sendWhatsAppTemplate } from "@/lib/services/whatsapp";
 import { getNotificationSettings } from "@/lib/services/notification-settings";
-import { currentTenantId } from "@/lib/tenant";
+import { currentTenantId, tenantFields } from "@/lib/tenant";
 import { resolveNewCustomerStage } from "@/app/(dashboard)/dashboard/deals/new-customer-stage";
 import type { Contact, ContactStatus, Note, CallLog } from "./types";
 
@@ -267,6 +267,7 @@ async function sendWelcomeMessages(contact: Contact): Promise<void> {
     const settings = await getNotificationSettings(await currentTenantId());
     if (!settings.configured) {
       await admin.from("activities").insert({
+      ...(await tenantFields()),
         contact_id: contact.id,
         type: "email_failed",
         description: `Willkommens-E-Mail an ${contactName} nicht gesendet: ${settings.reason ?? "Kein Absender eingerichtet."}`,
@@ -283,6 +284,7 @@ async function sendWelcomeMessages(contact: Contact): Promise<void> {
     });
 
     if (result) await admin.from("activities").insert({
+      ...(await tenantFields()),
       contact_id: contact.id,
       type: result.success ? "email_sent" : "email_failed",
       description: result.success
@@ -299,6 +301,7 @@ async function sendWelcomeMessages(contact: Contact): Promise<void> {
     });
 
     await admin.from("activities").insert({
+      ...(await tenantFields()),
       contact_id: contact.id,
       type: result.success ? "whatsapp_sent" : "whatsapp_failed",
       description: result.success
@@ -333,7 +336,7 @@ export async function createContact(
 
   const { data, error } = await supabase
     .from("contacts")
-    .insert(fields)
+    .insert({ ...fields, ...(await tenantFields()) })
     .select("id, first_name, last_name, email, phone, company, status, notes, created_at")
     .single();
 
@@ -346,13 +349,18 @@ export async function createContact(
   // Ein Fehler hier bricht das Anlegen des Kontakts nicht ab.
   const newCustomerStage = await resolveNewCustomerStage(supabase);
   if (newCustomerStage) {
-    const { error: dealError } = await supabase.from("deals").insert({
+    const dealValues = {
       name: fields.company || `${fields.first_name} ${fields.last_name}`.trim(),
       pipeline_id: newCustomerStage.pipelineId,
       stage_id: newCustomerStage.stageId,
-      contact_id: data.id,
-      value: 0,
-    });
+      ...(await tenantFields()),
+    };
+    // Eine DB-Automatik kann beim Kontakt-Insert schon einen Deal angelegt haben —
+    // dann diesen in "Neuer Kunde" verschieben statt einen zweiten anzulegen.
+    const { data: autoDeal } = await supabase.from("deals").select("id").eq("contact_id", data.id).limit(1);
+    const { error: dealError } = autoDeal?.[0]
+      ? await supabase.from("deals").update(dealValues).eq("id", autoDeal[0].id)
+      : await supabase.from("deals").insert({ ...dealValues, contact_id: data.id, value: 0 });
     if (dealError) console.error("createContact deal error:", dealError.message);
   }
 
@@ -487,6 +495,7 @@ export async function addNoteToContact(
       contact_id: contactId,
       author_id: user?.id ?? null,
       content: trimmed,
+      ...(await tenantFields()),
     })
     .select(
       `id, contact_id, author_id, content, created_at, author:profiles!notes_author_id_fkey ( id, first_name, last_name )`
@@ -548,6 +557,7 @@ export async function logCall(
       interest_expressed,
       called_at,
       notes: summary,
+      ...(await tenantFields()),
     })
     .select(
       `id, contact_id, user_id, call_type, interest_expressed, called_at, notes, created_at, author:profiles!call_logs_user_id_fkey ( first_name, last_name )`

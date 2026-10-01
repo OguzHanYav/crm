@@ -90,3 +90,12 @@ export const getImpersonation = cache(
     return { active: differsFromHome || hasEntry, tenantName: tenant.name, homeTenantId };
   }
 );
+
+// Für INSERTs: tenant_id des aktiven Mandanten (bei Impersonation der geöffnete
+// Kunde) explizit mitschreiben. Die DB setzt sie zusätzlich per Trigger und
+// erzwingt sie per NOT NULL + RLS (WITH CHECK) — doppelte Absicherung.
+// Vor der Mandanten-Migration (id = null) bleibt das Objekt leer.
+export async function tenantFields(): Promise<{ tenant_id?: string }> {
+  const id = await currentTenantId();
+  return id ? { tenant_id: id } : {};
+}

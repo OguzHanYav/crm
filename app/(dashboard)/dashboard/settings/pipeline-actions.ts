@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { tenantFields } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 
 export type PipelineStageRow = {
@@ -49,7 +50,7 @@ async function getOrCreateDefaultPipelineId(): Promise<string | null> {
 
   const { data: created, error: createError } = await supabase
     .from("pipelines")
-    .insert({ name: "Standard-Pipeline" })
+    .insert({ name: "Standard-Pipeline", ...(await tenantFields()) })
     .select("id")
     .single();
 
@@ -203,6 +204,7 @@ export async function createPipelineStage(
         position: nextPosition,
         color: color || "#2563EB",
         is_active: true,
+        ...(await tenantFields()),
       })
       .select("id, pipeline_id, name, position, color, is_active")
       .single();

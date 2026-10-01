@@ -7,6 +7,8 @@ import { currentUserIsSuperAdmin } from "@/lib/features";
 import { createClient } from "@/utils/supabase/server";
 import { PLAN_KEYS, TENANT_FEATURE_KEYS, overridesFor, resolveFeatures, type PlanKey } from "@/lib/plans";
 import type { TenantInput, TenantRow, TenantUser, TenantUserInput } from "./types";
+import { resolveNewCustomerStage } from "@/app/(dashboard)/dashboard/deals/new-customer-stage";
+import { PLAN_LABELS } from "@/lib/plans";
 
 type ActionResult<T = undefined> = { success: boolean; message?: string; data?: T };
 
@@ -179,7 +181,17 @@ export async function addTenantUser(tenantId: string, user: TenantUserInput): Pr
   if (!tenant) return { success: false, message: "Kunde nicht gefunden." };
 
   const result = await provisionUser(tenantId, user);
-  if (result.success) revalidatePath(TENANTS_PATH);
+  if (result.success) {
+    if (result.data) {
+      const { data: tenantRow } = await admin.from("tenants").select("id, name").eq("id", tenantId).maybeSingle();
+      if (tenantRow) {
+        const userContact = await ensureOwnerContactForUser(tenantRow, result.data);
+        if (userContact.status === "error") console.error("addTenantUser user contact:", userContact.message);
+      }
+    }
+    revalidatePath(TENANTS_PATH);
+    revalidatePath("/dashboard/kontakte");
+  }
   return result;
 }
 
@@ -211,7 +223,17 @@ export async function createTenant(
     return { success: false, message: userResult.message };
   }
 
+  // Neuen Kunden zusätzlich als Kontakt im eigenen (Inhaber-)CRM anlegen. Ein
+  // Fehler hier macht das Anlegen des Kunden nicht rückgängig.
+  const tenantContact = await ensureOwnerContactForTenant({ id: data.id, name: data.name, plan: data.plan });
+  if (tenantContact.status === "error") console.error("createTenant owner contact:", tenantContact.message);
+  if (userResult.data) {
+    const userContact = await ensureOwnerContactForUser({ id: data.id, name: data.name }, userResult.data);
+    if (userContact.status === "error") console.error("createTenant user contact:", userContact.message);
+  }
+
   revalidatePath(TENANTS_PATH);
+  revalidatePath("/dashboard/kontakte");
   return { success: true, data: toRow(data, 1) };
 }
 
@@ -424,4 +446,165 @@ export async function removeTenantUser(userId: string): Promise<ActionResult> {
 
   revalidatePath(TENANTS_PATH);
   return { success: true };
+}
+
+// ==================== KUNDEN IM INHABER-CRM ====================
+// Jeder Kunde (Mandant) und jeder seiner Benutzer wird im CRM des Inhabers
+// (Standard-Mandant, is_default) als Kontakt geführt, jeweils mit einem Deal in
+// der Phase "Neuer Kunde". Die Herkunft steht als Markierung in den Notizen —
+// darüber erkennt ein erneuter Abgleich bestehende Einträge (keine Dubletten).
+// Die Tabelle contacts hat keine tags-Spalte: Tags stehen daher in den Notizen,
+// die Kategorie in "Branche" (industry).
+
+function tenantMarker(tenantId: string) {
+  return `[LeadFlow-Mandant: ${tenantId}]`;
+}
+function userMarker(userId: string) {
+  return `[LeadFlow-Benutzer: ${userId}]`;
+}
+
+type OwnerContactResult = { status: "created" | "updated" | "exists" | "skipped" | "error"; message?: string };
+type AdminClient = ReturnType<typeof getServiceRoleClient>;
+
+async function getOwnerTenantId(admin: AdminClient): Promise<string | null> {
+  const { data } = await admin.from("tenants").select("id").eq("is_default", true).maybeSingle();
+  return data?.id ?? null;
+}
+
+// Genau EIN Deal in "Neuer Kunde" des Inhabers. Legt eine DB-Automatik beim
+// Kontakt-Insert bereits einen Deal an, wird dieser übernommen und in die
+// richtige Pipeline/Phase des Inhabers verschoben statt einen zweiten anzulegen.
+async function ensureOwnerDeal(admin: AdminClient, ownerId: string, contactId: string, dealName: string) {
+  const stage = await resolveNewCustomerStage(admin, ownerId);
+  if (!stage) return;
+  const { data: existing } = await admin.from("deals").select("id").eq("contact_id", contactId).order("created_at").limit(1);
+  const values = { tenant_id: ownerId, name: dealName, pipeline_id: stage.pipelineId, stage_id: stage.stageId };
+  const { error } = existing?.[0]
+    ? await admin.from("deals").update(values).eq("id", existing[0].id)
+    : await admin.from("deals").insert({ ...values, contact_id: contactId, value: 0 });
+  if (error) console.error("ensureOwnerDeal error:", error.message);
+}
+
+// Kontakt für den Kunden selbst (Firma).
+async function ensureOwnerContactForTenant(tenant: { id: string; name: string; plan: string }): Promise<OwnerContactResult> {
+  const admin = getServiceRoleClient();
+  const ownerId = await getOwnerTenantId(admin);
+  if (!ownerId) return { status: "error", message: "Kein Inhaber-Mandant (is_default) gefunden." };
+  if (ownerId === tenant.id) return { status: "skipped" };
+
+  const planLabel = PLAN_LABELS[tenant.plan as keyof typeof PLAN_LABELS] ?? tenant.plan;
+  const marker = tenantMarker(tenant.id);
+  const values = {
+    first_name: tenant.name,
+    last_name: "",
+    company: tenant.name,
+    status: "Kunde",
+    industry: "SaaS Tenant",
+    notes: `Automatisch angelegter Kunde (Paket: ${planLabel}) aus der Kundenverwaltung. Quelle: SaaS-Mandant „${tenant.name}“. ${marker}`,
+  };
+
+  const { data: existing } = await admin
+    .from("contacts")
+    .select("id, first_name, last_name")
+    .eq("tenant_id", ownerId)
+    .ilike("notes", `%${marker}%`)
+    .limit(1);
+
+  if (existing?.[0]) {
+    // Ältere Einträge hießen nach dem Ansprechpartner -> auf den Firmennamen vereinheitlichen.
+    if (existing[0].first_name === tenant.name && !existing[0].last_name) return { status: "exists" };
+    const { error } = await admin.from("contacts").update(values).eq("id", existing[0].id);
+    if (error) return { status: "error", message: error.message };
+    await ensureOwnerDeal(admin, ownerId, existing[0].id, tenant.name);
+    return { status: "updated" };
+  }
+
+  const { data: contact, error } = await admin
+    .from("contacts")
+    .insert({ tenant_id: ownerId, email: null, ...values })
+    .select("id")
+    .single();
+  if (error || !contact) return { status: "error", message: error?.message ?? "Kontakt konnte nicht angelegt werden." };
+  await ensureOwnerDeal(admin, ownerId, contact.id, tenant.name);
+  return { status: "created" };
+}
+
+// Kontakt für einen Benutzer des Kunden (Ansprechpartner).
+async function ensureOwnerContactForUser(
+  tenant: { id: string; name: string },
+  user: { id: string; email: string | null; firstName: string | null; lastName: string | null }
+): Promise<OwnerContactResult> {
+  const admin = getServiceRoleClient();
+  const ownerId = await getOwnerTenantId(admin);
+  if (!ownerId) return { status: "error", message: "Kein Inhaber-Mandant (is_default) gefunden." };
+  if (ownerId === tenant.id) return { status: "skipped" };
+
+  const marker = userMarker(user.id);
+  const { data: existing } = await admin
+    .from("contacts")
+    .select("id")
+    .eq("tenant_id", ownerId)
+    .ilike("notes", `%${marker}%`)
+    .limit(1);
+  if (existing?.length) return { status: "exists" };
+
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email || "Benutzer";
+  const { data: contact, error } = await admin
+    .from("contacts")
+    .insert({
+      tenant_id: ownerId,
+      first_name: user.firstName || user.email || "Benutzer",
+      last_name: user.lastName || "",
+      email: user.email,
+      company: tenant.name,
+      status: "Kunde",
+      industry: "SaaS User",
+      notes: `Kunden-Benutzer von Mandant: ${tenant.name} · Tags: SaaS User, Mandant: ${tenant.name} ${marker}`,
+    })
+    .select("id")
+    .single();
+  if (error || !contact) return { status: "error", message: error?.message ?? "Kontakt konnte nicht angelegt werden." };
+  await ensureOwnerDeal(admin, ownerId, contact.id, `${name} (${tenant.name})`);
+  return { status: "created" };
+}
+
+// Nachträglicher Abgleich: Kontakte für alle Kunden und deren Benutzer anlegen
+// bzw. vereinheitlichen.
+export async function syncExistingTenantsAsContacts(): Promise<ActionResult<{ created: number; existing: number; failed: number }>> {
+  const denied = await guard();
+  if (denied) return { success: false, message: denied };
+
+  const admin = getServiceRoleClient();
+  const [{ data: tenants, error }, { data: profiles }] = await Promise.all([
+    admin.from("tenants").select("id, name, plan, is_default").order("created_at", { ascending: true }),
+    admin.from("profiles").select("id, tenant_id, email, first_name, last_name, role").order("created_at", { ascending: true }),
+  ]);
+  if (error) return { success: false, message: error.message };
+
+  let created = 0;
+  let existing = 0;
+  let failed = 0;
+  const count = (result: OwnerContactResult, label: string) => {
+    if (result.status === "created" || result.status === "updated") created++;
+    else if (result.status === "exists") existing++;
+    else if (result.status === "error") {
+      failed++;
+      console.error(`syncExistingTenantsAsContacts ${label}:`, result.message);
+    }
+  };
+
+  for (const tenant of tenants ?? []) {
+    if (tenant.is_default) continue;
+    count(await ensureOwnerContactForTenant(tenant), tenant.name);
+    for (const p of (profiles ?? []).filter((p) => p.tenant_id === tenant.id && p.role !== "super_admin")) {
+      count(
+        await ensureOwnerContactForUser(tenant, { id: p.id, email: p.email, firstName: p.first_name, lastName: p.last_name }),
+        `${tenant.name}/${p.email}`
+      );
+    }
+  }
+
+  revalidatePath("/dashboard/kontakte");
+  revalidatePath("/dashboard/deals");
+  return { success: true, data: { created, existing, failed } };
 }

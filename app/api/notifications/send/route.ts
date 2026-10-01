@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
       emailPayload,
       whatsappPayload,
       userId: user.id,
+      tenantId: tenant.id,
     });
 
     return NextResponse.json({ success: true, jobId, totalItems });

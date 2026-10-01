@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getActiveProjectId } from "@/utils/projects/active-project";
 import type { Deal, DealSortKey, SortDir } from "./types";
 import { countryIlikePatterns } from "@/lib/i18n/multilingual";
+import { tenantFields } from "@/lib/tenant";
 import { applyDealsSort } from "./data";
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { deleteDealsWithDependents } from "@/lib/supabase/admin-delete";
@@ -402,6 +403,7 @@ export async function createDeal(
       value,
       ...(projectId ? { project_id: projectId } : {}),
       ...(pipelineStageId ? { pipeline_stage_id: pipelineStageId } : {}),
+      ...(await tenantFields()),
     })
     .select(DEAL_SELECT)
     .single();
