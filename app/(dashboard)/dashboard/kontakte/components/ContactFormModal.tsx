@@ -73,18 +73,26 @@ export default function ContactFormModal(props: Props) {
       )}
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
+        // Auf kleinen Displays (iPhone SE …) bleibt die Box innerhalb von 90 % der
+        // sichtbaren Höhe: Kopf und Fuß stehen fest, nur die Felder scrollen.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4">
+          <div className="my-auto flex max-h-[90dvh] w-[95%] max-w-lg flex-col overflow-hidden rounded-xl bg-card shadow-xl sm:w-full">
+            <div className="sticky top-0 z-10 flex flex-none items-center justify-between border-b border-border bg-card px-4 py-3 sm:px-6 sm:py-4">
               <h2 className="text-lg font-semibold text-foreground">
                 {mode === "create" ? "Neuen Kontakt anlegen" : "Kontakt bearbeiten"}
               </h2>
-              <button onClick={close} className="text-muted-foreground hover:text-foreground/70">
+              <button
+                type="button"
+                onClick={close}
+                aria-label="Schließen"
+                className="ring-focus -mr-2 flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
                 ✕
               </button>
             </div>
 
-            <form action={formAction} className="flex flex-col gap-3">
+            <form action={formAction} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
               {mode === "edit" && (
                 <input id="contact-id" type="hidden" name="contact_id" autoComplete="off" value={contact.id} />
               )}
@@ -210,8 +218,9 @@ export default function ContactFormModal(props: Props) {
               {state.message && !state.success && (
                 <p className="text-xs text-red-600">{state.message}</p>
               )}
+              </div>
 
-              <div className="mt-2 flex justify-end gap-2">
+              <div className="sticky bottom-0 z-10 flex flex-none justify-end gap-2 border-t border-border bg-card p-4">
                 <button
                   type="button"
                   onClick={close}

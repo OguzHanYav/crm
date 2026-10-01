@@ -16,6 +16,8 @@ import {
 import { getTeamMembers } from "./kontakte/data";
 import ContactFormModal from "./kontakte/components/ContactFormModal";
 import DashboardPhoneCard from "./components/DashboardPhoneCard";
+import DashboardGreeting from "./components/DashboardGreeting";
+import { greetingForHour } from "./greeting";
 
 // ---------- Icons ----------
 const iconClass = "h-5 w-5";
@@ -51,13 +53,12 @@ function IconSend(): ReactElement {
 }
 
 // ---------- Helfer ----------
+// Startwert für die Begrüßung (deutsche Zeit); der Client zieht mit der Gerätezeit nach.
 function greeting(): string {
   const hour = Number(
     new Intl.DateTimeFormat("de-DE", { timeZone: DASHBOARD_TIME_ZONE, hour: "2-digit", hourCycle: "h23" }).format(new Date())
   );
-  if (hour < 11) return "Guten Morgen";
-  if (hour < 18) return "Guten Tag";
-  return "Guten Abend";
+  return greetingForHour(hour);
 }
 
 function todayLabel(): string {
@@ -174,10 +175,7 @@ export default async function DashboardPage({
       {/* Begrüßung + Schnellaktionen */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            {greeting()}
-            {firstName ? `, ${firstName}` : ""} 👋
-          </h1>
+          <DashboardGreeting initialGreeting={greeting()} firstName={firstName ?? null} />
           <p className="mt-1 text-sm text-muted-foreground">Hier ist deine aktuelle Übersicht für heute, {todayLabel()}.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -34,7 +34,7 @@ export default function DeleteTenantModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center" role="alertdialog" aria-modal="true" aria-labelledby="delete-tenant-title">
       <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : onCancel} />
-      <form onSubmit={confirm} className="relative w-full max-w-md rounded-t-2xl border border-border bg-card p-5 shadow-xl sm:rounded-2xl sm:p-6">
+      <form onSubmit={confirm} className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-card p-5 shadow-xl sm:rounded-2xl sm:p-6">
         <h2 id="delete-tenant-title" className="text-base font-semibold text-foreground">
           Kunden löschen
         </h2>

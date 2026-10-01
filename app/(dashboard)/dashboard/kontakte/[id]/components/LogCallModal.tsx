@@ -34,7 +34,7 @@ export default function LogCallModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="flex h-full w-full max-w-full flex-col rounded-none bg-card shadow-xl sm:h-auto sm:max-w-sm sm:rounded-2xl">
+      <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-none bg-card shadow-xl sm:h-auto sm:max-h-[90dvh] sm:max-w-sm sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4 sm:border-b-0 sm:pb-0">
           <h2 className="text-lg font-semibold text-foreground">Anruf protokollieren</h2>
           <button
@@ -48,7 +48,7 @@ export default function LogCallModal({
         <form
           id="log-call-form"
           onSubmit={handleSubmit}
-          className="flex flex-1 flex-col gap-3 overflow-y-auto px-6 py-4 sm:flex-none"
+          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-6 py-4"
         >
           <div>
             <label htmlFor="call-type" className="mb-1 block text-xs font-medium text-foreground/70">Anruf-Typ</label>

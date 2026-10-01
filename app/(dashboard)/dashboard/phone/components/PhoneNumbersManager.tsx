@@ -47,7 +47,7 @@ function PhoneFormModal({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <form
         onSubmit={submit}
-        className="relative w-full max-w-md rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-2xl sm:p-5"
+        className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-border bg-card p-4 shadow-xl sm:rounded-2xl sm:p-5"
       >
         <h2 className="text-base font-semibold text-foreground">{title}</h2>
 

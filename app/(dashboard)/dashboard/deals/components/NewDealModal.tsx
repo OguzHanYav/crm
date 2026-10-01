@@ -73,8 +73,8 @@ export default function NewDealModal({
       )}
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-2 sm:p-4">
+          <div className="my-auto max-h-[90dvh] w-[95%] max-w-md overflow-y-auto overscroll-contain rounded-xl bg-card p-4 shadow-xl sm:w-full sm:p-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-foreground">Neuen Deal anlegen</h2>
               <button

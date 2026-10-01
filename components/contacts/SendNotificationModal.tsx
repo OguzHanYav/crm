@@ -220,7 +220,7 @@ export default function SendNotificationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="flex h-full w-full max-w-full flex-col rounded-none bg-card shadow-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-2xl">
+      <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden rounded-none bg-card shadow-2xl sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold text-foreground">
             Nachricht senden ({contactIds.length} Kontakt{contactIds.length === 1 ? "" : "e"})
@@ -234,7 +234,7 @@ export default function SendNotificationModal({
         </div>
 
         {phase === "progress" && job ? (
-          <div className="flex-1 overflow-y-auto px-6 py-5">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-5">
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted/50">
               <div
                 className="h-full rounded-full bg-accent transition-all duration-300"
@@ -303,7 +303,7 @@ export default function SendNotificationModal({
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-5">
+          <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain px-6 py-5">
             {feedback && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{feedback.text}</p>}
 
             {contactIds.length > BULK_WARNING_THRESHOLD && (
