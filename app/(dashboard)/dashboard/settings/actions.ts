@@ -1,5 +1,6 @@
 "use server";
 
+import { resolveNewCustomerStage } from "@/app/(dashboard)/dashboard/deals/new-customer-stage";
 import { randomUUID } from "crypto";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -239,44 +240,9 @@ type PreparedRow = {
   existingNotes: string | null;
 };
 
+// Importierte Kontakte starten immer in der Phase "Neuer Kunde" (wird bei Bedarf angelegt).
 async function resolveDefaultStageId(supabase: any): Promise<{ pipelineId: string; stageId: string } | null> {
-  const { data: pipelines, error: pipelineError } = await supabase
-    .from("pipelines")
-    .select("id, name")
-    .order("name", { ascending: true })
-    .limit(1);
-
-  if (pipelineError || !pipelines || pipelines.length === 0) {
-    console.error("Keine Pipeline gefunden!");
-    return null;
-  }
-
-  const pipelineId = pipelines[0].id;
-
-  const { data: followUpStage } = await supabase
-    .from("deal_stages")
-    .select("id")
-    .eq("pipeline_id", pipelineId)
-    .ilike("name", "Follow-up")
-    .maybeSingle();
-
-  if (followUpStage?.id) {
-    return { pipelineId, stageId: followUpStage.id };
-  }
-
-  const { data: stages, error: stageError } = await supabase
-    .from("deal_stages")
-    .select("id")
-    .eq("pipeline_id", pipelineId)
-    .order("position", { ascending: true })
-    .limit(1);
-
-  if (stageError || !stages || stages.length === 0) {
-    console.error("Keine Stage für Pipeline gefunden!");
-    return null;
-  }
-
-  return { pipelineId, stageId: stages[0].id };
+  return resolveNewCustomerStage(supabase);
 }
 
 // ==================== SCHNELLER BULK-IMPORT ====================

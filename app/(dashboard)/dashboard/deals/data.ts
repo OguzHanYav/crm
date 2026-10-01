@@ -106,6 +106,7 @@ export const getTeamMembers = cache(async (): Promise<TeamMember[]> => {
 
 // ==================== STANDARD-PIPELINE-PHASEN ====================
 const STANDARD_STAGE_DEFS: { name: string; color: string }[] = [
+  { name: "Neuer Kunde", color: "#2563EB" },
   { name: "Follow-up", color: "#0284C7" },
   { name: "Nicht erreicht", color: "#DC2626" },
   { name: "Erreicht", color: "#2563EB" },

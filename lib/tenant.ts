@@ -6,26 +6,10 @@ import { createClient } from "@/utils/supabase/server";
 // hier; einzelne Abweichungen pro Mandant in tenants.features (JSONB), z. B.
 // {"whatsapp": true}. Schema: supabase/sql/multi-tenancy.sql.
 
-export type PlanKey = "standard" | "plus" | "super";
-export type TenantFeatureKey = "calls" | "notifications" | "whatsapp";
+import { PLAN_FEATURES, resolveFeatures as resolvePlanFeatures, type PlanKey, type TenantFeatureKey } from "@/lib/plans";
 
-export const PLAN_LABELS: Record<PlanKey, string> = {
-  standard: "Standard",
-  plus: "Plus",
-  super: "Super",
-};
-
-export const TENANT_FEATURE_LABELS: Record<TenantFeatureKey, string> = {
-  calls: "CRM-Telefonie / Anrufe",
-  notifications: "Benachrichtigungen (E-Mail-Versand & Logs)",
-  whatsapp: "WhatsApp-Versand",
-};
-
-export const PLAN_FEATURES: Record<PlanKey, Record<TenantFeatureKey, boolean>> = {
-  standard: { calls: false, notifications: false, whatsapp: false },
-  plus: { calls: false, notifications: true, whatsapp: false },
-  super: { calls: true, notifications: true, whatsapp: true },
-};
+export { PLAN_FEATURES, PLAN_LABELS, PLAN_KEYS, TENANT_FEATURE_KEYS, TENANT_FEATURE_LABELS, resolveFeatures } from "@/lib/plans";
+export type { PlanKey, TenantFeatureKey } from "@/lib/plans";
 
 export type TenantInfo = {
   // null = Mandanten-Schema noch nicht eingerichtet (SQL nicht ausgeführt)
@@ -34,17 +18,6 @@ export type TenantInfo = {
   plan: PlanKey;
   features: Record<TenantFeatureKey, boolean>;
 };
-
-function resolveFeatures(plan: PlanKey, overrides: unknown): Record<TenantFeatureKey, boolean> {
-  const features = { ...PLAN_FEATURES[plan] };
-  if (overrides && typeof overrides === "object") {
-    for (const key of Object.keys(features) as TenantFeatureKey[]) {
-      const value = (overrides as Record<string, unknown>)[key];
-      if (typeof value === "boolean") features[key] = value;
-    }
-  }
-  return features;
-}
 
 // Solange multi-tenancy.sql nicht ausgeführt ist, verhält sich die App wie bisher
 // (ein Mandant mit allen Features) — nichts geht verloren.
@@ -64,7 +37,7 @@ export const getCurrentTenant = cache(async (): Promise<TenantInfo> => {
     return LEGACY_TENANT;
   }
   const plan = (["standard", "plus", "super"].includes(data.plan) ? data.plan : "standard") as PlanKey;
-  return { id: data.id, name: data.name, plan, features: resolveFeatures(plan, data.features) };
+  return { id: data.id, name: data.name, plan, features: resolvePlanFeatures(plan, data.features) };
 });
 
 export function tenantHasFeature(tenant: Pick<TenantInfo, "features">, key: TenantFeatureKey): boolean {
@@ -93,3 +66,27 @@ export function scopeToTenant<Q>(query: Q, tenantId: string | null): Q {
 export async function requireTenantFeature(key: TenantFeatureKey): Promise<void> {
   if (!(await hasFeature(key))) redirect(`/dashboard?upgrade=${key}`);
 }
+
+// Öffnet ein Super-Admin gerade einen Kunden? (Eintrag in admin_impersonation,
+// siehe supabase/migrations/003_super_admin_impersonation.sql)
+// Aktiv, sobald ein Impersonation-Eintrag existiert ODER der aktive Mandant vom
+// Heimat-Mandanten (profiles.tenant_id) des Nutzers abweicht.
+export const getImpersonation = cache(
+  async (): Promise<{ active: boolean; tenantName: string | null; homeTenantId: string | null }> => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { active: false, tenantName: null, homeTenantId: null };
+
+    const [{ data: impersonation }, { data: profile }, tenant] = await Promise.all([
+      supabase.from("admin_impersonation").select("tenant_id").eq("user_id", user.id).maybeSingle(),
+      supabase.from("profiles").select("tenant_id").eq("id", user.id).maybeSingle(),
+      getCurrentTenant(),
+    ]);
+    const homeTenantId = (profile as { tenant_id?: string } | null)?.tenant_id ?? null;
+    const differsFromHome = Boolean(tenant.id && homeTenantId && tenant.id !== homeTenantId);
+    const hasEntry = Boolean(impersonation?.tenant_id && impersonation.tenant_id !== homeTenantId);
+    return { active: differsFromHome || hasEntry, tenantName: tenant.name, homeTenantId };
+  }
+);

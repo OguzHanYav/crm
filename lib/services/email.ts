@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { getNotificationsEnv } from "@/lib/config/env";
 import { withRetry, RetryableStatusError } from "./retry";
 
@@ -14,6 +15,14 @@ export type SendEmailInput = {
   // replyTo: office@kunde.de).
   fromOverride?: { email: string; name?: string };
   replyTo?: string;
+  // Versandweg des Mandanten (tenant_email_settings): eigenes SMTP-Postfach oder
+  // eigener Resend-Key. Ohne Angabe: Resend mit RESEND_API_KEY aus der Umgebung.
+  transport?: EmailTransport;
+};
+
+export type EmailTransport = {
+  smtp?: { host: string; port: number; user: string | null; password: string | null } | null;
+  resendApiKey?: string | null;
 };
 
 export type SendEmailResult = {
@@ -23,11 +32,35 @@ export type SendEmailResult = {
 };
 
 let resendClient: Resend | null = null;
+const tenantResendClients = new Map<string, Resend>();
 
-function getResendClient(): Resend {
+function getResendClient(apiKey?: string | null): Resend {
+  if (apiKey) {
+    let client = tenantResendClients.get(apiKey);
+    if (!client) {
+      client = new Resend(apiKey);
+      tenantResendClients.set(apiKey, client);
+    }
+    return client;
+  }
   if (resendClient) return resendClient;
   resendClient = new Resend(getNotificationsEnv().RESEND_API_KEY);
   return resendClient;
+}
+
+async function sendViaSmtp(
+  smtp: NonNullable<EmailTransport["smtp"]>,
+  message: { from: string; to: string; subject: string; html?: string; text?: string; replyTo?: string }
+): Promise<SendEmailResult> {
+  const transporter = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    // 465 = implizites TLS, sonst STARTTLS (587/25)
+    secure: smtp.port === 465,
+    auth: smtp.user ? { user: smtp.user, pass: smtp.password ?? "" } : undefined,
+  });
+  const info = await transporter.sendMail(message);
+  return { success: true, messageId: info.messageId };
 }
 
 // Resend erwartet entweder "email@domain.com" oder "Name <email@domain.com>".
@@ -42,6 +75,7 @@ export async function sendEmail({
   text,
   fromOverride,
   replyTo,
+  transport,
 }: SendEmailInput): Promise<SendEmailResult> {
   if (!html && !text) {
     return { success: false, error: "E-Mail benötigt entweder html oder text als Inhalt." };
@@ -57,8 +91,25 @@ export async function sendEmail({
 
   const resolvedReplyTo = replyTo ?? env.RESEND_REPLY_TO;
 
+  if (transport?.smtp?.host) {
+    try {
+      return await sendViaSmtp(transport.smtp, {
+        from,
+        to,
+        subject,
+        html,
+        text,
+        ...(resolvedReplyTo ? { replyTo: resolvedReplyTo } : {}),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SMTP-Versand fehlgeschlagen.";
+      console.error("sendEmail smtp error:", message);
+      return { success: false, error: `SMTP: ${message}` };
+    }
+  }
+
   try {
-    const resend = getResendClient();
+    const resend = getResendClient(transport?.resendApiKey);
 
     const result = await withRetry(async () => {
       // Cast nötig: resend@4.x typisiert CreateEmailOptions als Union, bei der

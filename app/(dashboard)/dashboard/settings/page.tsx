@@ -5,10 +5,13 @@ import ProfileSettings from "./components/ProfileSettings";
 import AdminPanel from "./components/AdminPanel";
 import SettingsTabs from "./components/SettingsTabs";
 import FeatureFlagsSettings from "./components/FeatureFlagsSettings";
+import EmailSettingsForm from "@/components/settings/EmailSettingsForm";
+import { currentTenantId } from "@/lib/tenant";
 import { getFeatureFlags, MEMBER_FEATURES, type FeatureKey } from "@/lib/features";
 import { getPipelineStagesForSettings } from "./pipeline-actions";
 import { getCurrentProfile } from "./profile-data";
 import { isCurrentUserAdmin, getCurrentUserRole } from "./admin-actions";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function SettingsPage() {
   const [stages, profile, userRole, featureFlags] = await Promise.all([
@@ -23,7 +26,8 @@ export default async function SettingsPage() {
     description: MEMBER_FEATURES[key].description,
   }));
 
-  const isAdmin = userRole === "admin";
+  const isAdmin = isAdminRole(userRole);
+  const tenantId = await currentTenantId();
 
   return (
     <div className="flex min-w-0 flex-col gap-4 p-0 max-sm:pb-16 sm:gap-6 sm:p-6">
@@ -42,6 +46,7 @@ export default async function SettingsPage() {
           isAdmin ? (
             <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
               <FeatureFlagsSettings features={featureList} initialFlags={featureFlags} />
+              {tenantId && <EmailSettingsForm tenantId={tenantId} />}
               <AdminPanel />
             </div>
           ) : (

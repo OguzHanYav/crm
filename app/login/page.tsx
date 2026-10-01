@@ -134,7 +134,7 @@ export default function LoginPage() {
               />
               Angemeldet bleiben
             </label>
-            <a href="#" className="font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+            <a href="/auth/reset-password" className="font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
               Passwort vergessen?
             </a>
           </div>

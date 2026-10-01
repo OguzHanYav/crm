@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { currentUserIsAdmin, getFeatureFlags, MEMBER_FEATURES, type FeatureKey } from "@/lib/features";
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { getTeamMembersForAdmin, memberDisplayName } from "@/lib/team";
+import { isAdminRole } from "@/lib/roles";
 import { getCurrentTenant, PLAN_LABELS, TENANT_FEATURE_LABELS, type TenantFeatureKey } from "@/lib/tenant";
 import FeatureFlagsSettings from "../settings/components/FeatureFlagsSettings";
 import MemberFeaturesManager, { type MemberFeatureRow } from "./components/MemberFeaturesManager";
@@ -33,7 +34,7 @@ export default async function FeaturesPage() {
     for (const o of overrides ?? []) {
       if (o.user_id === m.id && o.feature_key in MEMBER_FEATURES) own[o.feature_key as FeatureKey] = Boolean(o.enabled);
     }
-    return { id: m.id, name: memberDisplayName(m), email: m.email, isAdmin: m.role === "admin", overrides: own };
+    return { id: m.id, name: memberDisplayName(m), email: m.email, isAdmin: isAdminRole(m.role), overrides: own };
   });
 
   return (

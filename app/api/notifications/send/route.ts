@@ -3,6 +3,7 @@ import { createClient as createServerClient } from "@/utils/supabase/server";
 import { sendNotificationSchema } from "@/lib/validation/notifications";
 import { createJob } from "@/lib/services/notification-queue";
 import { getCurrentTenant, PLAN_LABELS, tenantHasFeature } from "@/lib/tenant";
+import { getNotificationSettings } from "@/lib/services/notification-settings";
 
 // Legt nur noch den Job + die Job-Items an und antwortet sofort — der
 // eigentliche Versand läuft asynchron über app/api/notifications/jobs/[jobId]/
@@ -44,6 +45,18 @@ export async function POST(request: NextRequest) {
       { success: false, message: `Upgrade erforderlich: WhatsApp-Versand ist im Paket ${PLAN_LABELS[tenant.plan]} nicht enthalten.` },
       { status: 403 }
     );
+  }
+
+  // E-Mail nur mit eigenem Absender des Kunden — früh ablehnen statt jeden Kontakt
+  // einzeln als "fehlgeschlagen" zu markieren.
+  if (type !== "whatsapp") {
+    const settings = await getNotificationSettings(tenant.id);
+    if (!settings.configured) {
+      return NextResponse.json(
+        { success: false, message: settings.reason ?? "Kein E-Mail-Absender eingerichtet." },
+        { status: 400 }
+      );
+    }
   }
 
   // Die Queue liest Kontakte per Service-Role (ohne RLS) — daher nur Kontakte

@@ -4,6 +4,7 @@ import { createClient as createServerClient } from "@/utils/supabase/server";
 import { getServiceRoleClient, getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { currentTenantId } from "@/lib/tenant";
+import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 
 export type UserRow = {
   id: string;
@@ -42,12 +43,26 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
       .eq("id", (await supabase.auth.getUser()).data.user?.id)
       .single();
 
-    return profile?.role === "admin";
+    return isAdminRole(profile?.role);
   } catch (err) {
     console.error("isCurrentUserAdmin exception:", err);
     return false;
   }
 }
+
+// Super-Admins (Betreiber) dürfen nur von Super-Admins geändert/gelöscht werden.
+async function isProtectedSuperAdmin(userId: string): Promise<boolean> {
+  const supabase = await createServerClient();
+  const [{ data: target }, { data: { user } }] = await Promise.all([
+    supabase.from("profiles").select("role").eq("id", userId).maybeSingle(),
+    supabase.auth.getUser(),
+  ]);
+  if (!isSuperAdminRole(target?.role)) return false;
+  const { data: me } = await supabase.from("profiles").select("role").eq("id", user?.id ?? "").maybeSingle();
+  return !isSuperAdminRole(me?.role);
+}
+
+const SUPER_ADMIN_PROTECTED_MESSAGE = "Super-Admins können nur von Super-Admins bearbeitet werden.";
 
 // Mandanten-Schutz für Admin-Aktionen mit Service-Role (umgeht RLS): Der
 // Ziel-Benutzer muss zum Mandanten des Admins gehören. Die Abfrage läuft mit der
@@ -130,6 +145,10 @@ export async function updateUser(
       return { success: false, message: OTHER_TENANT_MESSAGE };
     }
 
+    if (isAdmin && role && (await isProtectedSuperAdmin(userId))) {
+      return { success: false, message: SUPER_ADMIN_PROTECTED_MESSAGE };
+    }
+
     // Admin-Client mit Service Role Key (umgeht RLS für Admins) — fällt auf den
     // regulären Server-Client zurück, falls der Service-Role-Key nicht konfiguriert ist.
     const supabaseAdmin = await getProfilesClient();
@@ -176,6 +195,10 @@ export async function setUserRole(
 
     if (!(await isUserInCurrentTenant(userId))) {
       return { success: false, message: OTHER_TENANT_MESSAGE };
+    }
+
+    if (await isProtectedSuperAdmin(userId)) {
+      return { success: false, message: SUPER_ADMIN_PROTECTED_MESSAGE };
     }
 
     const supabaseAdmin = await getProfilesClient();
@@ -291,6 +314,10 @@ export async function updateUserByAdmin(
       return { success: false, message: OTHER_TENANT_MESSAGE };
     }
 
+    if (await isProtectedSuperAdmin(userId)) {
+      return { success: false, message: SUPER_ADMIN_PROTECTED_MESSAGE };
+    }
+
     const supabaseAdmin = getAdminClient();
 
     const authUpdate: { email: string; password?: string } = { email: updates.email };
@@ -341,6 +368,10 @@ export async function deleteUserByAdmin(userId: string): Promise<ActionResult> {
       return { success: false, message: OTHER_TENANT_MESSAGE };
     }
 
+    if (await isProtectedSuperAdmin(userId)) {
+      return { success: false, message: SUPER_ADMIN_PROTECTED_MESSAGE };
+    }
+
     const supabaseAdmin = getAdminClient();
 
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -366,7 +397,7 @@ export async function deleteUserByAdmin(userId: string): Promise<ActionResult> {
   }
 }
 
-export async function getCurrentUserRole(): Promise<"admin" | "employee" | null> {
+export async function getCurrentUserRole(): Promise<"admin" | "employee" | "super_admin" | null> {
   try {
     const supabase = await createServerClient();
     const { data: profile } = await supabase

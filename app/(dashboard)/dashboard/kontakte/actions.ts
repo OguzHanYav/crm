@@ -9,6 +9,8 @@ import { isCurrentUserAdmin } from "@/app/(dashboard)/dashboard/settings/admin-a
 import { sendEmail } from "@/lib/services/email";
 import { sendWhatsAppTemplate } from "@/lib/services/whatsapp";
 import { getNotificationSettings } from "@/lib/services/notification-settings";
+import { currentTenantId } from "@/lib/tenant";
+import { resolveNewCustomerStage } from "@/app/(dashboard)/dashboard/deals/new-customer-stage";
 import type { Contact, ContactStatus, Note, CallLog } from "./types";
 
 export type ActionResult<T = undefined> = {
@@ -262,17 +264,25 @@ async function sendWelcomeMessages(contact: Contact): Promise<void> {
   const contactName = `${contact.first_name ?? ""} ${contact.last_name ?? ""}`.trim() || "Kontakt";
 
   if (contact.email) {
-    const settings = await getNotificationSettings();
-    const result = await sendEmail({
+    const settings = await getNotificationSettings(await currentTenantId());
+    if (!settings.configured) {
+      await admin.from("activities").insert({
+        contact_id: contact.id,
+        type: "email_failed",
+        description: `Willkommens-E-Mail an ${contactName} nicht gesendet: ${settings.reason ?? "Kein Absender eingerichtet."}`,
+      });
+    }
+    const result = !settings.configured ? null : await sendEmail({
       to: contact.email,
       subject: `Willkommen, ${contact.first_name}!`,
       html: `<p>Hallo ${contact.first_name},</p><p>willkommen! Wir freuen uns auf die Zusammenarbeit.</p>`,
       text: `Hallo ${contact.first_name}, willkommen! Wir freuen uns auf die Zusammenarbeit.`,
       fromOverride: settings.from,
       replyTo: settings.replyTo,
+      transport: settings.transport,
     });
 
-    await admin.from("activities").insert({
+    if (result) await admin.from("activities").insert({
       contact_id: contact.id,
       type: result.success ? "email_sent" : "email_failed",
       description: result.success
@@ -332,7 +342,22 @@ export async function createContact(
     return { success: false, message: error.message };
   }
 
+  // Jeder neue Kontakt landet als Deal in der Phase "Neuer Kunde" der Pipeline.
+  // Ein Fehler hier bricht das Anlegen des Kontakts nicht ab.
+  const newCustomerStage = await resolveNewCustomerStage(supabase);
+  if (newCustomerStage) {
+    const { error: dealError } = await supabase.from("deals").insert({
+      name: fields.company || `${fields.first_name} ${fields.last_name}`.trim(),
+      pipeline_id: newCustomerStage.pipelineId,
+      stage_id: newCustomerStage.stageId,
+      contact_id: data.id,
+      value: 0,
+    });
+    if (dealError) console.error("createContact deal error:", dealError.message);
+  }
+
   revalidatePath(CONTACTS_PATH);
+  revalidatePath("/dashboard/deals");
 
   const autoSendWelcome = formData.get("autoSendWelcome") === "on";
   if (autoSendWelcome) {

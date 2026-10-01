@@ -347,6 +347,14 @@ export async function processItem(item: JobItem, payload: JobPayload, settings: 
       return;
     }
 
+    // Kein Absender für diesen Mandanten -> nicht über einen fremden Absender senden.
+    if (!settings.configured) {
+      const reason = settings.reason ?? "Kein E-Mail-Absender eingerichtet.";
+      await markItemResult(admin, item, "failed", reason);
+      await logActivity(admin, item.contact_id, "email_failed", `E-Mail an ${contactName} nicht gesendet: ${reason}`);
+      return;
+    }
+
     const isHtml = payload.emailIsHtml;
     const body = payload.emailBody ?? "";
     const subject = payload.emailSubject ?? "";
@@ -358,6 +366,7 @@ export async function processItem(item: JobItem, payload: JobPayload, settings: 
       text: isHtml ? htmlToPlainText(body) : body,
       fromOverride: settings.from,
       replyTo: settings.replyTo,
+      transport: settings.transport,
     });
 
     if (result.success) {

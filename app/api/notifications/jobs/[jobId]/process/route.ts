@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createServerClient } from "@/utils/supabase/server";
 import { jobIdParamSchema } from "@/lib/validation/notifications";
-import { canAccessJob } from "@/lib/services/job-access";
+import { canAccessJob, getJobTenantId } from "@/lib/services/job-access";
 import { getNotificationSettings } from "@/lib/services/notification-settings";
 import {
   acquireJobLock,
@@ -62,7 +62,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ jo
   }
 
   try {
-    const [settings, payload] = await Promise.all([getNotificationSettings(), getJobPayload(jobId)]);
+    // Absender des Mandanten, dem der Job gehört (nicht des auslösenden Nutzers).
+    const tenantId = await getJobTenantId(jobId);
+    const [settings, payload] = await Promise.all([getNotificationSettings(tenantId), getJobPayload(jobId)]);
 
     if (!payload) {
       await markJobFailed(jobId, "Job nicht gefunden.");

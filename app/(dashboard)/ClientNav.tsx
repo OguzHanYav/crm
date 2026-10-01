@@ -54,6 +54,15 @@ function IconFeatures(): ReactElement {
   )
 }
 
+function IconBuilding(): ReactElement {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M3 21h18" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 7h4M8 11h4M8 15h4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 function IconNotifications(): ReactElement {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
@@ -81,6 +90,8 @@ export const navItems = [
   // Nur für Admins (ausgeblendet über ADMIN_ONLY_HREFS in lib/features.ts)
   { href: '/dashboard/phone', label: 'Telefon', icon: IconPhoneDevice },
   { href: '/dashboard/features', label: 'Features', icon: IconFeatures },
+  // Nur für Super-Admins (ausgeblendet über SUPER_ADMIN_ONLY_HREFS in lib/features.ts)
+  { href: '/dashboard/admin/tenants', label: 'Kundenverwaltung', icon: IconBuilding },
   // Immer letzter Menüpunkt
   { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
 ]

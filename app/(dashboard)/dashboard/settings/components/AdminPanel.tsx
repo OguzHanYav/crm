@@ -55,7 +55,7 @@ export default function AdminPanel() {
       
       // Prüfe ob der aktuelle User Admin ist
       const currentUser = result.data.find(u => u.id === userId);
-      setIsAdmin(currentUser?.role === "admin");
+      setIsAdmin(currentUser?.role === "admin" || currentUser?.role === "super_admin");
     } else {
       setError(result.message ?? "Fehler beim Laden der Benutzer.");
     }
@@ -306,7 +306,7 @@ export default function AdminPanel() {
           <tbody className="divide-y divide-border">
             {users.map((user) => {
               const isSelf = user.id === currentUserId;
-              const isAdminUser = user.role === "admin";
+              const isAdminUser = user.role === "admin" || user.role === "super_admin";
               const isEditing = editingId === user.id;
 
               return (

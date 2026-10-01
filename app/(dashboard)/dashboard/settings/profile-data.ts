@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { roleLabel } from "@/lib/roles";
 
 export type ProfileInfo = {
   firstName: string;
@@ -31,7 +32,7 @@ export async function getCurrentProfile(): Promise<ProfileInfo | null> {
       firstName: profile?.first_name ?? "",
       lastName: profile?.last_name ?? "",
       email: user.email ?? "",
-      role: profile?.role === "admin" ? "Administrator" : "Mitarbeiter",
+      role: roleLabel(profile?.role),
     };
   } catch (err) {
     console.error("getCurrentProfile exception:", err);

@@ -5,6 +5,7 @@ import ContactsFilterBar from "./components/ContactsFilterBar";
 import ContactFormModal from "./components/ContactFormModal";
 import ContactDetailSheet from "@/components/contacts/ContactDetailSheet";
 import ContactsActionsBar from "@/components/contacts/ContactsActionsBar";
+import { isAdminRole } from "@/lib/roles";
 import type { ContactFilters, ContactStatus, CallType, DealStatusFilter } from "./types";
 
 export default async function KontaktePage({
@@ -40,7 +41,7 @@ export default async function KontaktePage({
     getContactsTotalCount(filters),
   ]);
 
-  const isAdmin = role === "admin";
+  const isAdmin = isAdminRole(role);
 
   return (
     <div className="flex w-full min-w-0 max-w-full flex-col gap-4 sm:gap-6">

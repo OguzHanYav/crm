@@ -111,6 +111,13 @@ function KpiCard({ label, value, icon, href }: { label: string; value: number; i
 
 // Hinweis nach Umleitung durch einen Feature-Guard (requireFeature in lib/features.ts).
 function AccessBanner({ upgrade, denied, planLabel }: { upgrade?: string; denied?: string; planLabel: string }) {
+  if (denied === "admin_only") {
+    return (
+      <div role="status" className="rounded-2xl border border-border bg-muted/40 px-4 py-3 text-sm text-foreground">
+        <span className="font-semibold">Keine Berechtigung:</span> Dieser Bereich ist nur für Super-Admins zugänglich.
+      </div>
+    );
+  }
   const key = (upgrade ?? denied) as TenantFeatureKey | undefined;
   if (!key || !(key in TENANT_FEATURE_LABELS)) return null;
   const feature = TENANT_FEATURE_LABELS[key];
