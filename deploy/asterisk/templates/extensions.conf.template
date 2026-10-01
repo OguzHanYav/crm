@@ -1,0 +1,74 @@
+; ============================================================================
+; Dialplan der CRM-Telefonanlage
+; Nur ${PBX_...}-Platzhalter werden beim Start ersetzt; ${EXTEN} usw. sind
+; Asterisk-Variablen und bleiben unverändert (siehe entrypoint.sh).
+; ============================================================================
+
+[globals]
+TRUNK_CALLERID=${PBX_TRUNK_CALLERID}
+TRUNK_DIAL_PREFIX=${PBX_TRUNK_DIAL_PREFIX}
+RINGGROUP=${PBX_RINGGROUP}
+
+; ---------------------------------------------------------------------------
+; Anrufe AUS dem Browser (CRM). Das CRM wählt immer E.164 ("+49172…"),
+; interne Durchwahlen (1XXX) oder Testnummern (6XX).
+; ---------------------------------------------------------------------------
+[from-crm]
+; --- Testnummern: funktionieren ohne SIP-Leitung --------------------------
+; 600 = Echo-Test: man hört sich selbst -> prüft Mikrofon, Lautsprecher, ICE/RTP.
+exten => 600,1,Answer()
+ same => n,Playback(demo-echotest)
+ same => n,Echo()
+ same => n,Hangup()
+
+; 601 = Ansage: prüft nur die Wiedergabe (Audio vom Server zum Browser).
+exten => 601,1,Answer()
+ same => n,Playback(hello-world)
+ same => n,Wait(1)
+ same => n,Hangup()
+
+; --- Interne Gespräche zwischen Mitarbeitern -------------------------------
+exten => _1XXX,1,Dial(PJSIP/${EXTEN},30)
+ same => n,Hangup()
+
+; --- Teure Sonderrufnummern sperren (Schutz bei gestohlenen Zugangsdaten) ---
+; DE: 0900 Mehrwert, 0137 Televoting, 118xx Auskunft, 0180 Service
+exten => _+49900.,1,Goto(blocked,s,1)
+exten => _+49137.,1,Goto(blocked,s,1)
+exten => _+49118.,1,Goto(blocked,s,1)
+exten => _+49180.,1,Goto(blocked,s,1)
+; AT: 0900/0901/0930/0931/0939 Mehrwert, 118 Auskunft
+exten => _+43900.,1,Goto(blocked,s,1)
+exten => _+43901.,1,Goto(blocked,s,1)
+exten => _+4393.,1,Goto(blocked,s,1)
+exten => _+43118.,1,Goto(blocked,s,1)
+
+; --- Extern über den SIP-Trunk ---------------------------------------------
+; "+49172…" -> "${TRUNK_DIAL_PREFIX}49172…" (meist "00" — siehe Anbieter-Doku).
+exten => _+X.,1,NoOp(CRM-Anruf von ${CALLERID(num)} nach ${EXTEN})
+ same => n,GotoIf($[${GROUP_COUNT(${CHANNEL(endpoint)}@crm)} >= 1]?busy)
+ same => n,Set(GROUP(crm)=${CHANNEL(endpoint)})
+ same => n,ExecIf($["${TRUNK_CALLERID}" != ""]?Set(CALLERID(num)=${TRUNK_CALLERID}))
+ same => n,Dial(PJSIP/${TRUNK_DIAL_PREFIX}${EXTEN:1}@trunk,90)
+ same => n,Hangup()
+ same => n(busy),Busy(5)
+
+exten => i,1,Playback(pbx-invalid)
+ same => n,Hangup()
+
+[blocked]
+exten => s,1,Answer()
+ same => n,Playback(ss-noservice)
+ same => n,Hangup(21)
+
+; ---------------------------------------------------------------------------
+; Anrufe VOM SIP-Trunk (Kunde ruft an) -> alle Browser-Nebenstellen klingeln.
+; Anbieter senden die gewählte Nummer unterschiedlich (+49…, 49…, 0…, s).
+; ---------------------------------------------------------------------------
+[from-trunk]
+exten => _[+0-9].,1,Goto(ring-all,s,1)
+exten => s,1,Goto(ring-all,s,1)
+
+[ring-all]
+exten => s,1,Dial(${RINGGROUP},30)
+ same => n,Hangup()

@@ -43,7 +43,7 @@ export default async function KontaktePage({
   const isAdmin = role === "admin";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex w-full min-w-0 max-w-full flex-col gap-4 sm:gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-foreground">Kontakte & Leads</h1>

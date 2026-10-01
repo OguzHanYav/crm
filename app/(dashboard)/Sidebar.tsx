@@ -27,9 +27,12 @@ function IconChevron({ collapsed }: { collapsed: boolean }) {
 // Ein-/Ausklapp-Zustand inkl. localStorage-Persistenz.
 export default function Sidebar({
   role,
+  hiddenNavHrefs = [],
   children,
 }: {
   role: string
+  // Menüpunkte gesperrter Features (siehe lib/features.ts)
+  hiddenNavHrefs?: string[]
   children: React.ReactNode
 }) {
   // Standardmäßig geöffnet (Punkt 1) — erst nach dem Mount ggf. aus
@@ -60,7 +63,7 @@ export default function Sidebar({
   const width = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen w-full max-w-full overflow-x-clip bg-background max-sm:h-[100dvh] max-sm:min-h-0 max-sm:overflow-hidden">
       <aside
         style={{ width }}
         className="fixed inset-y-0 left-0 z-40 hidden shrink-0 flex-col justify-between border-r border-border bg-card py-4 transition-[width] duration-200 sm:flex"
@@ -80,7 +83,7 @@ export default function Sidebar({
             </button>
           </div>
 
-          <ClientNav collapsed={collapsed} />
+          <ClientNav collapsed={collapsed} hiddenHrefs={hiddenNavHrefs} />
         </div>
 
         <div
@@ -94,7 +97,7 @@ export default function Sidebar({
       </aside>
 
       <div
-        className={`flex flex-1 flex-col transition-[padding] duration-200 ${
+        className={`flex min-w-0 max-w-full flex-1 flex-col transition-[padding] duration-200 max-sm:h-full max-sm:min-h-0 ${
           collapsed ? 'sm:pl-[72px]' : 'sm:pl-[220px]'
         }`}
       >

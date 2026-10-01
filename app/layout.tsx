@@ -16,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="de" className={inter.variable}>
-      <body className="font-sans">{children}</body>
+      <body className="overflow-x-clip font-sans">{children}</body>
     </html>
   )
 }

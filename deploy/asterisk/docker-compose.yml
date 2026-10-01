@@ -1,0 +1,13 @@
+# PRODUKTIV auf einem Linux-Server (z. B. Hetzner/netcup-VPS mit öffentlicher IP).
+# network_mode: host, damit die RTP-Ports (UDP 10000–20000) ohne Docker-NAT
+# direkt erreichbar sind — Docker-Port-Mapping für 10.000 UDP-Ports ist unbrauchbar.
+services:
+  asterisk:
+    build: .
+    network_mode: host
+    env_file: asterisk.env
+    restart: unless-stopped
+    volumes:
+      # Let's-Encrypt-Zertifikate, falls Asterisk WSS selbst terminiert (PBX_TLS_*).
+      # Mit vorgeschaltetem nginx (empfohlen) nicht nötig.
+      - /etc/letsencrypt:/etc/letsencrypt:ro

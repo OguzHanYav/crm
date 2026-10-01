@@ -38,16 +38,16 @@ export default function SettingsTabs({
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
       <div className="no-scrollbar w-full overflow-x-auto sm:w-fit">
-        <div className="flex min-h-[44px] items-center gap-1 whitespace-nowrap rounded-xl bg-muted/50 p-1">
+        <div className="flex min-h-[44px] items-center gap-1 whitespace-nowrap rounded-xl bg-muted/50 p-1 max-sm:grid max-sm:grid-cols-2 max-sm:whitespace-normal">
           {TABS.map((t) => {
             const isActive = t.key === tab;
             return (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`ring-focus min-h-[36px] shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
+                className={`ring-focus min-h-[36px] shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-all max-sm:w-full max-sm:px-2 max-sm:text-xs ${
                   isActive
                     ? "bg-card text-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground"

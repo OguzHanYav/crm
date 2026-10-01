@@ -1,0 +1,32 @@
+# LOKALER TEST ohne SIP-Leitung (Mac/Windows/Linux mit Docker Desktop):
+#   cp asterisk.env.example asterisk.env   (PBX_TRUNK_* leer lassen)
+#   docker compose -f docker-compose.local.yml up --build
+# Dann im CRM (npm run dev, http://localhost:3000) die Nummer 600 anrufen (Echo-Test).
+services:
+  asterisk:
+    build: .
+    env_file: asterisk.env
+    # Asterisk-Konsole im Terminal anzeigen (siehe PBX_CONSOLE in entrypoint.sh).
+    tty: true
+    stdin_open: true
+    environment:
+      PBX_CONSOLE: "true"
+      PBX_HTTP_BIND: 0.0.0.0
+      PBX_RTP_START: "10000"
+      PBX_RTP_END: "10100"
+      # Browser erreicht den Container nur über die veröffentlichten Ports des Macs.
+      # Standard 127.0.0.1; bei fehlendem Ton stattdessen die LAN-IP des Macs nutzen:
+      #   PBX_ICE_TARGET=$(ipconfig getifaddr en0) docker compose -f docker-compose.local.yml up
+      PBX_ICE_HOST_MAPPING: "172.28.0.10 => ${PBX_ICE_TARGET:-127.0.0.1}"
+    ports:
+      - "8088:8088"
+      - "10000-10100:10000-10100/udp"
+    networks:
+      pbx:
+        ipv4_address: 172.28.0.10
+
+networks:
+  pbx:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24

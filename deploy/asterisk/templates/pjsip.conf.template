@@ -1,0 +1,72 @@
+; ============================================================================
+; PJSIP-Konfiguration der CRM-Telefonanlage
+; Wird beim Container-Start aus dieser Vorlage erzeugt (entrypoint.sh).
+; ${...}-Platzhalter kommen aus asterisk.env — NICHT hier eintragen.
+; ============================================================================
+
+[global]
+type=global
+user_agent=CRM-PBX
+; Realm für die Digest-Anmeldung der Nebenstellen. Muss exakt SIP_REALM in der
+; CRM-.env entsprechen, wenn dort HA1 statt Klartext-Passwort genutzt wird.
+default_realm=${PBX_REALM}
+
+; ---------------------------------------------------------------------------
+; Transports
+; ---------------------------------------------------------------------------
+
+; Richtung SIP-Trunk (Anbieter). Hinter NAT die öffentliche IP eintragen,
+; sonst kommt beim Anbieter kein Audio an bzw. Anrufe brechen nach 30 s ab.
+[transport-udp]
+type=transport
+protocol=udp
+bind=0.0.0.0:5060
+${PBX_NAT_SETTINGS}
+
+; Richtung Browser (WebRTC). Die WebSocket-Verbindung selbst (ws/wss) nimmt der
+; eingebaute HTTP-Server an (http.conf) bzw. ein vorgeschalteter nginx.
+[transport-wss]
+type=transport
+protocol=wss
+bind=0.0.0.0
+${PBX_NAT_SETTINGS}
+
+; ---------------------------------------------------------------------------
+; Vorlagen für die WebRTC-Nebenstellen der Mitarbeiter
+; (die konkreten Nebenstellen erzeugt entrypoint.sh aus PBX_WEBRTC_USERS)
+; ---------------------------------------------------------------------------
+
+[webrtc-endpoint](!)
+type=endpoint
+context=from-crm
+disallow=all
+; G.711 kann jeder Browser — so muss Asterisk zum Trunk nicht transkodieren.
+; opus nur ergänzen, wenn codec_opus installiert ist.
+allow=alaw,ulaw
+; Setzt u. a. DTLS-SRTP, ICE, AVPF, rtcp_mux — Pflicht für Browser.
+webrtc=yes
+dtls_auto_generate_cert=yes
+dtls_verify=fingerprint
+direct_media=no
+dtmf_mode=rfc4733
+; Browser-Nebenstellen dürfen keine fremde Rufnummer vorgeben.
+trust_id_inbound=no
+
+[webrtc-auth](!)
+type=auth
+auth_type=userpass
+
+[webrtc-aor](!)
+type=aor
+; Mehrere Browser-Tabs pro Mitarbeiter erlaubt; eingehende Anrufe klingeln überall.
+max_contacts=5
+remove_existing=yes
+qualify_frequency=30
+
+#include pjsip_users.conf
+
+; ---------------------------------------------------------------------------
+; SIP-Trunk (registrierungsbasiert, typisch für easybell, sipgate trunking, …)
+; Die Zugangsdaten stehen AUSSCHLIESSLICH hier auf der Telefonanlage.
+; ---------------------------------------------------------------------------
+${PBX_TRUNK_BLOCK}

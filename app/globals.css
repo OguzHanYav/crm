@@ -144,3 +144,23 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Mobiles Menü (MobileSidebar): gleitet von oben ein. */
+@keyframes mobile-sheet-in {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.mobile-sheet-in {
+  animation: mobile-sheet-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-sheet-in {
+    animation: none;
+  }
+}

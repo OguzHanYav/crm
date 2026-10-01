@@ -8,6 +8,7 @@ import type { Contact, ContactSortKey, SortDir } from "../types";
 import StatusBadge from "./StatusBadge";
 import { Card } from "@/components/ui/Card";
 import { useCrmStore } from "@/lib/store/useCrmStore";
+import CallLink from "@/components/phone/CallLink";
 
 // Dieselbe Konstante existiert (bewusst separat, kein Cross-Import) auch in
 // kontakte/data.ts und app/api/contacts/route.ts.
@@ -60,7 +61,7 @@ const ContactRow = memo(function ContactRow({
 
   return (
     <tr className={`group transition-colors duration-150 hover:bg-muted/40 ${isSelected ? "bg-accent-soft/40" : ""}`}>
-      <td className="px-3 py-2" onClick={stopPropagation}>
+      <td className="px-2 py-2 sm:px-3" onClick={stopPropagation}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -69,7 +70,7 @@ const ContactRow = memo(function ContactRow({
           className="h-4 w-4 rounded border-border accent-accent"
         />
       </td>
-      <td className="truncate px-3 py-2" title={`Erstellt am ${formatDateDE(contact.created_at)}`}>
+      <td className="truncate px-2 py-2 sm:px-3" title={`Erstellt am ${formatDateDE(contact.created_at)}`}>
         <Link
           href={contactHref}
           scroll={false}
@@ -80,17 +81,19 @@ const ContactRow = memo(function ContactRow({
         </Link>
       </td>
 
-      <td className="hidden truncate px-3 py-2 sm:table-cell" onClick={stopPropagation}>
+      <td className="hidden truncate px-2 py-2 sm:px-3 sm:table-cell" onClick={stopPropagation}>
         {contact.phone ? (
-          <a href={`tel:${contact.phone}`} className="text-foreground/90 hover:text-accent hover:underline">
-            {contact.phone}
-          </a>
+          <CallLink
+            phone={contact.phone}
+            label={`${contact.first_name} ${contact.last_name}`.trim()}
+            className="text-foreground/90 hover:text-accent hover:underline"
+          />
         ) : (
           <span className="text-muted-foreground/40">—</span>
         )}
       </td>
 
-      <td className="hidden truncate px-3 py-2 md:table-cell" onClick={stopPropagation}>
+      <td className="hidden truncate px-2 py-2 sm:px-3 md:table-cell" onClick={stopPropagation}>
         {contact.email ? (
           <a href={`mailto:${contact.email}`} className="text-foreground/90 hover:text-accent hover:underline">
             {contact.email}
@@ -101,17 +104,17 @@ const ContactRow = memo(function ContactRow({
       </td>
 
       <td
-        className="hidden truncate px-3 py-2 text-foreground/90 md:table-cell"
+        className="hidden truncate px-2 py-2 sm:px-3 text-foreground/90 md:table-cell"
         title={contact.industry ? `Branche: ${contact.industry}` : undefined}
       >
         {contact.company ?? "—"}
       </td>
 
-      <td className="hidden truncate px-3 py-2 text-foreground/90 lg:table-cell" title={contact.address ?? undefined}>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-foreground/90 lg:table-cell" title={contact.address ?? undefined}>
         {contact.country ?? "—"}
       </td>
 
-      <td className="overflow-hidden px-3 py-2">
+      <td className="overflow-hidden px-2 py-2 sm:px-3">
         {contact.currentStage ? (
           <span
             className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -306,11 +309,11 @@ export default function ContactsTable({
 
   return (
     <div className="flex flex-col gap-3">
-      <Card className={`overflow-x-auto transition-opacity ${(isFetching && !isFetchingNextPage) || isLoadingAll ? "opacity-60" : ""}`}>
+      <Card className={`w-full max-w-full overflow-x-auto transition-opacity ${(isFetching && !isFetchingNextPage) || isLoadingAll ? "opacity-60" : ""}`}>
         <table className="w-full min-w-[720px] table-fixed text-xs">
           <thead className="bg-muted/30">
             <tr>
-              <th className="w-[4%] px-3 py-2 text-left font-medium text-muted-foreground">
+              <th className="w-[4%] px-2 py-2 sm:px-3 text-left font-medium text-muted-foreground">
                 <input
                   ref={selectAllRef}
                   type="checkbox"
@@ -323,7 +326,7 @@ export default function ContactsTable({
               {COLUMNS.map((col) => (
                 <th
                   key={col.key}
-                  className={`${col.width} ${col.visibility} px-3 py-2 text-left font-medium text-muted-foreground`}
+                  className={`${col.width} ${col.visibility} px-2 py-2 sm:px-3 text-left font-medium text-muted-foreground`}
                 >
                   <button
                     type="button"
@@ -358,7 +361,7 @@ export default function ContactsTable({
       </Card>
 
       {loadAllError && (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{loadAllError}</p>
+        <p className="rounded-lg bg-danger/10 px-2 py-2 sm:px-3 text-sm text-danger">{loadAllError}</p>
       )}
 
       {hasMore && effectiveTotalCount > LARGE_LOAD_WARNING_THRESHOLD && (
@@ -367,7 +370,7 @@ export default function ContactsTable({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3 max-sm:gap-2 max-sm:border-t max-sm:border-border max-sm:bg-background/95 max-sm:px-3 max-sm:pb-14 max-sm:pt-2 max-sm:text-xs max-sm:backdrop-blur">
         <span>
           Zeige {displayedContacts.length} von {effectiveTotalCount} Kontakten
         </span>

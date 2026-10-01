@@ -327,9 +327,9 @@ export default function DealsView({
   );
 
   return (
-    <div className="min-h-screen bg-white p-6">
+    <div className="w-full min-w-0 max-w-full bg-white p-3 max-sm:pb-0 sm:min-h-screen sm:p-6">
       {/* Kopfzeile */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">{projectName}</h1>
           <p className="text-sm text-slate-500">{totalCount.toLocaleString("de-DE")} Deals insgesamt</p>
@@ -345,7 +345,7 @@ export default function DealsView({
 
       {/* Phasen-Tab-Leiste als Segmented Control — inaktive Tabs bleiben dezent-neutral,
           erst der ausgewählte Tab nimmt die Hex-Farbe der Phase als Hintergrund an. */}
-      <div className="no-scrollbar mb-4 overflow-x-auto">
+      <div className="no-scrollbar mb-4 w-full max-w-full overflow-x-auto">
         <div className="flex min-h-[44px] w-fit items-center gap-1 whitespace-nowrap rounded-xl bg-gray-100 p-1">
           {phases.map((phase) => {
             const isSelected = phase.key === activeKey;
@@ -378,7 +378,7 @@ export default function DealsView({
       </div>
 
       {/* Suche + Filter-Popover */}
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="mb-4 flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
         <input
           id="deals-search"
           name="search"
@@ -419,7 +419,7 @@ export default function DealsView({
       />
 
       {isAdmin && selectedIds.size > 0 && (
-        <div className="sticky bottom-4 z-30 mt-4 flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg">
+        <div className="sticky bottom-4 z-30 mt-4 flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-lg max-sm:static max-sm:mt-3">
           <span className="text-sm font-medium text-slate-900">
             {selectedIds.size} Deal{selectedIds.size === 1 ? "" : "s"} ausgewählt
           </span>
@@ -443,7 +443,7 @@ export default function DealsView({
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3 max-sm:gap-2 max-sm:border-t max-sm:border-gray-200 max-sm:bg-white/95 max-sm:px-3 max-sm:pb-14 max-sm:pt-2 max-sm:text-xs max-sm:backdrop-blur">
         <div className="flex items-center gap-4">
           <span>
             {isCountryLoading

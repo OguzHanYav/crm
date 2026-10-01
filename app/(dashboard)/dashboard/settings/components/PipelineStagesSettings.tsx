@@ -153,7 +153,7 @@ export default function PipelineStagesSettings({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-soft">
+    <section className="min-w-0 rounded-lg border border-border bg-card p-5 shadow-soft max-sm:p-3">
       <h2 className="text-base font-semibold text-foreground">Pipeline-Phasen</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Aktive Phasen erscheinen als Tabs in der Pipeline-Ansicht. Erstelle beliebig neue Phasen
@@ -169,9 +169,9 @@ export default function PipelineStagesSettings({
         {activeStages.map((stage, i) => (
           <li
             key={stage.id}
-            className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+            className="flex min-w-0 items-center gap-3 rounded-lg border border-border px-3 py-2 max-sm:flex-wrap max-sm:gap-2 max-sm:px-2"
           >
-            <div className="flex flex-col gap-0.5">
+            <div className="flex shrink-0 flex-col gap-0.5">
               <button
                 onClick={() => handleMove(stage.id, "up")}
                 disabled={i === 0 || isPending}
@@ -209,18 +209,18 @@ export default function PipelineStagesSettings({
                   aria-label="Name"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="ring-focus h-9 flex-1 rounded-lg border border-border bg-input px-3 text-sm text-foreground"
+                  className="ring-focus h-9 min-w-0 flex-1 rounded-lg border border-border bg-input px-3 text-sm text-foreground"
                 />
                 <button
                   onClick={() => saveEdit(stage.id)}
                   disabled={isPending}
-                  className="ring-focus rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
+                  className="ring-focus rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50 max-sm:ml-auto max-sm:py-2"
                 >
                   Speichern
                 </button>
                 <button
                   onClick={cancelEdit}
-                  className="ring-focus rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                  className="ring-focus rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 max-sm:py-2"
                 >
                   Abbrechen
                 </button>
@@ -231,22 +231,32 @@ export default function PipelineStagesSettings({
                   className="h-3 w-3 shrink-0 rounded-full"
                   style={{ backgroundColor: stage.color }}
                 />
-                <span className="flex-1 text-sm font-medium text-foreground">{stage.name}</span>
+                <span className="min-w-0 flex-1 break-words text-sm font-medium text-foreground">{stage.name}</span>
                 {savedId === stage.id && (
                   <span className="text-xs font-medium text-success">✓ Gespeichert</span>
                 )}
                 <button
                   onClick={() => startEdit(stage)}
-                  className="ring-focus rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50"
+                  aria-label="Bearbeiten"
+                  title="Bearbeiten"
+                  className="ring-focus shrink-0 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 max-sm:p-2"
                 >
-                  Bearbeiten
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 sm:hidden" aria-hidden>
+                    <path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="max-sm:sr-only">Bearbeiten</span>
                 </button>
                 <button
                   onClick={() => handleDelete(stage.id)}
                   disabled={isPending}
-                  className="ring-focus rounded-md border border-danger/30 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50"
+                  aria-label="Löschen"
+                  title="Löschen"
+                  className="ring-focus shrink-0 rounded-md border border-danger/30 px-3 py-1.5 text-xs font-medium text-danger hover:bg-danger/10 disabled:opacity-50 max-sm:p-2"
                 >
-                  Löschen
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4 sm:hidden" aria-hidden>
+                    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span className="max-sm:sr-only">Löschen</span>
                 </button>
               </>
             )}
@@ -267,13 +277,13 @@ export default function PipelineStagesSettings({
           {[...stages].sort((a, b) => a.position - b.position).map((stage) => (
             <li
               key={stage.id}
-              className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"
+              className="flex min-w-0 items-center gap-3 rounded-lg border border-border px-3 py-2 max-sm:gap-2 max-sm:px-2"
             >
               <span
                 className="h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: stage.color }}
               />
-              <span className={`flex-1 text-sm ${stage.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
+              <span className={`min-w-0 flex-1 break-words text-sm ${stage.is_active ? "text-foreground" : "text-muted-foreground line-through"}`}>
                 {stage.name}
               </span>
               {savedId === stage.id && (
@@ -282,7 +292,7 @@ export default function PipelineStagesSettings({
               <button
                 onClick={() => handleToggleActive(stage)}
                 disabled={isPending}
-                className={`ring-focus rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50 ${
+                className={`ring-focus shrink-0 rounded-md px-3 py-1.5 text-xs font-medium disabled:opacity-50 max-sm:px-2.5 max-sm:py-2 ${
                   stage.is_active
                     ? "border border-danger/30 text-danger hover:bg-danger/10"
                     : "bg-accent text-accent-foreground hover:brightness-110"
@@ -295,7 +305,8 @@ export default function PipelineStagesSettings({
         </ul>
       </div>
 
-      <div className="mt-5 flex items-center gap-3 border-t border-border pt-4">
+      <div className="mt-5 flex items-center gap-3 border-t border-border pt-4 max-sm:flex-col max-sm:items-stretch max-sm:gap-2">
+        <div className="contents max-sm:flex max-sm:w-full max-sm:items-center max-sm:gap-2">
         <input
           id="new-stage-color"
           name="newStageColor"
@@ -315,12 +326,13 @@ export default function PipelineStagesSettings({
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           placeholder="Neue Phase, z. B. 'Angebot verschickt'"
-          className="ring-focus h-9 flex-1 rounded-lg border border-border bg-input px-3 text-sm text-foreground placeholder:text-muted-foreground"
+          className="ring-focus h-9 min-w-0 flex-1 rounded-lg border border-border bg-input px-3 text-sm text-foreground placeholder:text-muted-foreground max-sm:h-10"
         />
+        </div>
         <button
           onClick={handleCreate}
           disabled={isPending || !newName.trim()}
-          className="ring-focus rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50"
+          className="ring-focus rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:brightness-110 disabled:opacity-50 max-sm:min-h-[44px] max-sm:w-full"
         >
           + Phase hinzufügen
         </button>

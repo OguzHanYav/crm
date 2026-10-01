@@ -36,6 +36,24 @@ function IconCalls(): ReactElement {
   )
 }
 
+function IconPhoneDevice(): ReactElement {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <rect x="6" y="2.5" width="12" height="19" rx="2.5" strokeLinejoin="round" />
+      <path d="M10.5 18.5h3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function IconFeatures(): ReactElement {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
+      <rect x="2.5" y="7" width="19" height="10" rx="5" strokeLinejoin="round" />
+      <circle cx="16.5" cy="12" r="3" />
+    </svg>
+  )
+}
+
 function IconNotifications(): ReactElement {
   return (
     <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6}>
@@ -61,6 +79,9 @@ export const navItems = [
   { href: '/dashboard/anrufe', label: 'Anrufe', icon: IconCalls },
   { href: '/dashboard/notifications', label: 'Benachrichtigungen', icon: IconNotifications },
   { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
+  // Nur für Admins (ausgeblendet über ADMIN_ONLY_HREFS in lib/features.ts)
+  { href: '/dashboard/phone', label: 'Telefon', icon: IconPhoneDevice },
+  { href: '/dashboard/features', label: 'Features', icon: IconFeatures },
 ]
 
 function NavLink({
@@ -95,10 +116,16 @@ function NavLink({
   )
 }
 
-export default function ClientNav({ collapsed = true }: { collapsed?: boolean }) {
+export default function ClientNav({
+  collapsed = true,
+  hiddenHrefs = [],
+}: {
+  collapsed?: boolean
+  hiddenHrefs?: string[]
+}) {
   return (
     <nav className={`flex flex-col gap-1 ${collapsed ? 'items-center' : 'items-stretch'}`}>
-      {navItems.map((item) => (
+      {navItems.filter((item) => !hiddenHrefs.includes(item.href)).map((item) => (
         <NavLink key={item.href} href={item.href} label={item.label} icon={item.icon} collapsed={collapsed} />
       ))}
     </nav>

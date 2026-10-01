@@ -143,9 +143,9 @@ export default function Topbar({
     .join('') || '—'
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-card/80 px-4 backdrop-blur-md sm:gap-4 sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 w-full min-w-0 flex-none items-center justify-between gap-2 border-b border-border bg-card/80 px-3 backdrop-blur-md sm:gap-4 sm:px-6">
       {mobileNav}
-      <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full max-w-md items-center">
+      <form onSubmit={handleSearchSubmit} className="mx-auto flex w-full min-w-0 max-w-md items-center">
         <div className="ring-focus flex h-11 min-h-[44px] w-full items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition-colors focus-within:border-accent/60">
           <IconSearch />
           <input
@@ -157,7 +157,7 @@ export default function Topbar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Kontakte, Deals, Firmen durchsuchen…"
-            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+            className="min-w-0 flex-1 truncate bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           <kbd className="hidden shrink-0 items-center gap-0.5 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:flex">
             ⌘K
@@ -165,7 +165,7 @@ export default function Topbar({
         </div>
       </form>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         {cta && (
           <button
             onClick={() => router.push(cta.href)}

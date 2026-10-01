@@ -43,3 +43,6 @@ next-env.d.ts
 
 # deploy-check.sh: lokale Baseline für Vorher/Nachher-Vergleich
 .deploy-check-baseline.txt
+
+# Telefonanlage: enthält SIP-Trunk- und Nebenstellen-Passwörter
+deploy/asterisk/asterisk.env

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Input";
 import { Badge, STATUS_TONE_MAP } from "@/components/ui/Badge";
 import { useCrmStore, type ContactPreview } from "@/lib/store/useCrmStore";
+import CallLink from "@/components/phone/CallLink";
 
 const FIVE_MINUTES = 5 * 60 * 1000;
 
@@ -217,12 +218,13 @@ function SheetSkeleton({ preview, onClose }: { preview: ContactPreview | null; o
 
         <div className="flex flex-wrap gap-2 text-sm">
           {preview?.phone && (
-            <a
-              href={`tel:${preview.phone}`}
+            <CallLink
+              phone={preview.phone}
+              label={`${preview.first_name} ${preview.last_name}`}
               className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
             >
               📞 {preview.phone}
-            </a>
+            </CallLink>
           )}
           {preview?.email && (
             <a
@@ -297,12 +299,17 @@ function SheetContent({
         </div>
 
         <div className="flex flex-wrap gap-2 text-sm">
-          <a
-            href={`tel:${contact.phone ?? ""}`}
-            className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
-          >
-            📞 {contact.phone ?? "Keine Nummer"}
-          </a>
+          {contact.phone ? (
+            <CallLink
+              phone={contact.phone}
+              label={`${contact.first_name} ${contact.last_name}`}
+              className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"
+            >
+              📞 {contact.phone}
+            </CallLink>
+          ) : (
+            <span className="flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground text-muted-foreground">📞 Keine Nummer</span>
+          )}
           <a
             href={`mailto:${contact.email}`}
             className="ring-focus flex min-h-[44px] items-center rounded-lg border border-border bg-muted/30 px-3 py-1.5 font-medium text-foreground transition-colors hover:border-accent/40 hover:bg-accent-soft"

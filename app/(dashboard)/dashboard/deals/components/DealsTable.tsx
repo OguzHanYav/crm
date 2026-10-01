@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useMemo } from "react";
 import type { Deal, PipelinePhase, DealSortKey, SortDir } from "../types";
+import CallLink from "@/components/phone/CallLink";
 
 function formatDateDE(dateString: string) {
   return new Intl.DateTimeFormat("de-DE", {
@@ -37,7 +38,7 @@ const DealsTableRow = memo(function DealsTableRow({
       className={`cursor-pointer transition-colors duration-150 hover:bg-gray-50/80 ${isSelected ? "bg-blue-50/60" : ""}`}
     >
       {selectable && (
-        <td className="px-3 py-2" onClick={handleStopPropagation}>
+        <td className="px-2 py-2 sm:px-3" onClick={handleStopPropagation}>
           <input
             type="checkbox"
             checked={isSelected}
@@ -47,21 +48,23 @@ const DealsTableRow = memo(function DealsTableRow({
           />
         </td>
       )}
-      <td className="truncate px-3 py-2">
+      <td className="truncate px-2 py-2 sm:px-3">
         <span className="font-medium text-slate-900">{deal.name}</span>
       </td>
 
-      <td className="hidden truncate px-3 py-2 sm:table-cell" onClick={handleStopPropagation}>
+      <td className="hidden truncate px-2 py-2 sm:px-3 sm:table-cell" onClick={handleStopPropagation}>
         {contact?.phone ? (
-          <a href={`tel:${contact.phone}`} className="text-slate-600 hover:text-slate-900 hover:underline">
-            {contact.phone}
-          </a>
+          <CallLink
+            phone={contact.phone}
+            label={contact.company || `${contact.first_name} ${contact.last_name}`.trim() || deal.name}
+            className="text-slate-600 hover:text-slate-900 hover:underline"
+          />
         ) : (
           <span className="text-slate-300">—</span>
         )}
       </td>
 
-      <td className="hidden truncate px-3 py-2 md:table-cell" onClick={handleStopPropagation}>
+      <td className="hidden truncate px-2 py-2 sm:px-3 md:table-cell" onClick={handleStopPropagation}>
         {contact?.email ? (
           <a href={`mailto:${contact.email}`} className="text-slate-600 hover:text-slate-900 hover:underline">
             {contact.email}
@@ -71,17 +74,17 @@ const DealsTableRow = memo(function DealsTableRow({
         )}
       </td>
 
-      <td className="hidden truncate px-3 py-2 text-slate-700 md:table-cell">{contact?.company ?? "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-700 md:table-cell">{contact?.company ?? "—"}</td>
 
-      <td className="hidden truncate px-3 py-2 text-slate-600 lg:table-cell">{deal.industry || contact?.industry || "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-600 lg:table-cell">{deal.industry || contact?.industry || "—"}</td>
 
-      <td className="hidden truncate px-3 py-2 text-slate-600 lg:table-cell">{deal.country || contact?.country || "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-600 lg:table-cell">{deal.country || contact?.country || "—"}</td>
 
-      <td className="hidden truncate px-3 py-2 text-slate-600 xl:table-cell">{deal.address || contact?.address || "—"}</td>
+      <td className="hidden truncate px-2 py-2 sm:px-3 text-slate-600 xl:table-cell">{deal.address || contact?.address || "—"}</td>
 
-      <td className="hidden whitespace-nowrap px-3 py-2 text-slate-500 lg:table-cell">{formatDateDE(deal.created_at)}</td>
+      <td className="hidden whitespace-nowrap px-2 py-2 sm:px-3 text-slate-500 lg:table-cell">{formatDateDE(deal.created_at)}</td>
 
-      <td className="overflow-hidden px-3 py-2">
+      <td className="overflow-hidden px-2 py-2 sm:px-3">
         {phase && (
           <span
             className="inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -155,12 +158,12 @@ export default function DealsTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+    <div className="w-full max-w-full overflow-x-auto rounded-lg border border-gray-200/80 bg-white shadow-sm sm:rounded-2xl">
       <table className="w-full min-w-[720px] table-fixed text-xs">
         <thead className="bg-gray-50">
           <tr>
             {selectable && (
-              <th className="w-[4%] px-3 py-2 text-left font-medium text-gray-500">
+              <th className="w-[4%] px-2 py-2 sm:px-3 text-left font-medium text-gray-500">
                 <input
                   type="checkbox"
                   checked={isAllSelected}
@@ -176,7 +179,7 @@ export default function DealsTable({
             {COLUMNS.map((col) => (
               <th
                 key={col.key}
-                className={`${col.width} ${col.visibility} px-3 py-2 text-left font-medium text-gray-500`}
+                className={`${col.width} ${col.visibility} px-2 py-2 sm:px-3 text-left font-medium text-gray-500`}
               >
                 <button
                   type="button"
