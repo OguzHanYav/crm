@@ -78,10 +78,11 @@ export const navItems = [
   { href: '/dashboard/kontakte', label: 'Kontakte', icon: IconContacts },
   { href: '/dashboard/anrufe', label: 'Anrufe', icon: IconCalls },
   { href: '/dashboard/notifications', label: 'Benachrichtigungen', icon: IconNotifications },
-  { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
   // Nur für Admins (ausgeblendet über ADMIN_ONLY_HREFS in lib/features.ts)
   { href: '/dashboard/phone', label: 'Telefon', icon: IconPhoneDevice },
   { href: '/dashboard/features', label: 'Features', icon: IconFeatures },
+  // Immer letzter Menüpunkt
+  { href: '/dashboard/settings', label: 'Einstellungen', icon: IconSettings },
 ]
 
 function NavLink({

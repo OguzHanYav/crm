@@ -1,14 +1,40 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { signIn } from './actions'
 import Logo from '@/components/Logo'
+
+const REMEMBERED_EMAIL_KEY = 'remembered_email'
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(signIn, {
     error: '',
   })
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState('')
+  const [remember, setRemember] = useState(true)
+
+  // Gemerkte E-Mail ("Angemeldet bleiben") beim Öffnen vorausfüllen.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBERED_EMAIL_KEY)
+      if (saved) {
+        setEmail(saved)
+        setRemember(true)
+      }
+    } catch {
+      // localStorage nicht verfügbar (z. B. Privatmodus) — Feld bleibt leer.
+    }
+  }, [])
+
+  function handleSubmit() {
+    try {
+      if (remember && email.trim()) localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim())
+      else localStorage.removeItem(REMEMBERED_EMAIL_KEY)
+    } catch {
+      // ignorieren
+    }
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 p-4 dark:bg-zinc-950 sm:p-6">
@@ -31,7 +57,7 @@ export default function LoginPage() {
           <p className="mt-4 text-sm text-slate-500 dark:text-zinc-400">Melde dich mit deinem Konto an.</p>
         </div>
 
-        <form action={formAction} className="mt-6 flex flex-col gap-3">
+        <form action={formAction} onSubmit={handleSubmit} className="mt-6 flex flex-col gap-3">
           <div className="relative">
             <input
               id="login-email"
@@ -39,6 +65,8 @@ export default function LoginPage() {
               type="email"
               required
               autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="E-Mail"
               className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-4 pr-11 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500"
             />
@@ -100,7 +128,8 @@ export default function LoginPage() {
                 name="remember"
                 type="checkbox"
                 autoComplete="off"
-                defaultChecked
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 accent-blue-600 dark:border-zinc-600"
               />
               Angemeldet bleiben
