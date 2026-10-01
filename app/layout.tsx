@@ -6,7 +6,10 @@ import { ThemeProvider, THEME_INIT_SCRIPT } from '@/components/theme/ThemeProvid
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'OY LeadFlow',
+  title: {
+    default: 'LeadFlow | CRM & Automation',
+    template: '%s | LeadFlow',
+  },
   description: 'Internes Sales-CRM',
 }
 

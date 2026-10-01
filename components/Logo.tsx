@@ -1,4 +1,6 @@
-// Marken-Logo "OY LeadFlow": blaues Badge mit "OY" (+ Schriftzug "LeadFlow" in
+import { LOGO_MARK_PATH, LOGO_MARK_VIEWBOX } from "@/components/brand/logo-mark";
+
+// Marken-Logo "OY LeadFlow": blaues Badge mit der geometrischen OY-Bildmarke (+ Schriftzug "LeadFlow" in
 // der Variante "full"). Farben über Theme-Tokens, passt sich Light/Dark an.
 export default function Logo({
   variant = "full",
@@ -8,12 +10,14 @@ export default function Logo({
   className?: string;
 }) {
   return (
-    <span className={`inline-flex items-center gap-2.5 ${className}`} aria-label="OY LeadFlow">
-      <span className="flex h-9 min-w-9 items-center justify-center rounded-xl bg-accent px-2.5 py-1 text-sm font-bold tracking-tight text-accent-foreground shadow-sm">
-        OY
+    <span className={`inline-flex items-center ${className}`} aria-label="LeadFlow">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent p-1.5 text-accent-foreground shadow-sm ring-1 ring-inset ring-white/10">
+        <svg viewBox={LOGO_MARK_VIEWBOX} className="h-[30px] w-[30px]" aria-hidden>
+          <path d={LOGO_MARK_PATH} fill="currentColor" fillRule="evenodd" />
+        </svg>
       </span>
       {variant === "full" && (
-        <span className="text-lg font-semibold tracking-tight text-foreground">LeadFlow</span>
+        <span className="ml-2.5 text-xl font-bold tracking-tight text-foreground">LeadFlow</span>
       )}
     </span>
   );
