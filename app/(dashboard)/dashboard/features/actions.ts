@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { MEMBER_FEATURES, type FeatureKey } from "@/lib/features";
-import { isCurrentUserAdmin } from "../settings/admin-actions";
+import { currentUserIsSuperAdmin } from "@/lib/features";
 
 type ActionResult = { success: boolean; message?: string };
 
 async function guard(key: FeatureKey, userId: string): Promise<string | null> {
-  if (!(await isCurrentUserAdmin())) return "Keine Berechtigung: Nur Admins dürfen Features freischalten.";
+  if (!(await currentUserIsSuperAdmin())) return "Feature-Freigaben werden zentral durch den Plattform-Inhaber verwaltet.";
   if (!(key in MEMBER_FEATURES)) return "Unbekanntes Feature.";
   // Session-Abfrage (RLS): sichtbar sind nur Profile des eigenen Mandanten.
   const supabase = await createClient();

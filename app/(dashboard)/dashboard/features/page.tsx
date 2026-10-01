@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { currentUserIsAdmin, getFeatureFlags, MEMBER_FEATURES, type FeatureKey } from "@/lib/features";
+import { currentUserIsSuperAdmin, getFeatureFlags, MEMBER_FEATURES, type FeatureKey } from "@/lib/features";
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { getTeamMembersForAdmin, memberDisplayName } from "@/lib/team";
 import { isAdminRole } from "@/lib/roles";
@@ -9,7 +9,8 @@ import MemberFeaturesManager, { type MemberFeatureRow } from "./components/Membe
 
 // Feature-Freigaben pro Mitglied — nur für Admins.
 export default async function FeaturesPage() {
-  if (!(await currentUserIsAdmin())) redirect("/dashboard");
+  // Nur Plattform-Inhaber; Kunden-Admins verwalten keine Feature-Freigaben.
+  if (!(await currentUserIsSuperAdmin())) redirect("/dashboard?denied=admin_only");
 
   const client = await getAdminOrFallbackClient();
   // Mitglieder sind bereits auf den eigenen Mandanten gefiltert (lib/team.ts);

@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { getAdminOrFallbackClient } from "@/lib/supabase/admin";
 import { MEMBER_FEATURES, type FeatureKey } from "@/lib/features";
-import { isCurrentUserAdmin } from "./admin-actions";
+import { currentUserIsSuperAdmin } from "@/lib/features";
 import { currentTenantId } from "@/lib/tenant";
 
 export type ActionResult = { success: boolean; message?: string };
 
 export async function setFeatureFlag(key: FeatureKey, enabled: boolean): Promise<ActionResult> {
-  if (!(await isCurrentUserAdmin())) {
-    return { success: false, message: "Keine Berechtigung: Nur Admins dürfen Features freischalten." };
+  // Nur der Plattform-Inhaber (Super-Admin) darf Features freischalten.
+  if (!(await currentUserIsSuperAdmin())) {
+    return { success: false, message: "Feature-Freigaben werden zentral durch den Plattform-Inhaber verwaltet." };
   }
   if (!(key in MEMBER_FEATURES)) {
     return { success: false, message: "Unbekanntes Feature." };

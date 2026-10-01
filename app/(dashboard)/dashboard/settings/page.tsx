@@ -11,7 +11,7 @@ import { getFeatureFlags, MEMBER_FEATURES, type FeatureKey } from "@/lib/feature
 import { getPipelineStagesForSettings } from "./pipeline-actions";
 import { getCurrentProfile } from "./profile-data";
 import { isCurrentUserAdmin, getCurrentUserRole } from "./admin-actions";
-import { isAdminRole } from "@/lib/roles";
+import { isAdminRole, isSuperAdminRole } from "@/lib/roles";
 
 export default async function SettingsPage() {
   const [stages, profile, userRole, featureFlags] = await Promise.all([
@@ -27,6 +27,8 @@ export default async function SettingsPage() {
   }));
 
   const isAdmin = isAdminRole(userRole);
+  // Feature-Freigaben/Pakete verwaltet ausschließlich der Plattform-Inhaber.
+  const isSuperAdmin = isSuperAdminRole(userRole);
   const tenantId = await currentTenantId();
 
   return (
@@ -45,7 +47,16 @@ export default async function SettingsPage() {
         adminPanel={
           isAdmin ? (
             <div className="flex min-w-0 flex-col gap-4 sm:gap-6">
-              <FeatureFlagsSettings features={featureList} initialFlags={featureFlags} />
+              {isSuperAdmin ? (
+                <FeatureFlagsSettings features={featureList} initialFlags={featureFlags} />
+              ) : (
+                <section className="rounded-lg border border-border bg-muted/30 p-5 max-sm:p-3">
+                  <h2 className="text-base font-semibold text-foreground">Feature-Freigaben</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Feature-Freigaben und Paket-Erweiterungen werden zentral durch den Plattform-Inhaber verwaltet.
+                  </p>
+                </section>
+              )}
               {tenantId && <EmailSettingsForm tenantId={tenantId} />}
               <AdminPanel />
             </div>

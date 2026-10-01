@@ -44,9 +44,9 @@ export const getFeatureFlags = cache(async (): Promise<FeatureFlags> => {
 export type UserFeatureOverrides = Partial<Record<FeatureKey, boolean>>;
 
 // Nur für Admins: Bereiche, die Mitglieder nie sehen (Navigation + Seiten-Guard).
-export const ADMIN_ONLY_HREFS = ["/dashboard/phone", "/dashboard/features"];
+export const ADMIN_ONLY_HREFS = ["/dashboard/phone"];
 // Nur für Super-Admins (Betreiber): Kundenverwaltung über alle Mandanten.
-export const SUPER_ADMIN_ONLY_HREFS = ["/dashboard/admin/tenants"];
+export const SUPER_ADMIN_ONLY_HREFS = ["/dashboard/admin/tenants", "/dashboard/features"];
 
 export async function currentUserIsSuperAdmin(): Promise<boolean> {
   return isSuperAdminRole((await getCurrentUserAccess()).role);
