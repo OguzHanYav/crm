@@ -76,7 +76,7 @@ export default function MobileSidebar({ hiddenNavHrefs = [] }: { hiddenNavHrefs?
                         : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                    <span className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center">
                       <Icon />
                     </span>
                     <span className="truncate">{item.label}</span>
