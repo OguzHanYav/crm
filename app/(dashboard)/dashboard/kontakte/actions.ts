@@ -11,6 +11,7 @@ import { sendWhatsAppTemplate } from "@/lib/services/whatsapp";
 import { getNotificationSettings } from "@/lib/services/notification-settings";
 import { currentTenantId, tenantFields } from "@/lib/tenant";
 import { resolveNewCustomerStage } from "@/app/(dashboard)/dashboard/deals/new-customer-stage";
+import { countryFromPhone } from "@/lib/constants/dial-codes";
 import type { Contact, ContactStatus, Note, CallLog } from "./types";
 
 export type ActionResult<T = undefined> = {
@@ -29,7 +30,9 @@ function parseContactForm(formData: FormData) {
     email: (formData.get("email") as string)?.trim(),
     phone: (formData.get("phone") as string)?.trim() || null,
     company: (formData.get("company") as string)?.trim() || null,
-    status: formData.get("status") as ContactStatus,
+    country: (formData.get("country") as string)?.trim() || null,
+    // Neue Kontakte: Status-Feld entfällt im Formular (Pipeline-Phase stattdessen) -> "Lead"
+    status: ((formData.get("status") as string) || "Lead") as ContactStatus,
     notes: (formData.get("notes") as string)?.trim() || null,
     assigned_to: (formData.get("assigned_to") as string) || null,
   };
@@ -326,6 +329,8 @@ export async function createContact(
   }
 
   const fields = parseContactForm(formData);
+  // Kein Land gewählt -> aus der internationalen Vorwahl der Telefonnummer ableiten.
+  if (!fields.country) fields.country = countryFromPhone(fields.phone);
 
   if (!fields.first_name || !fields.last_name || !fields.email || !fields.status) {
     return {
@@ -347,7 +352,19 @@ export async function createContact(
 
   // Jeder neue Kontakt landet als Deal in der Phase "Neuer Kunde" der Pipeline.
   // Ein Fehler hier bricht das Anlegen des Kontakts nicht ab.
-  const newCustomerStage = await resolveNewCustomerStage(supabase);
+  // Im Formular gewählte Pipeline-Phase (nur übernehmen, wenn sie für den
+  // Nutzer sichtbar ist, also zum aktiven Mandanten gehört) — sonst "Neuer Kunde".
+  const chosenStageId = (formData.get("stage_id") as string) || "";
+  let newCustomerStage: { pipelineId: string; stageId: string } | null = null;
+  if (chosenStageId) {
+    const { data: chosen } = await supabase
+      .from("deal_stages")
+      .select("id, pipeline_id")
+      .eq("id", chosenStageId)
+      .maybeSingle();
+    if (chosen) newCustomerStage = { pipelineId: chosen.pipeline_id, stageId: chosen.id };
+  }
+  newCustomerStage ??= await resolveNewCustomerStage(supabase);
   if (newCustomerStage) {
     const dealValues = {
       name: fields.company || `${fields.first_name} ${fields.last_name}`.trim(),
